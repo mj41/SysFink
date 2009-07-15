@@ -7,6 +7,7 @@ use lib qw( lib );
 my @default_tests = (
     't/*.t',
     't/base/*',
+    't/utils/*',
 );
 my @tests = map { glob($_) } (@ARGV ? @ARGV : @default_tests);
 

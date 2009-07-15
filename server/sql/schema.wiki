@@ -1,0 +1,46 @@
+=== Header ===
+
+<!-- perl utils\wiki_schema.pl sql\schema.wiki 1 > sql\schema.sql -->
+<!-- PARSE PART DBCREATE BEGIN -->
+<source lang=sql>
+-- schema revision: $LastChangedRevision: 358 $
+SET FOREIGN_KEY_CHECKS=0;
+begin transaction;
+
+-- Tags_order: Config, Machine, User.
+</source>
+
+=== Tables ===
+
+==== Table machine (m) ====
+<source lang=sql>
+CREATE TABLE machine (
+    machine_id      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    hostname        VARCHAR(50) NOT NULL,
+    `desc`          TEXT DEFAULT NULL COMMENT 'Description.',
+    ip              VARCHAR(15) DEFAULT NUL,
+    disabled        BOOLEAN NOT NULL DEFAULT 0
+) TYPE=InnoDB COMMENT='Machine (computer or virtual machine) info. Tag:Machine.';
+</source>
+
+
+==== Table user ====
+<source lang=sql>
+CREATE TABLE user (
+    user_id     INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT 'Primary key',
+    login       VARCHAR(20) NOT NULL,
+    passwd      VARCHAR(20) NOT NULL,
+    first_name  VARCHAR(255) NOT NULL DEFAULT '',
+    last_name   VARCHAR(255) NOT NULL DEFAULT '',
+    active      BOOLEAN NOT NULL DEFAULT 1 COMMENT 'Zero means historical data.',
+    created     DATETIME NOT NULL COMMENT 'Account creation time.',
+    INDEX i_login (login)
+) TYPE=InnoDB COMMENT='User info. Tag:User.';
+</source>
+
+=== Footer ===
+
+<source lang=sql>
+commit;
+</source>
+<!-- PARSE PART DBCREATE END -->
