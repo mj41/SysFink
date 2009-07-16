@@ -19,5 +19,5 @@ ok( $conf->{db}, 'some configuration for database loaded');
 
 my $schema = get_connected_schema( $conf->{db} );
 
-my $rs = $schema->resultset('machine')->search( {}, {} );
-ok( $rs->count, 'rs->count on build should succeed' );
+my $rs = $schema->resultset('user')->search( {}, {} );
+ok( $rs->count, 'rs->count on user table should succeed' );

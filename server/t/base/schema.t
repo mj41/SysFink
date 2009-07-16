@@ -21,10 +21,10 @@ my $schema = SysFink::DB::Schema->connect(
     \%dbi_params
 );
 
-ok( $schema, 'connect should succeed' );
+ok( $schema, 'Connect should succeed' );
 
 #export DBIC_TRACE=1
 #use Data::Dumper; print Dumper( $schema );
 
-my $rs = $schema->resultset('machine')->search( {}, {} );
-ok( $rs->count, 'rs->count on build should succeed' );
+my $rs = $schema->resultset('user')->search( {}, {} );
+ok( $rs->count, 'rs->count on user table should succeed' );

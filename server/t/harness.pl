@@ -2,16 +2,15 @@
 
 use strict;
 use warnings;
-use lib qw( lib );
+use TAP::Harness;
 
 my @default_tests = (
     't/*.t',
     't/base/*',
+    't/conf/*',
     't/utils/*',
 );
 my @tests = map { glob($_) } (@ARGV ? @ARGV : @default_tests);
-
-use TAP::Harness;
 
 my $harness = TAP::Harness->new({
     verbosity => $ENV{HARNESS_VERBOSE},

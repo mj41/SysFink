@@ -10,7 +10,7 @@ SysFink::Server - SysFink server.
 
 =head1 SYNOPSIS
 
-See L<SysFink::Server>
+See L<SysFink>
 
 =head1 DESCRIPTION
 
