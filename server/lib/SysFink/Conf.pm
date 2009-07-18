@@ -46,9 +46,8 @@ sub clear_conf {
     my $self = shift;
     $self->{conf} = {};
     $self->{conf_meta} = {};
-    return 1
+    return 1;
 }
-
 
 
 sub load_config {
@@ -58,6 +57,23 @@ sub load_config {
 }
 
 
+sub get_file_content {
+    my ( $self, $fpath ) = @_;
+
+    my $fh;
+    unless ( open( $fh, '<', $fpath ) ) {
+        $@ = "Can't open file '$fpath': $!";
+        return undef;
+    }
+    my $content;
+    {
+        local $/ = undef;
+        $content = <$fh>;
+    }
+    close $fh;
+    return $content;
+}
+
 
 sub get_files_rh_for_dir {
     my ( $self, $dir_path ) = @_;
@@ -65,7 +81,7 @@ sub get_files_rh_for_dir {
     my $dir_handle;
     unless ( opendir($dir_handle, $dir_path) ) {
         $@ = "Directory '$dir_path' not open for read.";
-        return 0;
+        return undef;
     }
     my @items = readdir($dir_handle);
     close($dir_handle);

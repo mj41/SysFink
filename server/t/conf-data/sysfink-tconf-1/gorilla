@@ -1,12 +1,11 @@
-hostname 	gorilla.test.sysfink.org
 #hostname	hostname-inside-comment
-sendmail	gorilla-admin@test.sysfink.org
+hostname 	gorilla-sysfink-tconf-1.test.sysfink.org
+#hostname	hostname-inside-comment
+
+comment 	"my text comment"
+parts		part1,part2, "part 3","part 4"
 
 #rpmpkg		rmp-inside-comment
 
 rpmpkg		samba
 rpmpkg		cdrecord
-
-exclude		/var/run/*
-backup		/var/run/test
-path		[-M5]/var/run/test
