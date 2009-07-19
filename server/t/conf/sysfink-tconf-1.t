@@ -30,22 +30,32 @@ is_deeply(
     $conf,
     {
         'gorilla' => {
-            'comment' => 'my text comment',
-            'parts' => [
-                'part1',
-                'part2',
-                'part 3',
-                'part 4'
-            ],
-            'hostname' => 'gorilla-sysfink-tconf-1.test.sysfink.org',
-            'rpmpkg' => [
-                'samba',
-                'cdrecord',
-            ],
+            'general' => {
+                'comment' => 'my text comment',
+                'hostname' => 'gorilla-sysfink-tconf-1.test.sysfink.org',
+                'rpmpkg' => [
+                    'samba',
+                    'cdrecord',
+                ],
+            },
+            'second_section' => {
+                'parts' => [
+                    'part1',
+                    'part2',
+                    'part 3',
+                    'part 4'
+                ],
+            },
         },
         'lion' => {
-            'comment' => 'my lion text comment',
-            'hostname' => 'lion-sysfink-tconf-1.test.sysfink.org',
+            'general' => {
+                'hostname' => 'lion-sysfink-tconf-1.test.sysfink.org',
+                'comment' => 'comment in general section',
+            },
+            'second_lion_section' => {
+                'comment' => 'my lion text comment in second_lion_section section',
+            },
+            'empty_section' => {},
         },
     },
     'loaded conf is ok'

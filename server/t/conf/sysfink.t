@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 19;
+use Test::More tests => 20;
 
 use Carp qw(carp croak verbose);
 use FindBin qw($RealBin);
@@ -75,7 +75,8 @@ $test_case_content = <<TEST_CASE_CONTENT;
 hostname    gorilla-sysfink-tc1.test.sysfink.org
 TEST_CASE_CONTENT
 
-$test_case_expected_results = {
+$test_case_expected_results = {};
+$test_case_expected_results->{general} = {
     'hostname' => 'gorilla-sysfink-tc1.test.sysfink.org',
 };
 
@@ -88,7 +89,8 @@ comment     "Complicated text comment 2 \\" 3", part2
 TEST_CASE_CONTENT
 # fix my editor syntax highlighting - "
 
-$test_case_expected_results = {
+$test_case_expected_results = {};
+$test_case_expected_results->{general} = {
     'comment' => [ 'Complicated text comment 2 " 3', 'part2', ],
 };
 
@@ -101,7 +103,8 @@ hostname    gorilla-sysfink-tc2.test.sysfink.org
 comment     "Text comment"
 TEST_CASE_CONTENT
 
-$test_case_expected_results = {
+$test_case_expected_results = {};
+$test_case_expected_results->{general} = {
     'hostname' => 'gorilla-sysfink-tc2.test.sysfink.org',
     'comment' => 'Text comment',
 };
@@ -116,9 +119,35 @@ hostname    gorilla-sysfink.test.sysfink.org
 comment     "Text comment part 2"
 TEST_CASE_CONTENT
 
-$test_case_expected_results = {
+$test_case_expected_results = {};
+$test_case_expected_results->{general} = {
     'hostname' => 'gorilla-sysfink.test.sysfink.org',
     'comment' => [ "Text comment part 1", "Text comment part 2", ]
+};
+
+push @conf_cases, [ $test_case_content, $test_case_expected_results ];
+
+
+# test case 5
+$test_case_content = <<TEST_CASE_CONTENT;
+[general]
+  hostname    gorilla-sysfink.test.sysfink.org
+  comment     "Text comment part 1 section 1"
+  comment     "Text comment part 2 section 1"
+[empty_section]
+[second_section]
+  comment     "Text comment part 1 section 2"
+  comment     "Text comment part 2 section 2"
+TEST_CASE_CONTENT
+
+$test_case_expected_results = {};
+$test_case_expected_results->{general} = {
+    'hostname' => 'gorilla-sysfink.test.sysfink.org',
+    'comment' => [ "Text comment part 1 section 1", "Text comment part 2 section 1", ]
+};
+$test_case_expected_results->{empty_section} = {};
+$test_case_expected_results->{second_section} = {
+    'comment' => [ "Text comment part 1 section 2", "Text comment part 2 section 2", ]
 };
 
 push @conf_cases, [ $test_case_content, $test_case_expected_results ];

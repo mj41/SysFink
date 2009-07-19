@@ -27,18 +27,18 @@ is_deeply( \@loaded_hosts, [ 'gorilla', 'lion' ], 'gorilla conf loaded ok' );
 
 # gorilla
 
-my @gorilla_keys = ( sort keys %{ $conf->{gorilla} } );
+my @gorilla_keys = ( sort keys %{ $conf->{gorilla}->{general} } );
 is_deeply( \@gorilla_keys, [ qw/hostname paths rpmpkg sendmail/ ], 'gorilla keys ok' );
 
-is( $conf->{gorilla}->{hostname}, 'gorilla-sysfink-tconf-2.test.sysfink.org', 'gorilla hostname is ok' );
-is_deeply( $conf->{gorilla}->{rpmpkg}, [ qw/samba samba-swat cdrecord/ ], 'gorilla rpmpkg ok' );
+is( $conf->{gorilla}->{general}->{hostname}, 'gorilla-sysfink-tconf-2.test.sysfink.org', 'gorilla hostname is ok' );
+is_deeply( $conf->{gorilla}->{general}->{rpmpkg}, [ qw/samba samba-swat cdrecord/ ], 'gorilla rpmpkg ok' );
 
 # lion
 
-my @lion_keys = ( sort keys %{ $conf->{lion} } );
+my @lion_keys = ( sort keys %{ $conf->{lion}->{general} } );
 is_deeply( \@lion_keys, [ qw/dirpkg hostname paths rpmpkg sendmail/ ], 'lion keys ok' );
 
-is_deeply( $conf->{lion}->{rpmpkg}, [ qw/kernel-2.6.18-8.1.8.main.el5.i686 samba dvd+rw-tools/ ], 'lion rpmpkg ok' );
-is_deeply( $conf->{lion}->{sendmail}, [ qw/gorilla-sysfink-tconf-2-A@test.sysfink.org gorilla-sysfink-tconf-2-B@test.sysfink.org/ ], 'lion sendmail ok' );
+is_deeply( $conf->{lion}->{general}->{rpmpkg}, [ qw/kernel-2.6.18-8.1.8.main.el5.i686 samba dvd+rw-tools/ ], 'lion rpmpkg ok' );
+is_deeply( $conf->{lion}->{general}->{sendmail}, [ qw/gorilla-sysfink-tconf-2-A@test.sysfink.org gorilla-sysfink-tconf-2-B@test.sysfink.org/ ], 'lion sendmail ok' );
 
 #use Data::Dumper; print Dumper( $conf );

@@ -216,6 +216,7 @@ sub process_config_file_content {
 
     my @lines = split( /\n/, $file_content );
 
+    my $section = 'general';
     foreach my $line_num ( 0..$#lines ) {
         my $line = $lines[ $line_num ];
         chomp $line;
@@ -225,6 +226,20 @@ sub process_config_file_content {
 
         # Ignore characters after # and ;
         next if $line =~ /^\s*(\#|\:)/;
+
+        if ( $line =~ m/^ \s* \[ /x ) {
+            if ( my ( $t_section ) = $line =~ m/^ \s* \[ \s* ([^\]]+) \s* \] \s* $/x ) {
+                $section = lc $t_section;
+
+                # initialization
+                $host_conf->{$section} = {} unless defined $host_conf->{$section};
+
+                next;
+            } else {
+                $@ = "Error on line '$line'. Begin char [ found, but no section def.";
+                return 0;
+            }
+        }
 
         my ( $key, @vals ) = $self->splitq( $line );
         $key = lc $key;
@@ -236,6 +251,7 @@ sub process_config_file_content {
             next;
         }
 
+
         # process fields path, include, exclude, backup, ...
         if ( defined($self->{default_flags}->{$key}) ) {
             foreach my $val ( @vals ) {
@@ -245,26 +261,26 @@ sub process_config_file_content {
                 $path = $self->glob2pat( $path );
 
                 # combine the current flags with a previously set flags
-                push @{$host_conf->{"paths"} }, $flags.$path;
+                push @{$host_conf->{$section}->{'paths'} }, $flags.$path;
             }
             next;
         }
 
         # add values into config
-        if ( !defined($host_conf->{$key}) ) {
+        unless ( defined($host_conf->{$section}->{$key}) ) {
             #use Data::Dumper; print Dumper( \@vals );
 
             unless ( defined $vals[1] ) {
-                $host_conf->{$key} = $vals[0];
+                $host_conf->{$section}->{$key} = $vals[0];
             } else {
-                $host_conf->{$key} = [ @vals ];
+                $host_conf->{$section}->{$key} = [ @vals ];
             }
         } else {
             # change one value to array containing one value
-            if ( ref $host_conf->{$key} ne 'ARRAY' ) {
-                $host_conf->{$key} = [ $host_conf->{$key} ];
+            if ( ref $host_conf->{$section}->{$key} ne 'ARRAY' ) {
+                $host_conf->{$section}->{$key} = [ $host_conf->{$section}->{$key} ];
             }
-            push @{$host_conf->{$key}}, @vals;
+            push @{$host_conf->{$section}->{$key}}, @vals;
         }
     }
 

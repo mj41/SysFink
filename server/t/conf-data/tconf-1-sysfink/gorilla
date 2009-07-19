@@ -1,11 +1,15 @@
 #hostname	hostname-inside-comment
-hostname 	gorilla-sysfink-tconf-1.test.sysfink.org
-#hostname	hostname-inside-comment
 
-comment 	"my text comment"
-parts		part1,part2, "part 3","part 4"
+[general]
+  hostname 	gorilla-sysfink-tconf-1.test.sysfink.org
+  #hostname	hostname-inside-comment
 
-#rpmpkg		rmp-inside-comment
+  comment 	"my text comment"
 
-rpmpkg		samba
-rpmpkg		cdrecord
+  #rpmpkg		rmp-inside-comment
+
+  rpmpkg		samba
+  rpmpkg		cdrecord
+
+[second_section]
+  parts		part1,part2, "part 3","part 4"
