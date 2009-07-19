@@ -32,6 +32,7 @@ is_deeply(
         'gorilla' => {
             'comment' => 'my text comment',
             'parts' => [
+                'part1',
                 'part2',
                 'part 3',
                 'part 4'
