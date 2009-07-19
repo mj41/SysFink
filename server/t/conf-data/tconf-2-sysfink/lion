@@ -1,0 +1,24 @@
+hostname 	lion-sysfink-tconf-2.test.sysfink.org
+sendmail	gorilla-sysfink-tconf-2-A@test.sysfink.org, gorilla-sysfink-tconf-2-B@test.sysfink.org
+
+rpmpkg		kernel-2.6.18-8.1.8.main.el5.i686
+
+rpmpkg		samba
+rpmpkg		dvd+rw-tools
+
+dirpkg		cvis
+
+exclude		/dev/* /home/* /proc/* /sys/* /var/log/*
+exclude		/var/lock/*
+exclude		/var/cache/*
+backup		/var/run/test
+path		[-M5]/var/run/test
+exclude		/var/run/*
+exclude		/etc/rc.d/rc?.d/*
+
+path		[+M5SLB]/etc/selinux/*
+path		[+M5SLXI-B]/etc/selinux/*
+
+backup		/etc/interfaces/
+
+
