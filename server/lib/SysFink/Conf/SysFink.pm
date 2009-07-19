@@ -138,41 +138,74 @@ sub glob2pat {
 sub splitq {
     my ( $self, $str ) = @_;
 
-    my @arr = ();
-    my $idx = 0;
-    my $state = 0; # 0 - start, 1 - in string, 2 - in quoted string, 3 - char after slash
-    foreach my $ch (split(//, $str)) {
-        #char after quote
+    my $debug = 0;
+
+    my @parts = ();
+    my $part_num = 0;
+    my $state_names = [
+        'part start',       # 0
+        'in string',        # 1
+        'in quoted string', # 2
+        'char after slash in string',        # 3
+        'char after slash in quoted string', # 4
+    ];
+    my $state = 0;
+    foreach my $ch ( split(//, $str) ) {
+        # in char after slash in string
         if ( $state == 3 ) {
-            $arr[$idx] .= $ch;
-            $state = 1;
-        # quote
-        } elsif ( $ch eq '"') {
-            if ($state == 2) {
-                $state = 0;
-            } else {
-                $state = 2;
-            }
-        # space, delimiter
-        } elsif ($ch =~ /[\s,]/ && $state != 2) {
-            if (defined($arr[$idx]) && $arr[$idx] ne "") {
-                $idx++;
-                $state = 0;
-            }
-        # slash
+            $parts[ $part_num ] .= $ch; # add char to part
+            $state = 1; # in string
+
+        # in char after slash in quoted string
+        } elsif ( $state == 4 ) {
+            $parts[ $part_num ] .= $ch; # add char to part
+            $state = 2; # in quoted string
+
+        # slash found
         } elsif ( $ch eq '\\') {
-            $state = 3;
-        # other
-        } else {
-            if (defined($arr[$idx])) {
-                $arr[$idx] .= $ch;
-            } else {
-                $arr[$idx] = $ch;
+            if ( $state == 2 ) { # in quoted string
+                $state = 4; # to char after slash in quoted string
+            } else { # part start, in string
+                $state = 3; # to char after slash in string
             }
+
+        # quote found
+        } elsif ( $ch eq '"' ) {
+            if ( $state == 2 ) { # in quoted string
+                $state = 0; # to part start
+            } else {
+                $state = 2; # to in quoted string
+            }
+
+        # (space or delimiter) and not in quoted string
+        } elsif ( $ch =~ /[\s,]/ && $state != 2 ) {
+            if ( $parts[$part_num] ) { # prev part has content
+                $part_num++;
+            }
+            $state = 0; # to part start
+
+        # other char
+        } else {
+            # add char to part
+            if ( defined($parts[$part_num]) ) {
+                $parts[$part_num] .= $ch;
+            } else {
+                $parts[$part_num] = $ch;
+            }
+            $state = 1 if $state == 0;
+        }
+
+        if ( $debug ) {
+            my $state_name = $state_names->[ $state ];
+            print "ch: '$ch', part_num:$part_num, state: $state ($state_name)\n";
         }
     }
 
-    return @arr;
+    if ( $debug ) {
+        require Data::Dumper;
+        print Data::Dumper->Dump( [ \@parts ] );
+    }
+    return @parts;
 }
 
 
@@ -224,7 +257,6 @@ sub process_config_file_content {
             unless ( defined $vals[1] ) {
                 $host_conf->{$key} = $vals[0];
             } else {
-                shift @vals;
                 $host_conf->{$key} = [ @vals ];
             }
         } else {
