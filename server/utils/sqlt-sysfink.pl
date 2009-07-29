@@ -27,12 +27,12 @@ if ( $to eq 'dbix' || $to eq 'ALL' ) {
         parser    => 'MySQL',
         producer  => 'DBIx::Class::FileMJ',
         producer_args => {
-            prefix => 'SysFink::DB::SchemaBase',
+            prefix => 'SysFink::DB::Schema',
             base_class_name => 'SysFink::DB::DBIxClassBase',
         },
     ) or die SQL::Translator->error;
 
-    my $out_fn = './lib/SysFink/DB/SchemaBase.pm';
+    my $out_fn = './lib/SysFink/DB/Schema.pm';
     my $content = $translator->translate;
     my $fh;
     open ( $fh, '>', $out_fn ) || die $!;

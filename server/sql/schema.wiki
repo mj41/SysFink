@@ -16,13 +16,33 @@ begin transaction;
 <source lang=sql>
 CREATE TABLE machine (
     machine_id      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    hostname        VARCHAR(50) NOT NULL,
+    name        	VARCHAR(50) NOT NULL,
     `desc`          TEXT DEFAULT NULL COMMENT 'Description.',
     ip              VARCHAR(15) DEFAULT NUL,
     disabled        BOOLEAN NOT NULL DEFAULT 0
 ) TYPE=InnoDB COMMENT='Machine (computer or virtual machine) info. Tag:Machine.';
 </source>
 
+==== Table mconf_sec ====
+<source lang=sql>
+CREATE TABLE mconf_sec (
+    mconf_sec_id	INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    machine_id      INT UNSIGNED NOT NULL,
+    name        	VARCHAR(50) NOT NULL,
+    CONSTRAINT fk_mconf_sec_machine_id FOREIGN KEY (machine_id) REFERENCES machine (machine_id)
+) TYPE=InnoDB COMMENT='Machine configuratio section. Tag:Machine.';
+</source>
+
+==== Table mconf_sec_kv ====
+<source lang=sql>
+CREATE TABLE mconf_sec_kv (
+    mconf_sec_kv_id		INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    mconf_sec_id		INT UNSIGNED NOT NULL,
+    `key`          		VARCHAR(50) NOT NULL,
+    value        		VARCHAR(255) NOT NULL,
+    CONSTRAINT fk_mconf_sec_kv_mconf_sec_id FOREIGN KEY (mconf_sec_id) REFERENCES mconf_sec (mconf_sec_id)
+) TYPE=InnoDB COMMENT='Machine configuration section key and value pairs. Tag:Machine.';
+</source>
 
 ==== Table user ====
 <source lang=sql>
