@@ -9,7 +9,7 @@ BEGIN {
     use_ok 'Carp';
     use_ok 'File::Spec::Functions';
 
-    use_ok 'Net::SSH::Expect';
+    use_ok 'Net::OpenSSH';
 
     # config
     use_ok 'YAML::Any';

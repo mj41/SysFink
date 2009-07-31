@@ -4,22 +4,18 @@ use warnings;
 # Testing SSH connect.
 # You should have ssh keys configured. This is test without password.
 
-use Net::SSH::Expect;
+use Net::OpenSSH;
 
 my $host = $ARGV[0] || 'tapir1.ro.vutbr.cz';
 my $user = $ARGV[1] || 'root';
 
-my $ssh = Net::SSH::Expect->new(
-    host => $host,
-    user => $user,
-    raw_pty => 1,
-    no_terminal => 1
-);
+my $ssh = Net::OpenSSH->new( $host, user => $user );
+$ssh->error and die "Couldn't establish SSH connection: ". $ssh->error;
 
-$ssh->run_ssh() or die "SSH process couldn't start: $!";
-#$ssh->exec("stty raw -echo");
+my ($out, $err) = $ssh->capture2('hostname');
+$ssh->error and die "remote 'hostname' command failed: " . $ssh->error;
 
-my $hostname = $ssh->exec('hostname');
+my $hostname = $out;
 chomp($hostname);
 
 print "got hostname '$hostname' - ";
@@ -30,4 +26,4 @@ if ( $hostname eq $host ) {
 }
 print "\n";
 
-$ssh->close();
+undef $ssh;
