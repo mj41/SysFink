@@ -1,6 +1,6 @@
-use strict;
+﻿use strict;
 use warnings;
-use Test::More tests => 7;
+use Test::More tests => 8;
 
 use lib 'lib';
 use lib 'libext';
@@ -8,6 +8,8 @@ use lib 'libext';
 BEGIN {
     use_ok 'Carp';
     use_ok 'File::Spec::Functions';
+
+    use_ok 'Net::SSH::Expect';
 
     # config
     use_ok 'YAML::Any';
