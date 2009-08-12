@@ -4,9 +4,10 @@ our $VERSION = 0.01;
 
 
 sub new {
-    my ( $class, $md5sum_util_path ) = @_;
+    my ( $class, $shared_data, $md5sum_util_path ) = @_;
 
     my $self  = {};
+    $self->{shared_data} = $shared_data;
     $self->{md5sum_util_path} = $md5sum_util_path;
 
     bless( $self, $class );
