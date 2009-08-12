@@ -23,12 +23,13 @@ sub debug {
 
 
 sub dump {
-    my @caller = (caller 1);
+    my @caller0 = caller(0);
+    my @caller1 = caller(1);
     my ( $self, @data ) = @_;
 
     local $Data::Dumper::Terse = 1;
     local $Data::Dumper::Indent = 1;
-    my $debug_output = "dump called on line $caller[2] of $caller[3] - " . Data::Dumper->Dump( \@data );
+    my $debug_output = "dump called on line $caller0[2] of $caller1[3] - " . Data::Dumper->Dump( \@data );
     $self->debug( $debug_output );
     return 1;
 }
