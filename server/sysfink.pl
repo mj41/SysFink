@@ -58,7 +58,7 @@ sub run_ssh_cmd {
 
 sub ls_output_contains_dir {
     my ( $out ) = @_;
-    
+
     chomp($out);
     my @lines = split( /\n/, $out );
     foreach my $line ( @lines ) {
@@ -139,7 +139,7 @@ my $client_start_cmd = "/usr/bin/perl $client_src_dest_fp 5";
 #my ( $in_pipe, $out_pipe, undef, $pid ) = $ssh->open_ex(
 #    {
 #        stdin_pipe => 1,
-#        stdout_pipe => 1 
+#        stdout_pipe => 1
 #   },
 #    @cmd
 #);
@@ -147,36 +147,28 @@ my $client_start_cmd = "/usr/bin/perl $client_src_dest_fp 5";
 
 my $rpc = SSH::RPC::PP::Client->new( $ssh, $client_start_cmd );
 
-my $result;
+my $result_obj;
 
-$result = $rpc->run( 'noop', $client_src_dest_fp );
-if ( $result->isSuccess ) {
-    print "ok: " . Dumper($result->getResponse) . "\n";
-} else {
-    carp "err: " . $result->getError;
-}
+$result_obj = $rpc->run( 'noop', $client_src_dest_fp );
+$result_obj->dump();
+
 
 my $file_to_hash = catfile( $client_src_dest_dir, 'SysFinkFileHashBase.pm' );
-$result = $rpc->run( 'hash_file', $file_to_hash );
-if ( $result->isSuccess ) {
-    print "ok: " . Dumper($result->getResponse) . "\n";
-} else {
-    carp "err: " . $result->getError;
-}
+$result_obj = $rpc->run( 'hash_file', $file_to_hash );
+$result_obj->dump();
 
-$result = $rpc->run( 'hash_type' );
-if ( $result->isSuccess ) {
-    print "ok: " . Dumper($result->getResponse) . "\n";
-} else {
-    carp "err: " . $result->getError;
-}
 
-$result = $rpc->run( 'hash_type_desc' );
-if ( $result->isSuccess ) {
-    print "ok: " . Dumper($result->getResponse) . "\n";
-} else {
-    carp "err: " . $result->getError;
-}
+$result_obj = $rpc->run( 'hash_type' );
+$result_obj->dump();
 
+$result_obj = $rpc->run( 'hash_type_desc' );
+$result_obj->dump();
+
+my $scan_conf = {
+    'dir' => $client_src_dest_dir,
+    'debug' => 1,
+};
+$result_obj = $rpc->run( 'scan_host', $scan_conf );
+$result_obj->dump();
 
 undef $ssh;

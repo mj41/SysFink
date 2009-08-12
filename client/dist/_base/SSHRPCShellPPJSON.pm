@@ -34,8 +34,6 @@ sub run {
     }
 
     my $result = $self->process_request($request);
-    $result->{version} = $__PACKAGE__::VERSION;
-
     my $encoded_result = eval{ JSON->new->pretty->utf8->encode($result) };
     if ( $@ ) {
         print '{ "error" : "Malformed response.", "status" : "511" }' . "\n";
@@ -45,6 +43,6 @@ sub run {
     print $encoded_result."\n";
     return 1;
 }
- 
+
 
 1;

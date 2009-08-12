@@ -1,8 +1,9 @@
 package SSH::RPC::PP::Result;
 
-our $VERSION = 1.200;
+our $VERSION = 0.100;
 
 use strict;
+use Data::Dumper;
 
 =head1 NAME
 
@@ -16,12 +17,26 @@ Based on SSH::RPC::Result, but without Class::InsideOut.
 
 
 sub new {
-    my ( $class, $response ) = @_;
+    my ( $class, $result ) = @_;
 
     my $self = {};
-    $self->{response} = $response;
+    $self->{result} = $result;
+    $self->{status_messages} = undef;
+
     bless( $self, $class );
     return $self;
+}
+
+
+=head2 getResult ()
+
+Returns raw result.
+
+=cut
+
+sub getResult {
+    my $self = shift;
+    return $self->{result};
 }
 
 
@@ -33,7 +48,7 @@ Returns the human readable error message (if any).
 
 sub getError {
     my $self = shift;
-    return $self->{response}->{error};
+    return $self->{result}->{error};
 }
 
 
@@ -45,7 +60,7 @@ Returns the return value(s) from the RPC, whether that be a scalar value, or a h
 
 sub getResponse {
     my $self = shift;
-    return $self->{response}->{response};
+    return $self->{result}->{response};
 }
 
 
@@ -57,27 +72,56 @@ Returns the $VERSION from the shell. This is useful if you have different versio
 
 sub getShellVersion {
     my $self = shift;
-    return $self->{response}->{version};
+    return $self->{result}->{version};
 }
 
 
 =head2 getStatus ()
 
-Returns a status code for the RPC. The built in status codes are:
-
- 200 - Success
- 400 - Malform request received by shell.
- 405 - RPC called a method that doesn't exist.
- 406 - Error transmitting RPC.
- 500 - An undefined error occured in the shell.
- 510 - Error translating return document in client.
- 511 - Error translating return document in shell.
+Returns a status code for the RPC.
 
 =cut
 
 sub getStatus {
     my $self = shift;
-    return $self->{response}->{status};
+    return $self->{result}->{status};
+}
+
+
+=head2 getAllStatusMessages ()
+
+Return the status code mesages hash.
+
+=cut
+
+sub getAllStatusMessages {
+    return {
+        '200' => 'Success',
+        '400' => 'Malform request received by shell.',
+        '405' => 'RPC called a method that doesn\'t exist.',
+        '406' => 'Error transmitting RPC.',
+        '500' => 'An undefined error occured in the shell.',
+        '510' => 'Error translating return document in client.',
+        '511' => 'Error translating return document in shell.',
+    };
+}
+
+
+=head2 getStatusMessage ()
+
+Returns a status code message for the RPC.
+
+=cut
+
+sub getStatusMessage {
+    my $self = shift;
+
+    $self->{status_messages} = $self->getAllStatusMessages() unless defined $self->{status_messages};
+    my $status_code = $self->{result}->{status};
+    unless ( exists $self->{status_messages}->{ $status_code } ) {
+        return "Unknown statu message (status code $status_code).";
+    }
+    return $self->{status_messages}->{ $status_code };
 }
 
 
@@ -90,6 +134,49 @@ Returns true if the request was successful, or false if it wasn't.
 sub isSuccess {
     my $self = shift;
     return ($self->getStatus == 200);
+}
+
+
+=head2 isSuccess ()
+
+Returns true if the request was successful, or false if it wasn't.
+
+=cut
+
+sub dump {
+    my ( $self ) = @_;
+
+    my $result = $self->{result};
+    #print "full result: " . Dumper($result) . "\n";
+
+    if ( $self->isSuccess ) {
+        print "=== response is ok =============================================\n";
+    } else {
+        print "=== response error =============================================\n"
+    }
+
+    print "status: " . $self->getStatus() . " - '" . $self->getStatusMessage() . "'\n";
+
+
+    if ( $self->isSuccess ) {
+        local $Data::Dumper::Terse = 1;
+        local $Data::Dumper::Indent = 1;
+        my $response_dump = Data::Dumper->Dump( [ $result->{response} ] );
+        print "--- response data: ---------------------------------------------\n";
+        print $response_dump;
+
+    } else {
+        my $error = $self->getError;
+        print "error: '$error'\n" if $error;
+    }
+
+    if ( $result->{debug_output} ) {
+        print "--- debug output: ---------------------------------------------\n";
+        print $result->{debug_output};
+    }
+    print "================================================================\n";
+    print "\n";
+
 }
 
 

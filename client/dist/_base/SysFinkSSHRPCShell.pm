@@ -1,5 +1,7 @@
 package Sysfink::SSH::RPC::Shell;
 
+$__PACKAGE__::VERSION = '0.100';
+
 use base 'SSH::RPC::Shell::PP::JSON';
 
 use strict;
@@ -40,6 +42,28 @@ sub init_scanhost_obj {
 }
 
 
+=head2 pack_ok_response ()
+
+Pack result to success response and add debug_output.
+
+=cut
+
+sub pack_ok_response {
+    my ( $self, %response ) = @_;
+
+    my $result = {
+        status => 200,
+        response => \%response,
+        version => $__PACKAGE__::VERSION,
+    };
+
+    my $debug_output = $self->flush_debug_output();
+    $result->{debug_output} = $debug_output if $debug_output;
+
+    return $result;
+}
+
+
 sub flush_debug_output {
     my ( $self ) = @_;
     my $debug_output = $self->{shared_data}->{debug_output};
@@ -75,14 +99,8 @@ sub run_hash_type_desc {
 sub run_scan_host {
     my ( $self, $args ) = @_;
     $self->init_scanhost_obj() unless $self->{scanhost_obj};
-    my $loaded_dirs = $self->{scanhost_obj}->scan(
-        dirs => $args->{dirs},
-        debug => $args->{debug},
-    );
-    return $self->pack_ok_response(
-        dirs => $loaded_dirs,
-        debug_output => $self->flush_debug_output(), 
-    );
+    my $loaded_dirs = $self->{scanhost_obj}->scan( $args );
+    return $self->pack_ok_response( dirs => $loaded_dirs );
 }
 
 

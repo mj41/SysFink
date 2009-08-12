@@ -2,6 +2,8 @@ package SysFink::FileHash::Base;
 
 our $VERSION = 0.01;
 
+use strict;
+
 
 sub new {
     my ( $class, $shared_data, $md5sum_util_path ) = @_;
