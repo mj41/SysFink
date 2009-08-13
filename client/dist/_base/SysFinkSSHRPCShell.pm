@@ -99,8 +99,8 @@ sub run_hash_type_desc {
 sub run_scan_host {
     my ( $self, $args ) = @_;
     $self->init_scanhost_obj() unless $self->{scanhost_obj};
-    my $loaded_dirs = $self->{scanhost_obj}->scan( $args );
-    return $self->pack_ok_response( dirs => $loaded_dirs );
+    my $paths_result = $self->{scanhost_obj}->scan( $args );
+    return $self->pack_ok_response( paths_result => $paths_result );
 }
 
 

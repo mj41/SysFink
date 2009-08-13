@@ -60,7 +60,7 @@ sub conf_dir_path {
 # add flags into the path, compute flags to the path
 # @ arg        - flags prefix also possible (eg. "/usr", "[+M+G]/usr", "[+M-G+U+T]", "[-M+T]", ...)
 # return flags - result flags enclosed in []
-# return path  - path in clear forrmat  - if input path not defined returns undef
+# return path  - path in clear format - if input path not defined returns undef
 #
 sub add_flags {
     my ( $self, @args ) = @_;

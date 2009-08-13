@@ -11,13 +11,70 @@ use Data::Dumper;
 use Net::OpenSSH;
 
 use lib 'lib';
+use lib 'libext';
+
 use SSH::RPC::PP::Client;
+use SysFink::Conf::SysFink;
+use SysFink::Utils::Conf qw(load_conf_multi);
+use SysFink::Utils::DB qw(get_connected_schema);
 
 
 my $ver = 5;
-my $host = $ARGV[0] || 'tapir1.ro.vutbr.cz';
+my $machine = $ARGV[0] || 'tapir1';
 my $user = $ARGV[1] || 'root';
 my $dist_type = 'linux-bin-64b';
+
+my $conf_fp;
+
+
+$conf_fp = catdir( $RealBin, 'conf' ) unless defined $conf_fp;
+croak "Conf dir '$conf_fp' not found." unless -d $conf_fp;
+
+my $conf = load_conf_multi( $conf_fp, 'db' );
+my $schema = get_connected_schema( $conf->{db} );
+
+
+sub load_general_conf {
+    my ( $schema, $machine ) = @_;
+
+    my $mconf_rs = $schema->resultset('mconf_sec_kv')->search(
+        {
+            'machine_id.name' => $machine,
+            'mconf_sec_id.name' => 'general',
+        },
+        {
+            'join' => { 'mconf_sec_id' => 'machine_id' },
+            'select' => [ 'key', 'value' ],
+        },
+    );
+
+
+    my $data = {};
+    while (my $row_obj = $mconf_rs->next) {
+        my %row = ( $row_obj->get_columns() );
+        my $key = $row{key};
+        my $new_value = $row{value};
+        if ( exists $data->{$key} ) {
+            if ( ref $data->{$key} eq 'ARRAY' ) {
+                my $prev_val = $data->{$key};
+                push @{$data->{$key}}, $new_value;
+            } else {
+                my $prev_val = $data->{$key};
+                $data->{$key} = [ $prev_val, $new_value ];
+            }
+        } else {
+            $data->{$key} = $new_value;
+        }
+    }
+
+    return $data;
+}
+
+
+my $general_conf = load_general_conf( $schema, $machine );
+print Dumper( $general_conf );
+
+my $host = $general_conf->{hostname};
 
 # test2
 #$dist_type = 'linux-perl-md5';
@@ -164,11 +221,15 @@ $result_obj->dump();
 $result_obj = $rpc->run( 'hash_type_desc' );
 $result_obj->dump();
 
+
+
 my $scan_conf = {
-    'dir' => $client_src_dest_dir,
+    'paths' => $general_conf->{paths},
     'debug' => 1,
 };
 $result_obj = $rpc->run( 'scan_host', $scan_conf );
 $result_obj->dump();
+
+
 
 undef $ssh;
