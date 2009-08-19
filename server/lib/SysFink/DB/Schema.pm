@@ -137,6 +137,15 @@ __PACKAGE__->add_columns(
       'is_nullable' => 0,
       'size' => '11'
     },
+    'num' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => 'NULL',
+      'is_foreign_key' => 0,
+      'name' => 'num',
+      'is_nullable' => 1,
+      'size' => '11'
+    },
     'key' => {
       'data_type' => 'VARCHAR',
       'is_auto_increment' => 0,

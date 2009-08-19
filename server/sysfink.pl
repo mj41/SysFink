@@ -23,6 +23,10 @@ my $ver = 5;
 my $machine = $ARGV[0] || 'tapir1';
 my $user = $ARGV[1] || 'root';
 my $dist_type = 'linux-bin-64b';
+# test2
+#$dist_type = 'linux-perl-md5';
+
+my $debugging_on_client = 1;
 
 my $conf_fp;
 
@@ -44,7 +48,8 @@ sub load_general_conf {
         },
         {
             'join' => { 'mconf_sec_id' => 'machine_id' },
-            'select' => [ 'key', 'value' ],
+            'select' => [ 'key', 'value', 'num' ],
+            'order_by' => [ 'key', 'num' ],
         },
     );
 
@@ -75,9 +80,6 @@ my $general_conf = load_general_conf( $schema, $machine );
 print Dumper( $general_conf );
 
 my $host = $general_conf->{hostname};
-
-# test2
-#$dist_type = 'linux-perl-md5';
 
 # test3 - irix test
 if ( 0 ) {
@@ -171,6 +173,12 @@ my $client_src_fpath = catfile( $client_src_dir, $client_src_name );
 my $client_src_dest_dir = catdir( $client_dir );
 $ssh->scp_put( $client_src_fpath, $client_src_dest_dir );
 
+if ( $debugging_on_client ) {
+    my $client_src_test_name = 'sysfink-client-test.pl';
+    my $client_src_test_fpath = catfile( $client_src_dir, $client_src_test_name );
+    $ssh->scp_put( $client_src_test_fpath, $client_src_dest_dir );
+}
+
 my $dist_src_dir;
 
 $dist_src_dir = catdir( $client_src_dir, 'dist', '_base' );
@@ -190,7 +198,7 @@ run_ssh_cmd( $ssh, "ls $client_src_dest_dir" );
 
 my $client_src_dest_fp = catfile( $client_src_dest_dir, $client_src_name );
 
-my $client_start_cmd = "/usr/bin/perl $client_src_dest_fp 5";
+my $client_start_cmd = "nice -n 10 /usr/bin/perl $client_src_dest_fp 5";
 
 # ToDo - use only one Perl process
 #my ( $in_pipe, $out_pipe, undef, $pid ) = $ssh->open_ex(
@@ -222,14 +230,22 @@ $result_obj = $rpc->run( 'hash_type_desc' );
 $result_obj->dump();
 
 
-
+my %default_root_flags = SysFink::Conf::SysFink->get_default_root_flags();
 my $scan_conf = {
     'paths' => $general_conf->{paths},
+    'default_root_flags' => \%default_root_flags,
     'debug' => 1,
 };
-$result_obj = $rpc->run( 'scan_host', $scan_conf );
-$result_obj->dump();
 
+if ( $debugging_on_client ) {
+    print "Client debugging:\n";
+    my $ret_code = $rpc->debug_run( 'scan_host', $scan_conf );
+
+} else {
+    print "Client prepared for debugging.\n";
+    $result_obj = $rpc->run( 'scan_host', $scan_conf );
+    $result_obj->dump();
+}
 
 
 undef $ssh;

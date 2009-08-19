@@ -1,4 +1,4 @@
-﻿use strict;
+use strict;
 use warnings;
 
 use Carp qw(carp croak verbose);
@@ -104,6 +104,7 @@ foreach my $machine_name ( keys %$mconf ) {
         'name' => $machine_name,
     });
 
+    my $order_number = {};
     foreach my $section_name ( keys %$machine_section ) {
 
         print "  section: $section_name\n" if $ver >= 3;
@@ -116,22 +117,28 @@ foreach my $machine_name ( keys %$mconf ) {
 
         foreach my $key ( keys %$section_kv ) {
 
+            $order_number->{$section_name}->{$key} = 0 unless exists $order_number->{$section_name}->{$key};
+
             my $value = $section_kv->{$key};
             print "    key-value: $key\n" if $ver >= 3;
 
             if ( ref $value eq 'ARRAY' ) {
                 foreach my $value_index ( 0..$#$value ) {
                     my $one_value = $value->[ $value_index ];
+                    $order_number->{$section_name}->{$key}++;
                     my $mconf_sec_kv_row = $schema->resultset('mconf_sec_kv')->create({
                         'mconf_sec_id' => $mconf_sec_row->id,
+                        'num' => $order_number->{$section_name}->{$key},
                         'key' => $key,
                         'value' => $one_value,
                     });
                 }
 
             } elsif ( not ref $value ) {
+                $order_number->{$section_name}->{$key}++;
                 my $mconf_sec_kv_row = $schema->resultset('mconf_sec_kv')->create({
                     'mconf_sec_id' => $mconf_sec_row->id,
+                    'num' => $order_number->{$section_name}->{$key},
                     'key' => $key,
                     'value' => $value,
                 });
