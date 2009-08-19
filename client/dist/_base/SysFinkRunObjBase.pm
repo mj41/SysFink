@@ -16,6 +16,22 @@ sub new {
 }
 
 
+sub process_base_command_args {
+    my ( $self, $args ) = @_;
+
+    $self->{debug} = $args->{debug};
+
+    $self->{debug_out} = 0;
+    $self->{debug_out} = 1 if $args->{debug_out};
+
+    if ( $self->{debug} ) {
+        $self->dump( $args );
+    }
+
+    return 1;
+}
+
+
 sub add_error {
     my ( $self, $err_str ) = @_;
     push @{$self->{errors}}, $err_str;

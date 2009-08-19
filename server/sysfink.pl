@@ -238,11 +238,11 @@ my $scan_conf = {
 };
 
 if ( $debugging_on_client ) {
-    print "Client debugging:\n";
+    print "Client prepared for debugging.\n";
+    $scan_conf->{debug_out} = 1;
     my $ret_code = $rpc->debug_run( 'scan_host', $scan_conf );
 
 } else {
-    print "Client prepared for debugging.\n";
     $result_obj = $rpc->run( 'scan_host', $scan_conf );
     $result_obj->dump();
 }

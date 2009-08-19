@@ -79,11 +79,11 @@ sub mode_to_lsmode() {
 sub scan_recurse {
     my ( $self, $loaded_items, $dir_name, $parent_flags ) = @_;
 
-    print "$dir_name\n";
+    print "$dir_name\n" if $self->{debug_out};
 
     # Directory number limit (this is not file number limit nor recursion limit).
     # Depends on client memory (and swap) size.
-    if ( scalar(@$loaded_items) > 15_000 ) {
+    if ( scalar(@$loaded_items) > 1_000 ) {
         unless ( $self->{debug_data}->{recursive_limit} ) {
             $self->add_error("No all files. Recursion limit reached!");
             $self->{debug_data}->{recursive_limit} = 1;
@@ -181,10 +181,8 @@ sub get_result {
 sub scan {
     my ( $self, $args ) = @_;
 
-    my $debug = $args->{debug};
+    $self->process_base_command_args( $args );
     my $paths = $args->{paths};
-
-    $self->dump( $args );
 
     my $dir = '/';
     $self->{loaded_items} = [];
