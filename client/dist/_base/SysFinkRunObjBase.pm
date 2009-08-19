@@ -8,10 +8,24 @@ sub new {
     my ( $class, $shared_data ) = @_;
 
     my $self  = {};
+    $self->{errors} = [];
     $self->{shared_data} = $shared_data;
 
     bless( $self, $class );
     return $self;
+}
+
+
+sub add_error {
+    my ( $self, $err_str ) = @_;
+    push @{$self->{errors}}, $err_str;
+    return 1;
+}
+
+
+sub get_errors {
+    my ( $self ) = @_;
+    return $self->{errors};
 }
 
 

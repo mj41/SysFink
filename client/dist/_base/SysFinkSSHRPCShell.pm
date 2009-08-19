@@ -36,8 +36,12 @@ sub init_hash_obj {
 
 sub init_scanhost_obj {
     my ( $self ) = @_;
+
+    $self->init_hash_obj() unless $self->{hash_obj};
+
     $self->{scanhost_obj} = SysFink::ScanHost->new(
-        $self->{shared_data}
+        $self->{shared_data},
+        $self->{hash_obj}
     );
 }
 
@@ -98,9 +102,11 @@ sub run_hash_type_desc {
 
 sub run_scan_host {
     my ( $self, $args ) = @_;
+
     $self->init_scanhost_obj() unless $self->{scanhost_obj};
-    my $paths_result = $self->{scanhost_obj}->scan( $args );
-    return $self->pack_ok_response( paths_result => $paths_result );
+
+    my $ret_code = $self->{scanhost_obj}->scan( $args );
+    return $self->pack_ok_response( $self->{scanhost_obj}->get_result() );
 }
 
 

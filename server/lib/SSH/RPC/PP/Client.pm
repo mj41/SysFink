@@ -28,7 +28,7 @@ sub new {
 
 
 sub run {
-    my ($self, $command, $args) = @_;
+    my ( $self, $command, $args ) = @_;
     my $json = JSON->new->utf8->pretty->encode({
         command => $command,
         args    => $args,
@@ -46,6 +46,18 @@ sub run {
         $response = { error=>"Transmission error. ".$ssh->error, status=>406 };
     }
     return SSH::RPC::PP::Result->new($response);
+}
+
+
+sub debug_run {
+    my ( $self, $command, $args ) = @_;
+    my $json = JSON->new->utf8->pretty->encode({
+        command => $command,
+        args    => $args,
+    }) . "\n";
+    my $ssh = $self->{ssh};
+    my $ret_code = $ssh->system( { stdin_data => $json, ssh_opts => ['-T'] }, $self->{client_start_cmd} );
+    return $ret_code;
 }
 
 1;

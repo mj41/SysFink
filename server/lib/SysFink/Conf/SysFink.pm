@@ -28,19 +28,56 @@ sub new {
 }
 
 
+
+
 =head2 get_default_flags
 
 Default flags and flags aliases definition. These aliases can be used in a config files.
 
 =cut
 
+
+sub get_flag_desc {
+    my ( $self, $flag ) = @_;
+
+    my %flags_desc = (
+        'U' => 'user',
+        'G' => 'group',
+        'M' => 'mtime',
+        '5' => 'file md5 sum',
+        'T' => '???',
+        'L' => 'symlink path',
+
+        'S' => 'file size',
+        'H' => 'hard links number',
+        'D' => 'major and minor device number',
+
+        'B' => 'do backup this file or directory',
+    );
+    return \%flags_desc unless $flag;
+    return $flags_desc{ $flag } if exists $flags_desc{ $flag };
+    return undef;
+}
+
+
 sub get_default_flags {
     return {
+        'root'      => '[+UGM5TL-SHDB]',
         'include'   => '[+UGM5TL]',
         'exclude'   => '[-UGM5TL]',
         'backup'    => '[+B]',
         'path'      => "[]"
     };
+}
+
+
+sub get_default_root_flags {
+    my ( $self ) = @_;
+
+    my $default_flags = $self->get_default_flags();
+    my $flags_str = $default_flags->{'root'};
+    my %flags_hash = $self->get_flags( $flags_str );
+    return %flags_hash;
 }
 
 
@@ -95,15 +132,14 @@ sub add_flags {
 #           -      return only negative flags,
 #           undef  return the positive and negative flags
 sub get_flags {
-    my ( $self, $flags, $mask ) = @_;
+    my ( $self, $flags_str, $mask ) = @_;
+
+    $flags_str =~ s/^\[//;
+    $flags_str =~ s/\]$//;
 
     my %flags;
-
-    $flags =~ s/^\[//;
-    $flags =~ s/\]$//;
-
     my $sign = undef;
-    my @flags = split( //, $flags );
+    my @flags = split( //, $flags_str );
     foreach my $flag ( @flags ) {
         $flag = uc( $flag );
         # the sign symbol
@@ -119,18 +155,12 @@ sub get_flags {
 }
 
 
-
 # convert a shell patter to a regexp pattern
-sub glob2pat {
-    my ( $self, $globstr ) = @_;
-    my %patmap = (
-        '*' => '.*',
-        '?' => '.',
-        '[' => '[',
-        ']' => ']',
-    );
-    $globstr =~ s{(.)} { $patmap{$1} || "\Q$1" }ge;
-    return '^' . $globstr . '$';
+sub canon_path {
+    my ( $self, $path ) = @_;
+
+    $path =~ s{ \/{2,} }{\/}gx;
+    return $path;
 }
 
 
@@ -258,7 +288,7 @@ sub process_config_file_content {
                 # set default flags and combine it with flags set by user
                 my ($flags, $path) = $self->add_flags( $self->{default_flags}->{$key}, $val );
 
-                $path = $self->glob2pat( $path );
+                $path = $self->canon_path( $path );
 
                 # combine the current flags with a previously set flags
                 push @{$host_conf->{$section}->{'paths'} }, $flags.$path;
