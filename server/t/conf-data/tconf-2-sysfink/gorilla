@@ -1,26 +1,28 @@
-hostname 	gorilla-sysfink-tconf-2.test.sysfink.org
-#hostname	hostname-inside-comment
-sendmail	gorilla-admin@test.sysfink.org
+hostname    gorilla-sysfink-tconf-2.test.sysfink.org
+#hostname   hostname-inside-comment
+sendmail    gorilla-admin@test.sysfink.org
 
-use		includes/base.pkgs
+#somenewkey     inside comment
 
-#rpmpkg		rmp-inside-comment
+use     includes/base.pkgs
 
-rpmpkg		samba
-rpmpkg		samba-swat
-rpmpkg		cdrecord
+#rpmpkg     rmp-inside-comment
 
-exclude		/dev/* /home/* /proc/* /sys/* /var/log/*
-exclude		/var/run/*
-exclude		/var/lock/*
-backup		/var/run/test
-path		[-M5]/var/run/test
-exclude		/var/run/*
-exclude		/var/spool/*
+rpmpkg      samba
+rpmpkg      samba-swat
+rpmpkg      cdrecord
 
-path		[+M5SLB]/etc/selinux/*
-path		[+M5SLXI-B]/etc/selinux/*
+exclude     /dev/* /home/* /proc/* /sys/* /var/log/*
+exclude     /var/run/*
+exclude     /var/lock/*
+backup      /var/run/test
+path        [-M5]/var/run/test
+exclude     /var/run/*
+exclude     /var/spool/*
 
-backup		/etc/interfaces/
+path        [+M5SLB]/etc/selinux/*
+path        [+M5SLXI-B]/etc/selinux/*
+
+backup      /etc/interfaces/
 
 

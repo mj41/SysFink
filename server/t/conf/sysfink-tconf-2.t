@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 8;
+use Test::More tests => 10;
 
 use Carp qw(carp croak verbose);
 use FindBin qw($RealBin);
@@ -28,10 +28,14 @@ is_deeply( \@loaded_hosts, [ 'gorilla', 'lion' ], 'gorilla conf loaded ok' );
 # gorilla
 
 my @gorilla_keys = ( sort keys %{ $conf->{gorilla}->{general} } );
-is_deeply( \@gorilla_keys, [ qw/hostname paths rpmpkg sendmail/ ], 'gorilla keys ok' );
+is_deeply( \@gorilla_keys, [ qw/hostname inkey1 inkey2 paths rpmpkg sendmail/ ], 'gorilla keys ok' );
 
 is( $conf->{gorilla}->{general}->{hostname}, 'gorilla-sysfink-tconf-2.test.sysfink.org', 'gorilla hostname is ok' );
-is_deeply( $conf->{gorilla}->{general}->{rpmpkg}, [ qw/samba samba-swat cdrecord/ ], 'gorilla rpmpkg ok' );
+is_deeply( $conf->{gorilla}->{general}->{rpmpkg}, [ qw/in-base in-base2 in-base3 samba samba-swat cdrecord/ ], 'gorilla rpmpkg ok' );
+
+is( $conf->{gorilla}->{general}->{inkey1}, 'in-value', 'gorilla included conf with one value ok' );
+
+is_deeply( $conf->{gorilla}->{general}->{inkey2}, [ qw/in-value1 in-value2/ ], 'gorilla included conf with many value ok' );
 
 # lion
 
@@ -42,3 +46,4 @@ is_deeply( $conf->{lion}->{general}->{rpmpkg}, [ qw/kernel-2.6.18-8.1.8.main.el5
 is_deeply( $conf->{lion}->{general}->{sendmail}, [ qw/gorilla-sysfink-tconf-2-A@test.sysfink.org gorilla-sysfink-tconf-2-B@test.sysfink.org/ ], 'lion sendmail ok' );
 
 #use Data::Dumper; print Dumper( $conf );
+

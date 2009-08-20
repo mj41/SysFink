@@ -240,9 +240,16 @@ sub splitq {
 
 
 sub process_config_file_content {
-    my ( $self, $host_name, $file_content ) = @_;
+    my ( $self, $host_name, $file_content, $recursion_deep ) = @_;
 
-    my $host_conf = {};
+
+    if ( $recursion_deep > 10 ) {
+        $@ = "Recursion limit reached.";
+        return 0;
+    }
+
+    $self->{conf}->{$host_name} = {} unless defined $self->{conf}->{$host_name};
+    my $host_conf = $self->{conf}->{$host_name};
 
     my @lines = split( /\n/, $file_content );
 
@@ -275,9 +282,20 @@ sub process_config_file_content {
         $key = lc $key;
 
         # include file
-        if ( $key eq "use" ) {
-            # todo
-            #foreach (@val) { load_config($sysname, $line); }
+        if ( $key eq 'use' ) {
+            foreach my $val ( @vals ) {
+                my $inc_fpath = catfile( $self->{conf_dir_path}, $val );
+
+                unless ( -f $inc_fpath ) {
+                    $@ = "Config file '$inc_fpath' included in config for host '$host_name' not found.";
+                    return 0;
+                }
+
+                my $inc_file_content = $self->get_file_content( $inc_fpath );
+                return 0 unless defined $inc_file_content;
+                my $ret_code = $self->process_config_file_content( $host_name, $inc_file_content, $recursion_deep + 1 );
+                return $ret_code unless $ret_code;
+            }
             next;
         }
 
@@ -330,7 +348,11 @@ sub process_config_file {
 
     my $file_content = $self->get_file_content( $fpath );
     return 0 unless defined $file_content;
-    return $self->process_config_file_content( $host_name, $file_content );
+    return $self->process_config_file_content(
+        $host_name,
+        $file_content,
+        0 # $recursion_deep
+    );
 }
 
 
@@ -376,7 +398,10 @@ sub load_config {
         my $fpath = $rh_files->{$fname};
         my $host_name = $fname;
         my $ret_code = $self->process_config_file( $host_name, $fpath );
-        return 0 unless $ret_code;
+        unless ( $ret_code ) {
+            print $@;
+            return 0;
+        }
     }
     return 1;
 }

@@ -1,0 +1,10 @@
+# This file is included inside host config files.
+
+rpmpkg		in-base
+rpmpkg		in-base2
+rpmpkg		in-base3
+
+inkey1		in-value
+
+inkey2		in-value1
+inkey2		in-value2
