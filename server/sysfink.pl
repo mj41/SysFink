@@ -230,10 +230,8 @@ $result_obj = $rpc->run( 'hash_type_desc' );
 $result_obj->dump();
 
 
-my %default_root_flags = SysFink::Conf::SysFink->get_default_root_flags();
 my $scan_conf = {
     'paths' => $general_conf->{paths},
-    'default_root_flags' => \%default_root_flags,
     'debug' => 1,
 };
 

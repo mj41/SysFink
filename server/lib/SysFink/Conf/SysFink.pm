@@ -6,6 +6,7 @@ use File::Spec::Functions;
 
 use base 'SysFink::Conf';
 
+
 =head1 METHODS
 
 =head2 new
@@ -21,16 +22,14 @@ sub new {
     $self->{conf_dir_path} = $params->{conf_dir_path};
     $self->{conf_dir_path} = $self->{temp_dir} . '../sysfink-conf/' unless defined $self->{conf_dir_path};
 
-    $self->{default_flags} = get_default_flags();
+    $self->{keyword_flags} = get_default_keyword_flags();
 
     bless $self, $class;
     return $self;
 }
 
 
-
-
-=head2 get_default_flags
+=head2 get_flag_desc
 
 Default flags and flags aliases definition. These aliases can be used in a config files.
 
@@ -60,24 +59,79 @@ sub get_flag_desc {
 }
 
 
-sub get_default_flags {
+=head2 get_default_keyword_flags
+
+Return hash ref with flag or flag modification for each keyword.
+
+=cut
+
+sub get_default_keyword_flags {
     return {
-        'root'      => '[+UGM5TL-SHDB]',
-        'include'   => '[+UGM5TL]',
-        'exclude'   => '[-UGM5TL]',
-        'backup'    => '[+B]',
-        'path'      => "[]"
+        'include'   => '+UGM5TL-SHDB',
+        'exclude'   => '-UGM5TL-SHDB',
+        'backup'    => '+B',
+        'path'      => ''
     };
 }
 
 
-sub get_default_root_flags {
-    my ( $self ) = @_;
+=head2 flags_str_to_hash
 
-    my $default_flags = $self->get_default_flags();
-    my $flags_str = $default_flags->{'root'};
-    my %flags_hash = $self->get_flags( $flags_str );
+Convert flash string to hash. Do it in characters order so canonize it.
+
+$flags_str - input string with flags in format +x-x...
+
+=cut
+
+sub flags_str_to_hash {
+    my ( $this, $flags_str ) = @_;
+
+    my %flags;
+    my $sign = undef;
+    my @flag_chars = split( //, $flags_str );
+    foreach my $flag ( @flag_chars ) {
+        $flag = uc( $flag );
+        # the sign symbol
+        if ( $flag eq '+' || $flag eq '-' ) {
+            $sign = $flag;
+
+        } elsif ( defined $sign ) {
+            $flags{ $flag } = $sign;
+
+        } else {
+            # ToDo - error
+        }
+    }
+
+    return %flags;
+}
+
+
+=head2 get_default_keyword_flags
+
+Return hash of default flags (flags for '/*' path).
+
+=cut
+
+sub get_default_root_flags {
+    my ( $this ) = @_;
+
+    my $keyword_flags = $this->get_keyword_flags();
+    my $flags_str = $keyword_flags->{'include'};
+    my %flags_hash = $this->flags_str_to_hash( $flags_str );
     return %flags_hash;
+}
+
+
+=head2 join_path_and_flags
+
+Join $path and $flags_str to one string.
+
+=cut
+
+sub join_path_and_flags {
+    my ( $this, $path, $flags_str ) = @_;
+    return $path . '[' . $flags_str . ']';
 }
 
 
@@ -94,77 +148,99 @@ sub conf_dir_path {
 }
 
 
-# add flags into the path, compute flags to the path
-# @ arg        - flags prefix also possible (eg. "/usr", "[+M+G]/usr", "[+M-G+U+T]", "[-M+T]", ...)
-# return flags - result flags enclosed in []
-# return path  - path in clear format - if input path not defined returns undef
-#
-sub add_flags {
-    my ( $self, @args ) = @_;
+=head2 canon_joined_flag_strs
+
+Canonize flag  strings joined together. E.g. -B+B+S-S-B -> -B-S.
+
+=cut
+
+sub canon_joined_flag_strs {
+    my ( $self, $flags_str ) = @_;
+
+    my %flags = $self->flags_str_to_hash( $flags_str );
+    my $out_flags_str = $self->flags_hash_to_str( %flags );
+    return $out_flags_str;
+
+}
+
+
+=head2 flags_hash_to_str
+
+Sort hash keys and join its to canonized flags string.
+
+=cut
+
+sub flags_hash_to_str {
+    my ( $self, %flags ) = @_;
+
+    my $flags_str = '';
+    foreach my $key ( sort keys %flags ) {
+        $flags_str .= sprintf( "%1s%1s", $flags{$key}, $key );
+    }
+
+    return $flags_str;
+}
+
+
+=head2 conf_dir_path
+
+Set/get conf_dir_path.
+
+=cut
+
+sub get_keyword_flags {
+    my ( $self, $keyword_name, $flags_and_path ) = @_;
 
     my $path = undef;
-    my %flags;
 
-    # traverse all arguments
-    foreach my $arg ( @args ) {
-        # try to split the path and flags from arguments
-        if ( my ( $t_flags, $t_path ) = $arg =~ /\[(.+)\]\s*(.*)/ ) {
-            $path = $t_path if $t_path;
-            %flags = $self->get_flags( $t_flags );
-        } else {
-            $path = $arg;
+    my %flags = $self->flags_str_to_hash( $self->{keyword_flags}->{ $keyword_name } );
+
+    # Try to split the path and flags.
+    if ( my ( $t_flags, $t_path ) = $flags_and_path =~ m{^ \[ (.+?) \] (.*) $}x ) {
+        $path = $t_path if $t_path;
+
+        my %acc_flags = $self->flags_str_to_hash( $t_flags );
+        foreach my $key ( keys %acc_flags ) {
+            $flags{$key} = $acc_flags{$key};
         }
+
+    } else {
+        $path = $flags_and_path;
     }
 
-    my $sflags = '';
-    while ( my ($key, $val) = each %flags ) {
-        $sflags .= sprintf( "%1s%1s", $val, $key );
-    }
-
-    $sflags = "[".$sflags."]";
-    return ( $sflags, $path );
+    my $flags_str = $self->flags_hash_to_str( %flags );
+    return ( $flags_str, $path );
 }
 
 
-# return hash with possitive flags set
-# @ flags - input string with flags inf ormat [+x+x...]
-# @ mask  - +      return only possive flags,
-#           -      return only negative flags,
-#           undef  return the positive and negative flags
-sub get_flags {
-    my ( $self, $flags_str, $mask ) = @_;
+=head2 canon_path
 
-    $flags_str =~ s/^\[//;
-    $flags_str =~ s/\]$//;
+Canonize path.
 
-    my %flags;
-    my $sign = undef;
-    my @flags = split( //, $flags_str );
-    foreach my $flag ( @flags ) {
-        $flag = uc( $flag );
-        # the sign symbol
-        if ( $flag eq '+' || $flag eq '-' ) {
-            $sign = $flag;
+=cut
 
-        } elsif ( defined($sign) && ( !defined($mask) || $sign eq $mask) ) {
-            $flags{ $flag } = $sign;
-        }
-    }
-
-    return %flags;
-}
-
-
-# convert a shell patter to a regexp pattern
 sub canon_path {
     my ( $self, $path ) = @_;
 
+    # Remove many slashes in sequence.
     $path =~ s{ \/{2,} }{\/}gx;
+    # Remove dot directories.
+    $path =~ s{ \/\.\/ }{\/}gx;
+
+    # Add asterix to the end if $path is directory.
+    $path .= '*' if $path =~ m{\/$};
+
     return $path;
 }
 
 
-# split values with accept quotes (eg line fld1, "fld \"fld5" fld7 produces array ("fld1", "fld \"fld5", "fld7")
+
+=head2 splitq
+
+Split values from one line (eg line fld1, "fld \"fld5" fld7 produces array ("fld1", "fld \"fld5", "fld7"). Accept quotes.
+
+=cut
+
 sub splitq {
     my ( $self, $str ) = @_;
 
@@ -239,6 +315,12 @@ sub splitq {
 }
 
 
+=head2 process_config_file_content
+
+Process text/config. Load included files by use keyword.
+
+=cut
+
 sub process_config_file_content {
     my ( $self, $host_name, $file_content, $recursion_deep ) = @_;
 
@@ -300,16 +382,16 @@ sub process_config_file_content {
         }
 
 
-        # process fields path, include, exclude, backup, ...
-        if ( defined($self->{default_flags}->{$key}) ) {
+        # Process keywords such as path, include, exclude, backup, ...
+        if ( defined($self->{keyword_flags}->{$key}) ) {
             foreach my $val ( @vals ) {
-                # set default flags and combine it with flags set by user
-                my ($flags, $path) = $self->add_flags( $self->{default_flags}->{$key}, $val );
-
+                # Set default flags for this keyword and combine it with flags set by user.
+                my ( $flags, $path ) = $self->get_keyword_flags(
+                    $key, # $keyword_name
+                    $val  # $flags_and_path
+                );
                 $path = $self->canon_path( $path );
-
-                # combine the current flags with a previously set flags
-                push @{$host_conf->{$section}->{'paths'} }, $flags.$path;
+                push @{$host_conf->{$section}->{'paths'} }, [ $path, $flags ];
             }
             next;
         }
@@ -336,6 +418,12 @@ sub process_config_file_content {
     return 1;
 }
 
+
+=head2 process_config_file
+
+Process one config file.
+
+=cut
 
 sub process_config_file {
     my ( $self, $host_name, $fpath ) = @_;
@@ -370,11 +458,80 @@ sub _load_one_config_file {
 }
 
 
+=head2 normalize_paths
+
+Sort path parts. Add '/*' as first (default) directory if not found.
+
+=cut
+
+sub normalize_paths {
+    my ( $self, $host_name ) = @_;
+
+    my $host_conf = $self->{conf}->{ $host_name };
+
+    return 1 unless $host_conf;
+
+    my ( $def_flags, $def_path )  = ( undef, undef );
+    foreach my $section ( keys %$host_conf ) {
+        my $sec_conf = $host_conf->{ $section };
+
+        if ( exists $sec_conf->{paths} ) {
+            # Lazy loading.
+            unless ( defined $def_flags ) {
+                ( $def_flags, $def_path ) = $self->get_keyword_flags( 'include', '/*' );
+            }
+
+            # Sort it.
+            $sec_conf->{paths} = [ sort { $a->[0] cmp $b->[0] } @{$sec_conf->{paths}} ];
+
+            # If first item don't start \*[, then add \* and default (include) flags.
+            unless ( $sec_conf->{paths}->[0] =~ m{^\/\*\[} ) {
+                unshift @{$sec_conf->{paths}}, [ $def_path, $def_flags];
+            }
+
+            #use Data::Dumper; print Dumper( $sec_conf->{paths} ); # debug
+
+            my @str_paths;
+            my $last_num = $#{ $sec_conf->{paths} };
+
+            my ( $prev_path, $prev_flags_str ) = @{ $sec_conf->{paths}->[ 0 ] };
+            foreach my $num ( 1..$last_num ) {
+                my ( $path, $flags_str ) = @{ $sec_conf->{paths}->[ $num ] };
+
+                #print "$prev_path - $path, $prev_flags_str - $flags_str\n"; # debug
+
+                # Previous path is same as new.
+                if ( $prev_path eq $path ) {
+                    $prev_flags_str .= $flags_str;
+                    next;
+                }
+
+                # Path changed -> save previous.
+                my $canon_flags_str = $self->canon_joined_flag_strs( $prev_flags_str );
+                push @str_paths, $self->join_path_and_flags( $prev_path, $canon_flags_str );
+                $prev_path = $path;
+                $prev_flags_str = $flags_str;
+            }
+
+            # Last one.
+            my $canon_flags_str = $self->canon_joined_flag_strs( $prev_flags_str );
+            push @str_paths, $self->join_path_and_flags( $prev_path, $canon_flags_str );
+
+            $sec_conf->{paths} = \@str_paths;
+            #use Data::Dumper; print Dumper( $sec_conf->{paths} ); # debug
+        }
+    }
+
+    return 1;
+}
+
+
+
 =head2 load_config
 
 Load all config files (or selected by first parameter) from config directory.
 
-Apply process_config_file for each loaded.
+Apply process_config_file and normalize_config for each one loaded.
 
 =cut
 
@@ -397,7 +554,15 @@ sub load_config {
     foreach my $fname ( keys %$rh_files ) {
         my $fpath = $rh_files->{$fname};
         my $host_name = $fname;
-        my $ret_code = $self->process_config_file( $host_name, $fpath );
+        my $ret_code;
+
+        $ret_code = $self->process_config_file( $host_name, $fpath );
+        unless ( $ret_code ) {
+            print $@;
+            return 0;
+        }
+
+        $ret_code = $self->normalize_paths( $host_name );
         unless ( $ret_code ) {
             print $@;
             return 0;
