@@ -166,7 +166,7 @@ foreach my $conf_num ( 0..$#conf_cases ) {
     };
 
     $conf_obj->conf( undef );
-    $conf_obj->process_config_file_content( $host_name, $file_content );
+    $conf_obj->process_config_file_content( $host_name, $file_content, 0 );
     my $host_conf_got = $conf_obj->conf;
     is_deeply( $host_conf_got, $host_conf_expected, $test_name );
 
