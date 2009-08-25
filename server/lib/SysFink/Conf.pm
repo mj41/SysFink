@@ -4,17 +4,31 @@ use strict;
 use warnings;
 use File::Spec::Functions;
 
+=head1 NAME
+
+SysFink::Conf - Base class for SysFink configuration.
+
+=head1 SYNOPSIS
+
+ToDo. See L<SysFink>.
+
+=head1 DESCRIPTION
+
+ToDo. See L<SysFink>.
+
+=head1 METHODS
+
+=head2 new
+
+Constructor. Parameters: conf_dir_path.
+
+=cut
 
 sub new {
-    my $class = shift;
-    my $params = shift;
+    my ( $class, $params ) = @_;
 
     my $self  = {};
-
     $self->{debug} = $params->{debug};
-
-    $self->{conf} = {};
-    $self->{conf_meta} = {};
 
     bless $self, $class;
     return $self;
@@ -28,85 +42,82 @@ sub debug {
 }
 
 
-sub conf {
-    my $self = shift;
-    if (@_) { $self->{conf} = shift }
-    return $self->{conf};
+
+=head2 get_flag_desc
+
+Default flags and flags aliases definition. These aliases can be used in a config files.
+
+=cut
+
+sub get_flag_desc {
+    my ( $this, $flag ) = @_;
+
+    my %flags_desc = (
+        'U' => 'user',
+        'G' => 'group',
+        'M' => 'mtime',
+        '5' => 'file md5 sum',
+        'L' => 'symlink path',
+
+        'S' => 'file size',
+        'H' => 'hard links number',
+        'D' => 'major and minor device number',
+
+        'B' => 'do backup this file or directory',
+    );
+    return \%flags_desc unless $flag;
+    return $flags_desc{ $flag } if exists $flags_desc{ $flag };
+    return undef;
 }
 
 
-sub conf_meta {
-    my $self = shift;
-    if (@_) { $self->{conf_meta} = shift }
-    return $self->{conf_meta};
+=head2 get_default_keyword_flags
+
+Return hash ref with flag or flag modification for each keyword.
+
+=cut
+
+sub get_default_keyword_flags {
+    return {
+        'include'   => '+UGM5LSHD-B',
+        'exclude'   => '-UGM5LSHDB',
+        'backup'    => '+B',
+        'path'      => ''
+    };
 }
 
 
-sub clear_conf {
-    my $self = shift;
-    $self->{conf} = {};
-    $self->{conf_meta} = {};
-    return 1;
-}
+=head2 flags_str_to_hash
 
+Convert flash string to hash. Do it in characters order so canonize it.
 
-sub load_config {
-    my ( $self, $host_name ) = @_;
-    $@ = 'Your class should implement this method.';
-    return 0;
-}
+$flags_str - input string with flags in format +x-x...
 
+=cut
 
-sub get_file_content {
-    my ( $self, $fpath ) = @_;
+sub flags_str_to_hash {
+    my ( $this, $flags_str ) = @_;
 
-    my $fh;
-    unless ( open( $fh, '<', $fpath ) ) {
-        $@ = "Can't open file '$fpath': $!";
-        return undef;
+    my %flags;
+    my $sign = undef;
+    my @flag_chars = split( //, $flags_str );
+    foreach my $flag ( @flag_chars ) {
+        $flag = uc( $flag );
+        # the sign symbol
+        if ( $flag eq '+' || $flag eq '-' ) {
+            $sign = $flag;
+
+        } elsif ( defined $sign ) {
+            $flags{ $flag } = $sign;
+
+        } else {
+            # ToDo - error
+        }
     }
-    my $content;
-    {
-        local $/ = undef;
-        $content = <$fh>;
-    }
-    close $fh;
-    return $content;
+
+    return %flags;
 }
 
-
-sub get_files_rh_for_dir {
-    my ( $self, $dir_path ) = @_;
-
-    my $dir_handle;
-    unless ( opendir($dir_handle, $dir_path) ) {
-        $@ = "Directory '$dir_path' not open for read.";
-        return undef;
-    }
-    my @items = readdir($dir_handle);
-    close($dir_handle);
-
-    my $rh_files = {};
-    foreach my $item ( @items ) {
-        my $item_path = catfile( $dir_path, $item );
-        next unless -f $item_path;
-        $rh_files->{$item} = $item_path;
-    }
-    return $rh_files;
-}
-
-
-=head1 NAME
-
-SysFink::Conf - Base class for SysFink configuration modules.
-
-=head1 SYNOPSIS
-
-See L<SysFink>
-
-=head1 DESCRIPTION
-
-SysFink server.
 
 =head1 SEE ALSO
 

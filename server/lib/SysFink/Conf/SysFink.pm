@@ -7,6 +7,18 @@ use File::Spec::Functions;
 use base 'SysFink::Conf';
 
 
+=head1 NAME
+
+SysFink::Conf::SysFink - SysFink configuration class for SysFink config format.
+
+=head1 SYNOPSIS
+
+ToDo
+
+=head1 DESCRIPTION
+
+ToDo
+
 =head1 METHODS
 
 =head2 new
@@ -22,88 +34,73 @@ sub new {
     $self->{conf_dir_path} = $params->{conf_dir_path};
     $self->{conf_dir_path} = $self->{temp_dir} . '../sysfink-conf/' unless defined $self->{conf_dir_path};
 
-    $self->{keyword_flags} = get_default_keyword_flags();
+    $self->{keyword_flags} = $self->get_default_keyword_flags();
 
-    bless $self, $class;
+    $self->{conf} = {};
+    $self->{conf_meta} = {};
+
     return $self;
 }
 
 
-=head2 get_flag_desc
-
-Default flags and flags aliases definition. These aliases can be used in a config files.
-
-=cut
-
-
-sub get_flag_desc {
-    my ( $self, $flag ) = @_;
-
-    my %flags_desc = (
-        'U' => 'user',
-        'G' => 'group',
-        'M' => 'mtime',
-        '5' => 'file md5 sum',
-        'T' => '???',
-        'L' => 'symlink path',
-
-        'S' => 'file size',
-        'H' => 'hard links number',
-        'D' => 'major and minor device number',
-
-        'B' => 'do backup this file or directory',
-    );
-    return \%flags_desc unless $flag;
-    return $flags_desc{ $flag } if exists $flags_desc{ $flag };
-    return undef;
+sub conf {
+    my $self = shift;
+    if (@_) { $self->{conf} = shift }
+    return $self->{conf};
 }
 
 
-=head2 get_default_keyword_flags
-
-Return hash ref with flag or flag modification for each keyword.
-
-=cut
-
-sub get_default_keyword_flags {
-    return {
-        'include'   => '+UGM5TL-SHDB',
-        'exclude'   => '-UGM5TL-SHDB',
-        'backup'    => '+B',
-        'path'      => ''
-    };
+sub conf_meta {
+    my $self = shift;
+    if (@_) { $self->{conf_meta} = shift }
+    return $self->{conf_meta};
 }
 
 
-=head2 flags_str_to_hash
+sub clear_conf {
+    my $self = shift;
+    $self->{conf} = {};
+    $self->{conf_meta} = {};
+    return 1;
+}
 
-Convert flash string to hash. Do it in characters order so canonize it.
 
-$flags_str - input string with flags in format +x-x...
+sub get_file_content {
+    my ( $self, $fpath ) = @_;
 
-=cut
-
-sub flags_str_to_hash {
-    my ( $this, $flags_str ) = @_;
-
-    my %flags;
-    my $sign = undef;
-    my @flag_chars = split( //, $flags_str );
-    foreach my $flag ( @flag_chars ) {
-        $flag = uc( $flag );
-        # the sign symbol
-        if ( $flag eq '+' || $flag eq '-' ) {
-            $sign = $flag;
-
-        } elsif ( defined $sign ) {
-            $flags{ $flag } = $sign;
-
-        } else {
-            # ToDo - error
-        }
+    my $fh;
+    unless ( open( $fh, '<', $fpath ) ) {
+        $@ = "Can't open file '$fpath': $!";
+        return undef;
     }
+    my $content;
+    {
+        local $/ = undef;
+        $content = <$fh>;
+    }
+    close $fh;
+    return $content;
+}
 
-    return %flags;
+
+sub get_files_rh_for_dir {
+    my ( $self, $dir_path ) = @_;
+
+    my $dir_handle;
+    unless ( opendir($dir_handle, $dir_path) ) {
+        $@ = "Directory '$dir_path' not open for read.";
+        return undef;
+    }
+    my @items = readdir($dir_handle);
+    close($dir_handle);
+
+    my $rh_files = {};
+    foreach my $item ( @items ) {
+        my $item_path = catfile( $dir_path, $item );
+        next unless -f $item_path;
+        $rh_files->{$item} = $item_path;
+    }
+    return $rh_files;
 }
 
 
@@ -195,7 +192,7 @@ sub get_keyword_flags {
 
     my %flags = $self->flags_str_to_hash( $self->{keyword_flags}->{ $keyword_name } );
 
-    # Try to split the path and flags.
+    # Try to split the flags and path.
     if ( my ( $t_flags, $t_path ) = $flags_and_path =~ m{^ \[ (.+?) \] (.*) $}x ) {
         $path = $t_path if $t_path;
 
@@ -526,7 +523,6 @@ sub normalize_paths {
 }
 
 
-
 =head2 load_config
 
 Load all config files (or selected by first parameter) from config directory.
@@ -571,18 +567,6 @@ sub load_config {
     return 1;
 }
 
-
-=head1 NAME
-
-SysFink::Conf::SysFink - SysFink configuration class for SysFink config format.
-
-=head1 SYNOPSIS
-
-See L<SysFink::Conf>
-
-=head1 DESCRIPTION
-
-SysFink server.
 
 =head1 SEE ALSO
 

@@ -14,7 +14,7 @@ use lib 'lib';
 use lib 'libext';
 
 use SSH::RPC::PP::Client;
-use SysFink::Conf::SysFink;
+use SysFink::Conf::DBIC;
 use SysFink::Utils::Conf qw(load_conf_multi);
 use SysFink::Utils::DB qw(get_connected_schema);
 
@@ -38,46 +38,10 @@ my $conf = load_conf_multi( $conf_fp, 'db' );
 my $schema = get_connected_schema( $conf->{db} );
 
 
-sub load_general_conf {
-    my ( $schema, $machine ) = @_;
-
-    my $mconf_rs = $schema->resultset('mconf_sec_kv')->search(
-        {
-            'machine_id.name' => $machine,
-            'mconf_sec_id.name' => 'general',
-        },
-        {
-            'join' => { 'mconf_sec_id' => 'machine_id' },
-            'select' => [ 'key', 'value', 'num' ],
-            'order_by' => [ 'key', 'num' ],
-        },
-    );
-
-
-    my $data = {};
-    while (my $row_obj = $mconf_rs->next) {
-        my %row = ( $row_obj->get_columns() );
-        my $key = $row{key};
-        my $new_value = $row{value};
-        if ( exists $data->{$key} ) {
-            if ( ref $data->{$key} eq 'ARRAY' ) {
-                my $prev_val = $data->{$key};
-                push @{$data->{$key}}, $new_value;
-            } else {
-                my $prev_val = $data->{$key};
-                $data->{$key} = [ $prev_val, $new_value ];
-            }
-        } else {
-            $data->{$key} = $new_value;
-        }
-    }
-
-    return $data;
-}
-
-
-my $general_conf = load_general_conf( $schema, $machine );
+my $conf_obj = SysFink::Conf::DBIC->new({ schema => $schema, });
+my $general_conf = $conf_obj->load_general_conf( $machine );
 print Dumper( $general_conf );
+
 
 my $host = $general_conf->{hostname};
 
