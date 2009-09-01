@@ -15,6 +15,7 @@ sub new {
     return $self;
 }
 
+
 sub get_canon_dir {
     my ( $self, $dir ) = @_;
 
@@ -42,7 +43,7 @@ sub get_flags {
 sub mode_to_lsmode() {
     my ( $self, $mode ) = @_;
 
-    if (!defined($mode)) {
+    unless ( defined($mode) ) {
         return "??????????";
     }
 
@@ -76,10 +77,32 @@ sub mode_to_lsmode() {
 }
 
 
-sub scan_recurse {
-    my ( $self, $loaded_items, $dir_name, $parent_flags ) = @_;
+sub get_dir_items {
+    my ( $self, $dir_name ) = @_;
 
-    print "$dir_name\n" if $self->{debug_out};
+    # Load direcotry items list.
+    my $dir_handle;
+    if ( not opendir($dir_handle, $dir_name) ) {
+        $self->add_error("Directory '$dir_name' not open for read.");
+        return 0;
+    }
+    my @dir_items = readdir($dir_handle);
+    close($dir_handle);
+    return  \@dir_items;
+}
+
+
+sub my_lstat {
+    my ( $self, $full_path ) = @_;
+    return lstat( $full_path );
+}
+
+
+sub scan_recurse {
+    my ( $self, $loaded_items, $recursion_depth, $dir_name, $parent_flags ) = @_;
+
+    my $debug_prefix = '  ' x $recursion_depth;
+    print $debug_prefix."$dir_name\n" if $self->{debug_out};
 
     # Directory number limit (this is not file number limit nor recursion limit).
     # Depends on client memory (and swap) size.
@@ -95,23 +118,15 @@ sub scan_recurse {
     #$self->dump( $dir_name );
 
     my $flags = $self->get_flags( $dir_name, $parent_flags );
-
-
-    # Load direcotry items list.
-    my $dir_handle;
-    if ( not opendir($dir_handle, $dir_name) ) {
-        $self->add_error("Directory '$dir_name' not open for read.");
-        return 0;
-    }
-    my @dir_items = readdir($dir_handle);
-    close($dir_handle);
+    my $dir_items = $self->get_dir_items( $dir_name );
+    return 0 unless ref $dir_items;
 
 
     # Sub dirs to follow using recursive call of this sub.
     my $sub_dirs = [];
 
     my $full_path;
-    foreach my $name ( sort @dir_items ) {
+    foreach my $name ( sort @$dir_items ) {
         next if $name =~ /^\.$/;
         next if $name =~ /^\..$/;
         next if $name =~ /^\s*$/;
@@ -131,7 +146,10 @@ sub scan_recurse {
         # 10 ctime - inode change time in seconds since the epoch (non-portable)
         # 11 blksize - preferred block size for file system I/O
         # 12 blocks - actual number of blocks allocated
-        my ( $dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, $atime, $mtime, $ctime, $blksize, $blocks ) = lstat( $full_path );
+        my ( $dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, $atime, $mtime, $ctime, $blksize, $blocks ) = $self->my_lstat( $full_path );
+        #print "  $full_path: mode '$mode', nlink '$nlink', uid '$uid', gid '$gid', size '$size'\n" if $self->{debug_out};
+        #print "  $full_path: atime '$atime', mtime '$mtime', ctime '$ctime'\n" if $self->{debug_out};
+        #print "  $full_path: dev '$dev', ino '$ino', rdev '$rdev', size '$size', blksize '$blksize', blocks '$blocks'\n" if $self->{debug_out};
 
         # is directory
         if ( S_ISDIR($mode) ) {
@@ -154,7 +172,7 @@ sub scan_recurse {
     }
 
     LOOP: foreach my $sub_dir_path ( sort @$sub_dirs ) {
-        $self->scan_recurse( $loaded_items, $sub_dir_path, $flags );
+        $self->scan_recurse( $loaded_items, $recursion_depth+1, $sub_dir_path, $flags );
     }
 
     return 1;
@@ -186,7 +204,7 @@ sub scan {
 
     my $dir = '/';
     $self->{loaded_items} = [];
-    my $ret_code = $self->scan_recurse( $self->{loaded_items}, $dir, $args->{default_root_flags} );
+    my $ret_code = $self->scan_recurse( $self->{loaded_items}, 0, $dir, $args->{default_root_flags} );
     return $ret_code;
 }
 

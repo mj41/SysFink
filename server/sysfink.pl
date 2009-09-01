@@ -196,7 +196,6 @@ $result_obj->dump();
 
 my $scan_conf = {
     'paths' => $general_conf->{paths},
-    'debug' => 1,
 };
 
 if ( $debugging_on_client ) {
