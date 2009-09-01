@@ -9,11 +9,14 @@ sub new {
 
     my $self = $class->SUPER::new( @_ );
 
+    # Prepare $test_conf to more useful structures.
     $self->{_test_conf_paths} = [];
+    $self->{_test_conf_dirs} = {};
     $self->{_test_conf_stat_modifs} = {};
 
     foreach my $num ( 0..$#$test_conf ) {
         my $item = $test_conf->[ $num ];
+
         my $full_path;
         if ( ref $item eq 'ARRAY' ) {
             $full_path = $item->[ 0 ];
@@ -21,11 +24,14 @@ sub new {
         } else {
             $full_path = $item;
         }
+
+        # The last char is backslash.
+        if ( my ( $base_name ) = $full_path =~ m{^ (.*) \/ $}x ) {
+            $self->{_test_conf_dirs}->{ $base_name } = 1;
+        }
+
         push @{$self->{_test_conf_paths}}, $full_path;
-
-
     }
-
 
     return $self;
 }
@@ -69,11 +75,10 @@ sub my_lstat {
 
     my $mode;
 
-    # The last char is backslash.
-    if ( $full_path =~ m{\/$} ) {
-        $stat{mode} = 33188; # directory
+    if ( exists $self->{_test_conf_dirs}->{ $full_path } ) {
+        $stat{mode} = 16877; # directory
     } else {
-        $stat{mode} = 16877; # file
+        $stat{mode} = 33188; # file
     }
 
     $stat{nlink} = 0;

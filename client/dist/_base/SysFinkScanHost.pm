@@ -1,6 +1,7 @@
 package SysFink::ScanHost;
 
 use strict;
+use warnings;
 use base 'SysFink::RunObj::Base';
 
 use Fcntl ':mode';
@@ -34,8 +35,52 @@ sub get_canon_dir {
 
 
 sub get_flags {
-    my ( $self, $dir_name, $parent_flags ) = @_;
-    return $parent_flags;
+    my ( $self, $full_path, $base_flags, $is_dir ) = @_;
+
+    my $flags;
+    my $plus_found = 0;
+
+
+    my $search_path = $full_path;
+    $search_path .= '/*' if $is_dir;
+
+    unless ( exists $self->{paths}->{ $search_path } ) {
+        $flags = $base_flags;
+
+    } else {
+        $flags = { %$base_flags };
+        my $path_flags = $self->{paths}->{ $search_path };
+        foreach my $flag_name ( keys %$path_flags ) {
+            $flags->{ $flag_name } = $path_flags->{ $flag_name };
+        }
+    }
+
+    foreach my $value ( values %$flags ) {
+        if ( $value eq '+' ) {
+            $plus_found = 1;
+            last;
+        }
+    }
+
+    return ( $flags, $plus_found );
+}
+
+
+=head2 flags_hash_to_str
+
+Sort hash keys and join its to canonized flags string.
+
+=cut
+
+sub flags_hash_to_str {
+    my ( $self, %flags ) = @_;
+
+    my $flags_str = '';
+    foreach my $key ( sort keys %flags ) {
+        $flags_str .= sprintf( "%1s%1s", $flags{$key}, $key );
+    }
+
+    return $flags_str;
 }
 
 
@@ -99,10 +144,16 @@ sub my_lstat {
 
 
 sub scan_recurse {
-    my ( $self, $loaded_items, $recursion_depth, $dir_name, $parent_flags ) = @_;
+    my ( $self, $loaded_items, $recursion_depth, $dir_name, $dir_flags ) = @_;
 
     my $debug_prefix = '  ' x $recursion_depth;
-    print $debug_prefix."$dir_name\n" if $self->{debug_out};
+    if ( $self->{debug_out} == 1 ) {
+        print "$dir_name\n";
+
+    } elsif ( $self->{debug_out} >= 1 ) {
+        print "\n";
+        print "in '$dir_name' ($recursion_depth):\n";
+    }
 
     # Directory number limit (this is not file number limit nor recursion limit).
     # Depends on client memory (and swap) size.
@@ -114,10 +165,9 @@ sub scan_recurse {
         return $loaded_items;
     }
 
-    my $dir_name = $self->get_canon_dir( $dir_name );
+    $dir_name = $self->get_canon_dir( $dir_name );
     #$self->dump( $dir_name );
 
-    my $flags = $self->get_flags( $dir_name, $parent_flags );
     my $dir_items = $self->get_dir_items( $dir_name );
     return 0 unless ref $dir_items;
 
@@ -132,6 +182,7 @@ sub scan_recurse {
         next if $name =~ /^\s*$/;
 
         $full_path = $dir_name . $name;
+        print $debug_prefix."item $full_path\n" if $self->{debug_out} >= 2;
 
         #  0 dev - device number of filesystem
         #  1 ino - inode number
@@ -147,32 +198,44 @@ sub scan_recurse {
         # 11 blksize - preferred block size for file system I/O
         # 12 blocks - actual number of blocks allocated
         my ( $dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, $atime, $mtime, $ctime, $blksize, $blocks ) = $self->my_lstat( $full_path );
-        #print "  $full_path: mode '$mode', nlink '$nlink', uid '$uid', gid '$gid', size '$size'\n" if $self->{debug_out};
-        #print "  $full_path: atime '$atime', mtime '$mtime', ctime '$ctime'\n" if $self->{debug_out};
-        #print "  $full_path: dev '$dev', ino '$ino', rdev '$rdev', size '$size', blksize '$blksize', blocks '$blocks'\n" if $self->{debug_out};
+        print $debug_prefix."  mode '$mode', nlink '$nlink', uid '$uid', gid '$gid', size '$size'\n" if $self->{debug_out} >= 3;
+        #print $debug_prefix."  atime '$atime', mtime '$mtime', ctime '$ctime'\n" if $self->{debug_out} if $self->{debug_out} >= 3;
+        #print $debug_prefix."  dev '$dev', ino '$ino', rdev '$rdev', size '$size', blksize '$blksize', blocks '$blocks'\n" if $self->{debug_out} if $self->{debug_out} >= 3;
+
+        my $is_dir = S_ISDIR($mode);
+
+        my ( $flags, $plus_found ) = $self->get_flags( $full_path, $dir_flags, $is_dir );
+        print $debug_prefix."  flags '" . $self->flags_hash_to_str( %$flags ) . "' (plus_found=$plus_found)\n" if $self->{debug_out} >= 3;
+
+        # Skip this file/directory if nothing to check selected.
+        next unless $plus_found;
 
         # is directory
-        if ( S_ISDIR($mode) ) {
-            push @$sub_dirs, $full_path;
+        if ( $is_dir ) {
+            push @$sub_dirs, [ $full_path, { %$flags } ];
         }
 
         my $lsmode_str = $self->mode_to_lsmode( $mode );
         my $item_info = {
+            path => $full_path,
             mode => $lsmode_str,
         };
 
         # is file
         if ( S_ISREG($mode) ) {
-            my $hash = $self->{hash_obj}->hash_file( $full_path );
-            $item_info->{hash} = $hash;
+            if ( $flags->{5} eq '+' ) {
+                my $hash = $self->{hash_obj}->hash_file( $full_path );
+                $item_info->{hash} = $hash;
+            }
         }
 
-        push @$loaded_items, [ $full_path, $item_info ];
+        push @$loaded_items, $item_info;
 
     }
 
-    LOOP: foreach my $sub_dir_path ( sort @$sub_dirs ) {
-        $self->scan_recurse( $loaded_items, $recursion_depth+1, $sub_dir_path, $flags );
+    LOOP: foreach my $sub_dir_data ( sort @$sub_dirs ) {
+        my ( $sub_dir_path, $sub_dir_flags ) = @$sub_dir_data;
+        $self->scan_recurse( $loaded_items, $recursion_depth+1, $sub_dir_path, $sub_dir_flags );
     }
 
     return 1;
@@ -181,8 +244,12 @@ sub scan_recurse {
 
 sub reset_state {
     my ( $self ) = @_;
+
+    $self->{paths} = {};
+
     $self->{loaded_items} = undef;
     $self->{errors} = [];
+
     return 1;
 }
 
@@ -200,11 +267,22 @@ sub scan {
     my ( $self, $args ) = @_;
 
     $self->process_base_command_args( $args );
-    my $paths = $args->{paths};
+
+    # Prepare paths.
+    foreach my $path_conf ( @{$args->{paths}} ) {
+        my $full_path = $path_conf->[ 0 ];
+        $self->{paths}->{ $full_path } = $path_conf->[ 1 ];
+    }
+
+    unless ( exists $self->{paths}->{'/*'} ) {
+        $self->add_error("Base path '/*' not found.");
+        return 0;
+    }
 
     my $dir = '/';
+    my $default_root_flags = \%{ $self->{paths}->{'/*'} };
     $self->{loaded_items} = [];
-    my $ret_code = $self->scan_recurse( $self->{loaded_items}, 0, $dir, $args->{default_root_flags} );
+    my $ret_code = $self->scan_recurse( $self->{loaded_items}, 0, $dir, $default_root_flags );
     return $ret_code;
 }
 

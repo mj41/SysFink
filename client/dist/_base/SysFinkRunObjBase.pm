@@ -22,7 +22,7 @@ sub process_base_command_args {
     $self->{debug} = $args->{debug};
 
     $self->{debug_out} = 0;
-    $self->{debug_out} = 1 if $args->{debug_out};
+    $self->{debug_out} = $args->{debug_out} if $args->{debug_out};
 
     if ( $self->{debug} ) {
         $self->dump( $args );
