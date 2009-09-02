@@ -210,24 +210,69 @@ sub scan_recurse {
         # Skip this file/directory if nothing to check selected.
         next unless $plus_found;
 
-        # is directory
-        if ( $is_dir ) {
-            push @$sub_dirs, [ $full_path, { %$flags } ];
-        }
-
         my $lsmode_str = $self->mode_to_lsmode( $mode );
         my $item_info = {
             path => $full_path,
+            #uid => $uid,
+            #gid => $gid,
             mode => $lsmode_str,
         };
 
-        # is file
-        if ( S_ISREG($mode) ) {
+        # directory
+        if ( $is_dir ) {
+            push @$sub_dirs, [ $full_path, { %$flags } ];
+
+        # symlink
+        } elsif ( S_ISLNK($mode) ) {
+            # flag L - symlink path
+            if ( $flags->{L} eq '+' ) {
+                $item_info->{symlink} = readlink( $full_path );
+            }
+
+        # file
+        } elsif ( S_ISREG($mode) ) {
+            # flag 5 - file md5 sum
             if ( $flags->{5} eq '+' ) {
                 my $hash = $self->{hash_obj}->hash_file( $full_path );
                 $item_info->{hash} = $hash;
             }
+
+            # flag S - file size
+            if ( $flags->{S} eq '+' ) {
+                $item_info->{size} = $size;
+            }
+
         }
+
+        # flag U - user
+        if ( $flags->{U} eq '+' ) {
+            my $user_name = getpwuid( $uid );
+            $item_info->{user} = $user_name if defined $user_name;
+        }
+
+        # flag G - group
+        if ( $flags->{G} eq '+' ) {
+            my $group_name = getgrgid( $gid );
+            $item_info->{group} = $group_name if defined $group_name;
+        }
+
+        # flag M - mtime
+        if ( $flags->{G} eq '+' ) {
+            $item_info->{mtime} = $mtime;
+        }
+
+        # H - hard links number
+        if ( $flags->{H} eq '+' ) {
+            $item_info->{nlink} = $nlink;
+        }
+
+        # D - major and minor device number
+        if ( $flags->{D} eq '+' ) {
+            $item_info->{dev_ino} = $dev . ' ' . $ino;
+        }
+
+        # B - do backup this item
+        # Add nothing special here.
 
         push @$loaded_items, $item_info;
 

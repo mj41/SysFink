@@ -47,6 +47,29 @@ sub debug {
 
 Default flags and flags aliases definition. These aliases can be used in a config files.
 
+If item has any of flags sets, then item is scanned and inserted to result list.
+
+Default:
+* uid - user id
+* gid - group id
+* mode - ls string, eg. drwxr-x---
+
+Items of any type:
+* U - user
+* G - group
+* M - mtime
+
+* H - hard links number
+* D - major and minor device number
+* B - do backup this item
+
+Regular files only:
+* 5 - file md5 sum
+* S - file size
+
+Symlinks only:
+* L - symlink path
+
 =cut
 
 sub get_flag_desc {
@@ -63,7 +86,7 @@ sub get_flag_desc {
         'H' => 'hard links number',
         'D' => 'major and minor device number',
 
-        'B' => 'do backup this file or directory',
+        'B' => 'do backup this item',
     );
     return \%flags_desc unless $flag;
     return $flags_desc{ $flag } if exists $flags_desc{ $flag };
