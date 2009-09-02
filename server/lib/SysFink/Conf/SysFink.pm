@@ -106,7 +106,7 @@ sub get_files_rh_for_dir {
 
 =head2 get_default_keyword_flags
 
-Return hash of default flags (flags for '/*' path).
+Return hash of default flags (flags for '/' path).
 
 =cut
 
@@ -224,8 +224,10 @@ sub canon_path {
     # Remove dot directories.
     $path =~ s{ \/\.\/ }{\/}gx;
 
-    # Add asterix to the end if $path is directory.
-    $path .= '*' if $path =~ m{\/$};
+    # Remove last '\*'.
+    $path =~ s{\/\*$}{};
+    # Remove last '\'.
+    $path =~ s{\/$}{};
 
     return $path;
 }
@@ -457,7 +459,7 @@ sub _load_one_config_file {
 
 =head2 normalize_paths
 
-Sort path parts. Add '/*' as first (default) directory if not found.
+Sort path parts. Add '/' as first (default) directory if not found.
 
 =cut
 
@@ -475,14 +477,14 @@ sub normalize_paths {
         if ( exists $sec_conf->{paths} ) {
             # Lazy loading.
             unless ( defined $def_flags ) {
-                ( $def_flags, $def_path ) = $self->get_keyword_flags( 'include', '/*' );
+                ( $def_flags, $def_path ) = $self->get_keyword_flags( 'include', '/' );
             }
 
             # Sort it.
             $sec_conf->{paths} = [ sort { $a->[0] cmp $b->[0] } @{$sec_conf->{paths}} ];
 
-            # If first item don't start \*[, then add \* and default (include) flags.
-            unless ( $sec_conf->{paths}->[0] =~ m{^\/\*\[} ) {
+            # If first item don't start \[, then add \ and default (include) flags.
+            unless ( $sec_conf->{paths}->[0] =~ m{^\/\[} ) {
                 unshift @{$sec_conf->{paths}}, [ $def_path, $def_flags];
             }
 
