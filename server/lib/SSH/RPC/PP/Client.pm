@@ -10,9 +10,19 @@ use SSH::RPC::PP::Result;
 
 SSH::RPC::PP::Client - The requestor, or client side, of an RPC call over SSH.
 
+=head1 SYNOPSIS
+
+ToDo. See L<SysFink>.
+
 =head1 DESCRIPTION
 
 Based on SSH::RPC::Client, but without Class::InsideOut.
+
+=head1 METHODS
+
+=head2 new
+
+Constructor. Parameters: conf_dir_path.
 
 =cut
 
