@@ -21,7 +21,7 @@ sub hash_type_desc {
 
 sub hash_file {
     my ( $self, $fpath ) = @_;
-    return substr( 'HASH:' . $fpath, 0, 30 );
+    return substr( 'HASH:' . $fpath, 0, 50 );
 }
 
 

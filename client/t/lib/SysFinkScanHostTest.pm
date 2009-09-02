@@ -47,7 +47,7 @@ sub get_dir_items {
             push @$dir_items, $name;
         }
     }
-    return $dir_items;
+    return [ sort @$dir_items ];
 }
 
 

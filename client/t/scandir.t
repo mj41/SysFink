@@ -58,7 +58,7 @@ my @all_test_cases = ();
     ];
 
     $test_case->{paths_to_scan} = [
-        [ '/*', $default_flags, ],
+        [ '/', $default_flags, ],
     ];
 
     $test_case->{expected} = [
@@ -91,7 +91,7 @@ my @all_test_cases = ();
     ];
 
     $test_case->{paths_to_scan} = [
-        [ '/*', $default_flags, ],
+        [ '/', $default_flags, ],
     ];
 
     $test_case->{expected} = [
@@ -141,9 +141,9 @@ my @all_test_cases = ();
     my $my_flags = { %$default_flags };
     $my_flags->{5} = '-';
     $test_case->{paths_to_scan} = [
-        [ '/*', $my_flags ],
-        [ '/tmp/*', $skip_flags ],
-        [ '/home/mjdir/*', { '5' => '+' } ],
+        [ '/', $my_flags ],
+        [ '/home/mjdir', { '5' => '+' } ],
+        [ '/tmp', $skip_flags ],
     ];
 
     $test_case->{expected} = [
@@ -172,6 +172,79 @@ my @all_test_cases = ();
     push @all_test_cases, $test_case;
 }
 
+# --- test 4 -----------------------------------------------------------------
+{
+    my $test_case = {};
+    $test_case->{tescase_name} = 'items included inside excluded dir';
+
+    $test_case->{test_obj_conf} = [
+        '/etc/',
+        '/home/',
+        '/home/file1',
+        '/home/mjdir/',
+        '/home/mjdir/sfile2no',
+        '/home/mjdir/sfile3yes',
+        '/home/mjdir/subdir/',
+        '/home/mjdir/subdir/subfile4yes',
+        '/home/mjdir/asdir1/',
+        '/home/mjdir/asdir1/asdir2/',
+        '/home/mjdir/asdir1/asdir2/sfile5no',
+        '/home/mjdir/asdir1/asdir2/asdir3/',
+        '/home/mjdir/asdir1/asdir2/asdir3/sfile6yes',
+        '/home/mjdir/asdir1/asdir2/asdir3/sfile7no',
+        '/tmp/',
+        '/tmp/somefile',
+        '/tmp/sdir/',
+    ];
+
+    my $my_flags = { %$default_flags };
+    $my_flags->{5} = '-';
+    $test_case->{paths_to_scan} = [
+        [ '/', $my_flags ],
+        [ '/home/mjdir', $skip_flags ],
+        [ '/home/mjdir/subfile3yes', { '5' => '+' } ],
+        [ '/home/mjdir/asdir1/asdir2/asdir3/sfile6yes', { '5' => '+' } ],
+        [ '/home/mjdir/subdir', { '5' => '+' } ],
+        [ '/tmp', $skip_flags ],
+    ];
+
+    $test_case->{expected} = [
+        {
+            'mode' => 'drwxr-xr-x',
+            'path' => '/etc'
+        },
+        {
+            'mode' => 'drwxr-xr-x',
+            'path' => '/home'
+        },
+        {
+            'mode' => '-rw-r--r--',
+            'path' => '/home/file1'
+        },
+        {
+            'hash' => 'HASH:/home/mjdir/asdir1/asdir2/asdir3/sfile6yes',
+            'mode' => '-rw-r--r--',
+            'path' => '/home/mjdir/asdir1/asdir2/asdir3/sfile6yes'
+        },
+        {
+            'mode' => 'drwxr-xr-x',
+            'path' => '/home/mjdir/subdir'
+        },
+        {
+            'hash' => 'HASH:/home/mjdir/subdir/subfile4yes',
+            'mode' => '-rw-r--r--',
+            'path' => '/home/mjdir/subdir/subfile4yes'
+        },
+        {
+            'hash' => 'HASH:/home/mjdir/subfile3yes',
+            'mode' => '-rw-r--r--',
+            'path' => '/home/mjdir/subfile3yes'
+        },
+    ];
+    push @all_test_cases, $test_case;
+}
+
+
 # ----------------------------------------------------------------------------
 
 my @test_nums = ( 0..$#all_test_cases );
@@ -185,7 +258,7 @@ foreach my $num ( @test_nums ) {
     my $scan_obj = SysFink::ScanHostTest->new( $test_case->{test_obj_conf}, $shared_data, $hash_obj );
 
     my $scan_conf = {
-        'paths' => $test_case->{paths_to_scan},
+        'paths' => [ sort { $a->[0] cmp $b->[0] } @{ $test_case->{paths_to_scan} } ],
         'debug_out' => $debug_out,
     };
 
