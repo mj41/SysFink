@@ -275,7 +275,7 @@ sub scan_recurse {
 
     # Directory number limit (this is not file number limit nor recursion limit).
     # Depends on client memory (and swap) size.
-    if ( $#{ $self->{loaded_items} } > 1_000 ) {
+    if ( $self->{debug_out} && $#{ $self->{loaded_items} } > 1_000 ) {
         unless ( $self->{debug_data}->{recursive_limit} ) {
             $self->add_error("No all files. Recursion limit reached!");
             $self->{debug_data}->{recursive_limit} = 1;
