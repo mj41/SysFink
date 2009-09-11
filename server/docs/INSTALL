@@ -1,0 +1,40 @@
+Base install documentation.
+
+# Login as root to server machine.
+
+cd ~/sysfink
+
+# -- Client ------------------------------------------------
+cd ~/sysfink/client
+
+perl t/harness.pl
+
+
+# -- Server ------------------------------------------------
+cd ~/sysfink/server
+
+# Create/edit server config files.
+copy conf/web.yaml.example conf/web.yaml
+copy conf/web_db.yaml.example conf/web_db.yaml
+
+# Create client's machine config files
+mkdir conf-machines
+cat > conf-machines/my-first-machine
+hostname    my-first-machine.my-domain.com
+exclude     /dev/* /home/* /proc/* /sys/* /var/*
+Ctrl+D
+
+# Import server SSH key/certificate for user 'root' to my-first-machine.my-domain.com
+
+# Create empty db file
+cp sysfink-base-stable.db sysfink.db
+
+# Load config files to database
+perl utils/conf-to-db.pl
+
+# Run sysfink server
+perl t/harness.pl
+
+# Run sysfink server
+perl sysfink.pl
+
