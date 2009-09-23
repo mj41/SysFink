@@ -5,10 +5,9 @@ $__PACKAGE__::VERSION = '0.100';
 use base 'SSH::RPC::Shell::PP::JSON';
 
 use strict;
-use SysFinkRunObjBase; # SysFink::RunObj::Base
-use SysFinkFileHash; # SysFink::FileHash
-use SysFinkScanHost; # SysFink::ScanHost
 
+use SysFink::FileHash;
+use SysFink::ScanHost;
 
 sub new {
     my ($class, $ver, $md5sum_path) = @_;

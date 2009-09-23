@@ -1,8 +1,10 @@
 Base install documentation.
 
 # Login as root to server machine.
+# Check out ~/sysfink if not exists: svn co http://sysfink.googlecode.com/svn/trunk ~/sysfink
 
 cd ~/sysfink
+
 
 # -- Client ------------------------------------------------
 cd ~/sysfink/client
@@ -14,11 +16,10 @@ perl t/harness.pl
 cd ~/sysfink/server
 
 # Create/edit server config files.
-copy conf/web.yaml.example conf/web.yaml
-copy conf/web_db.yaml.example conf/web_db.yaml
+cp conf/web.yml.example conf/web.yml
+cp conf/web_db.yml.example conf/web_db.yml
 
 # Create client's machine config files
-mkdir conf-machines
 cat > conf-machines/my-first-machine
 hostname    my-first-machine.my-domain.com
 exclude     /dev/* /home/* /proc/* /sys/* /var/*

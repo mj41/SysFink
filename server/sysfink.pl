@@ -79,17 +79,19 @@ sub run_ssh_cmd {
 }
 
 
-sub ls_output_contains_dir {
+sub ls_output_contains_unknown_dir {
     my ( $out ) = @_;
 
     chomp($out);
     my @lines = split( /\n/, $out );
+    shift @lines; # remove line "total \d+"
     foreach my $line ( @lines ) {
-        return 1 if $line =~ /^\s*d/;
+        if ( $line =~ /^\s*d/ ) {
+            return 1 if $line !~ /(bin|lib|libcpan|libdist){1}\s*$/;
+        }
     }
     return 0;
 }
-
 
 
 
@@ -121,8 +123,8 @@ print "client_dir: '$client_dir'\n" if $ver >= 2;
 if ( $err =~ /No such file or directory/i ) {
     print "Directory '$client_dir' doesn't exists on host.\n" if $ver >= 3;
 } else {
-    if ( ls_output_contains_dir($out) ) {
-        croak "Directory '$client_dir' on '$host' contains some directories.\nCmd 'ls -l' output is\n$out.\n";
+    if ( ls_output_contains_unknown_dir($out) ) {
+        croak "Directory '$client_dir' on '$host' contains some unknown directories.\nCmd 'ls -l' output is\n$out.\n";
     }
     # ToDo - je to jiz dost bezpecne?
     run_ssh_cmd( $ssh, "rm -rf $client_dir" );
@@ -137,28 +139,72 @@ my $client_src_fpath = catfile( $client_src_dir, $client_src_name );
 my $client_src_dest_dir = catdir( $client_dir );
 $ssh->scp_put( $client_src_fpath, $client_src_dest_dir );
 
-if ( $debugging_on_client ) {
-    my $client_src_test_name = 'sysfink-client-test.pl';
-    my $client_src_test_fpath = catfile( $client_src_dir, $client_src_test_name );
-    $ssh->scp_put( $client_src_test_fpath, $client_src_dest_dir );
+
+
+sub get_dir_items {
+    my ( $dir_name ) = @_;
+
+    # Load direcotry items list.
+    my $dir_handle;
+    if ( not opendir($dir_handle, $dir_name) ) {
+        #add_error("Directory '$dir_name' not open for read.");
+        return 0;
+    }
+    my @dir_items = readdir($dir_handle);
+    close($dir_handle);
+    return  \@dir_items;
+}
+
+
+
+sub transfer_dir_content {
+    my ( $base_src_dir, $sub_src_dir, $base_dest_dir  ) = @_;
+
+    my $full_src_dir = catdir( $base_src_dir, $sub_src_dir );
+    my $dir_items = get_dir_items( $full_src_dir );
+    return 0 unless ref $dir_items;
+
+    my $sub_dirs = [];
+    my $full_src_path;
+    ITEM: foreach my $name ( sort @$dir_items ) {
+
+        next if $name =~ /^\.$/;
+        next if $name =~ /^\..$/;
+        next if $name =~ /^\s*$/;
+
+        $full_src_path = catdir( $full_src_dir, $name );
+
+        if ( -d $full_src_path ) {
+            next if $name =~ /^\.svn$/; # ignore Subversion dirs
+            push @$sub_dirs, $name;
+
+        } elsif ( -f $full_src_path ) {
+            my $full_dest_fpath = catfile( $base_dest_dir, $sub_src_dir, $name );
+            #print "item '$full_src_path' -> '$full_dest_fpath'\n";
+            $ssh->scp_put( $full_src_path, $full_dest_fpath );
+        }
+    }
+
+    foreach my $sub_dir ( sort @$sub_dirs ) {
+        my $new_sub_src_dir = catdir( $sub_src_dir, $sub_dir );
+        my $full_dest_fpath = catdir( $base_dest_dir, $new_sub_src_dir );
+        run_ssh_cmd( $ssh, "mkdir $full_dest_fpath" );
+        transfer_dir_content( $base_src_dir, $new_sub_src_dir, $base_dest_dir );
+    }
+
+    return 1;
 }
 
 my $dist_src_dir;
 
 $dist_src_dir = catdir( $client_src_dir, 'dist', '_base' );
-foreach my $dist_fpath ( glob("$dist_src_dir/*") ) {
-    print "Transfering '$dist_fpath' to client.\n" if $ver >= 4;
-    $ssh->scp_put( $dist_fpath, $client_src_dest_dir );
-}
+transfer_dir_content( $dist_src_dir, '', $client_src_dest_dir );
 
 $dist_src_dir = catdir( $client_src_dir, 'dist', $dist_type );
-foreach my $dist_fpath ( glob("$dist_src_dir/*") ) {
-    print "Transfering '$dist_fpath' to client.\n" if $ver >= 4;
-    $ssh->scp_put( $dist_fpath, $client_src_dest_dir );
-}
+transfer_dir_content( $dist_src_dir, '', $client_src_dest_dir );
 
+run_ssh_cmd( $ssh, "ls -R $client_src_dest_dir" );
 
-run_ssh_cmd( $ssh, "ls $client_src_dest_dir" );
 
 my $client_src_dest_fp = catfile( $client_src_dest_dir, $client_src_name );
 

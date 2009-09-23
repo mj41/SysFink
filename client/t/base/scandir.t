@@ -10,10 +10,8 @@ use lib 't/lib';
 
 use lib 'lib';
 use lib 'libext';
-use lib 'dist/_base';
+use lib 'dist/_base/lib';
 
-use SysFinkRunObjBase; # SysFink::ScanHost
-use SysFinkScanHost; # SysFink::ScanHost
 use SysFinkScanHostTest; # SysFink::ScanHostTest
 use SysFinkFileHashTest; # SysFink::FileHashTest
 

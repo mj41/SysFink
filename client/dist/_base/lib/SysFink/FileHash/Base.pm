@@ -20,7 +20,7 @@ sub new {
 sub hash_file {
     my ( $self, $file_path ) = @_;
 
-    my $cmd = $self->{md5sum_util_path} . '/sysfink-md5sum';
+    my $cmd = $self->{md5sum_util_path} . '/bin/sysfink-md5sum';
     my $out = `$cmd "$file_path"`;
     my ( $hash ) = $out =~ /^\s*(\S+)/;
     return $hash;

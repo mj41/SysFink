@@ -1,6 +1,5 @@
 package SysFink::FileHash;
 
-use SysFinkFileHashBase; # SysFink::FileHash::Base
 use base 'SysFink::FileHash::Base';
 
 
@@ -11,13 +10,11 @@ sub hash_type {
 
 sub hash_type_desc {
     return <<"DESC_END"
-Binary /usr/bin/md5sum utility copied from 64bit.
-ldd md5sum
-libc.so.6 => /lib64/libc.so.6
-/lib64/ld-linux-x86-64.so.2
+Binary /usr/bin/md5sum utility for 64bit IRIX.
 DESC_END
 ;
 
 }
+
 
 1;
