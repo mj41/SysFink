@@ -109,7 +109,12 @@ sub flags_hash_to_str {
 }
 
 
-# convert numeric node number to ls format
+=head2 flags_hash_to_str
+
+Convert numeric node number to ls format.
+
+=cut
+
 sub mode_to_lsmode() {
     my ( $self, $mode ) = @_;
 
@@ -189,13 +194,12 @@ sub add_item {
     #print $debug_prefix."  atime '$atime', mtime '$mtime', ctime '$ctime'\n" if $self->{debug_out} if $self->{debug_out} >= 3;
     #print $debug_prefix."  dev '$dev', ino '$ino', rdev '$rdev', size '$size', blksize '$blksize', blocks '$blocks'\n" if $self->{debug_out} if $self->{debug_out} >= 3;
 
-    my $lsmode_str = $self->mode_to_lsmode( $mode );
+    #my $lsmode_str = $self->mode_to_lsmode( $mode );
     my $item_info = {
         path => $full_path,
-        # ToDo
-        #uid => $uid,
-        #gid => $gid,
-        mode => $lsmode_str,
+        uid => $uid,
+        gid => $gid,
+        mode => $mode,
     };
 
     my $is_dir = S_ISDIR($mode);
@@ -249,7 +253,8 @@ sub add_item {
 
     # D - major and minor device number
     if ( $flags->{D} eq '+' ) {
-        $item_info->{dev_ino} = $dev . ' ' . $ino;
+        $item_info->{dev} = $dev;
+        $item_info->{ino} = $ino;
     }
 
     # B - do backup this item
@@ -265,12 +270,12 @@ sub scan_recurse {
     my ( $self, $recursion_depth, $dir_name, $dir_flags ) = @_;
 
     my $debug_prefix = '  ' x $recursion_depth;
-    if ( $self->{debug_out} == 1 ) {
-        print "$dir_name\n";
-
-    } elsif ( $self->{debug_out} >= 1 ) {
+    if ( $self->{debug_out} > 1 ) {
         print "\n";
         print "in '$dir_name' ($recursion_depth):\n";
+
+    } elsif ( $self->{debug_out} == 1 ) {
+        print "$dir_name\n";
     }
 
     # Directory number limit (this is not file number limit nor recursion limit).
