@@ -197,8 +197,6 @@ sub add_item {
     #my $lsmode_str = $self->mode_to_lsmode( $mode );
     my $item_info = {
         path => $full_path,
-        uid => $uid,
-        gid => $gid,
         mode => $mode,
     };
 
@@ -231,12 +229,14 @@ sub add_item {
 
     # flag U - user
     if ( $flags->{U} eq '+' ) {
+        $item_info->{uid} = $uid;
         my $user_name = getpwuid( $uid );
         $item_info->{user} = $user_name if defined $user_name;
     }
 
     # flag G - group
     if ( $flags->{G} eq '+' ) {
+        $item_info->{gid} = $gid;
         my $group_name = getgrgid( $gid );
         $item_info->{group} = $group_name if defined $group_name;
     }

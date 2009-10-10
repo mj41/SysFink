@@ -61,12 +61,12 @@ my @all_test_cases = ();
 
     $test_case->{expected} = [
         {
-            'mode' => 'drwxr-xr-x',
+            'mode' => 16877,
             'path' => '/etc'
         },
         {
             'hash' => 'HASH:/myfile',
-            'mode' => '-rw-r--r--',
+            'mode' => 33188,
             'path' => '/myfile'
         },
     ];
@@ -94,24 +94,24 @@ my @all_test_cases = ();
 
     $test_case->{expected} = [
         {
-            'mode' => 'drwxr-xr-x',
+            'mode' => 16877,
             'path' => '/etc'
         },
         {
-            'mode' => 'drwxr-xr-x',
+            'mode' => 16877,
             'path' => '/home'
         },
         {
-            'mode' => 'drwxr-xr-x',
+            'mode' => 16877,
             'path' => '/tmp'
         },
         {
             'hash' => 'HASH:/etc/passwd',
-            'mode' => '-rw-r--r--',
+            'mode' => 33188,
             'path' => '/etc/passwd'
         },
         {
-            'mode' => 'drwxr-xr--',
+            'mode' => 16876,
             'path' => '/tmp/myfile'
         }
     ];
@@ -146,24 +146,24 @@ my @all_test_cases = ();
 
     $test_case->{expected} = [
         {
-            'mode' => 'drwxr-xr-x',
+            'mode' => 16877,
             'path' => '/etc'
         },
         {
-            'mode' => 'drwxr-xr-x',
+            'mode' => 16877,
             'path' => '/home'
         },
         {
-            'mode' => '-rw-r--r--',
+            'mode' => 33188,
             'path' => '/home/file1'
         },
         {
-            'mode' => 'drwxr-xr-x',
+            'mode' => 16877,
             'path' => '/home/mjdir'
         },
         {
             'hash' => 'HASH:/home/mjdir/sfile2',
-            'mode' => '-rw-r--r--',
+            'mode' => 33188,
             'path' => '/home/mjdir/sfile2'
         },
     ];
@@ -208,34 +208,34 @@ my @all_test_cases = ();
 
     $test_case->{expected} = [
         {
-            'mode' => 'drwxr-xr-x',
+            'mode' => 16877,
             'path' => '/etc'
         },
         {
-            'mode' => 'drwxr-xr-x',
+            'mode' => 16877,
             'path' => '/home'
         },
         {
-            'mode' => '-rw-r--r--',
+            'mode' => 33188,
             'path' => '/home/file1'
         },
         {
             'hash' => 'HASH:/home/mjdir/asdir1/asdir2/asdir3/sfile6yes',
-            'mode' => '-rw-r--r--',
+            'mode' => 33188,
             'path' => '/home/mjdir/asdir1/asdir2/asdir3/sfile6yes'
         },
         {
-            'mode' => 'drwxr-xr-x',
+            'mode' => 16877,
             'path' => '/home/mjdir/subdir'
         },
         {
             'hash' => 'HASH:/home/mjdir/subdir/subfile4yes',
-            'mode' => '-rw-r--r--',
+            'mode' => 33188,
             'path' => '/home/mjdir/subdir/subfile4yes'
         },
         {
             'hash' => 'HASH:/home/mjdir/subfile3yes',
-            'mode' => '-rw-r--r--',
+            'mode' => 33188,
             'path' => '/home/mjdir/subfile3yes'
         },
     ];
