@@ -8,6 +8,7 @@ use Data::Dumper;
 
 use Getopt::Long;
 use Pod::Usage;
+use DateTime;
 
 use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../libext";
@@ -58,10 +59,14 @@ sub do_delete_old {
     my $all_confs = [
         [
             'mconf_sec_kv',
-            { 'mconf_sec_id' => 'machine_id' },
+            { 'mconf_sec_id' => { 'mconf_id' => 'machine_id' } },
         ],
         [
             'mconf_sec',
+            { 'mconf_sec_id' => 'mconf_id' },
+        ],
+        [
+            'mconf',
             'machine_id',
         ],
         [
@@ -100,8 +105,27 @@ foreach my $machine_name ( keys %$mconf ) {
     print "machine: $machine_name\n" if $ver >= 3;
     my $machine_section = $mconf->{$machine_name};
 
+    # Get machine_id by machine name.
     my $machine_row = $schema->resultset('machine')->find_or_create({
         'name' => $machine_name,
+    });
+    my $machine_id = $machine_row->id;
+
+    # Inactivate all machine configs (mconf).
+    my $mconf_to_inactivate_rs = $schema->resultset('mconf')->search({
+        'machine_id' => $machine_id,
+        'active' => 1,
+    });
+    $mconf_to_inactivate_rs->update({
+        'active' => 0,
+    });
+
+    # print "$machine_name $machine_id\n"; # debug
+
+    my $mconf_row = $schema->resultset('mconf')->find_or_create({
+        'machine_id' => $machine_id,
+        'active' => 1,
+        'create_time'=> DateTime->now,
     });
 
     my $order_number = {};
@@ -111,7 +135,7 @@ foreach my $machine_name ( keys %$mconf ) {
         my $section_kv = $machine_section->{$section_name};
 
         my $mconf_sec_row = $schema->resultset('mconf_sec')->find_or_create({
-            'machine_id' => $machine_row->id,
+            'mconf_id' => $mconf_row->id,
             'name' => $section_name,
         });
 

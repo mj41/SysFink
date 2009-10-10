@@ -48,10 +48,11 @@ sub load_general_conf {
     my $mconf_rs = $self->{schema}->resultset('mconf_sec_kv')->search(
         {
             'machine_id.name' => $machine_name,
+            'mconf_id.active' => 1,
             'mconf_sec_id.name' => 'general',
         },
         {
-            'join' => { 'mconf_sec_id' => 'machine_id' },
+            'join' => { 'mconf_sec_id' => { 'mconf_id' => 'machine_id' } },
             'select' => [ 'key', 'value', 'num' ],
             'order_by' => [ 'key', 'num' ],
         },
