@@ -56,6 +56,54 @@ CREATE TABLE mconf_sec_kv (
 ) TYPE=InnoDB COMMENT='Machine configuration section key and value pairs. Tag:Machine.';
 </source>
 
+=== Table scan (sc) ===
+<source lang=sql>
+CREATE TABLE scan (
+    scan_id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    mconf_id        INT UNSIGNED NOT NULL,
+    start_time      DATETIME NOT NULL,
+    stop_time       DATETIME DEFAULT NULL,
+    pid             INT UNSIGNED NOT NULL COMMENT 'OS process id of scanning process.',
+    items           INT UNSIGNED DEFAULT NULL COMMENT 'Number of items found during the scan.',
+    CONSTRAINT fk_scan_mconf_id FOREIGN KEY (mconf_id) REFERENCES mconf (mconf_id)
+) TYPE=InnoDB COMMENT='Machine scan. Tag:Scan.';
+</source>
+
+=== Table sc_mitem ===
+<source lang=sql>
+CREATE TABLE sc_mitem (
+    sc_mitem_id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    machine_id          INT UNSIGNED NOT NULL,
+    path                VARCHAR(255) NOT NULL,
+    CONSTRAINT fk_sc_mitem_machine_id FOREIGN KEY (machine_id) REFERENCES machine (machine_id)
+) TYPE=InnoDB COMMENT='Machine paths (all history). Tag:Scan.';
+</source>
+
+=== Table sc_idata ===
+<source lang=sql>
+CREATE TABLE sc_idata (
+    sc_idata_id     INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    sc_mitem_id     INT UNSIGNED NOT NULL,
+    scan_id         INT UNSIGNED NOT NULL,
+    newer_id        INT UNSIGNED DEFAULT NULL,
+    found           INT UNSIGNED NOT NULL,
+    mtime           DATETIME DEFAULT NULL,
+    mode            INT UNSIGNED DEFAULT NULL,
+    size            INT UNSIGNED DEFAULT NULL,
+    uid             INT UNSIGNED DEFAULT NULL,
+    user_name       VARCHAR(50) DEFAULT NULL,
+    gid             INT UNSIGNED DEFAULT NULL,
+    group_name      VARCHAR(50) DEFAULT NULL,
+    hash            VARCHAR(32) DEFAULT NULL,
+    nlink           INT UNSIGNED DEFAULT NULL,
+    dev_num         INT UNSIGNED DEFAULT NULL,
+    ino_num         INT UNSIGNED DEFAULT NULL,
+    CONSTRAINT fk_sc_idata_sc_mitem_id FOREIGN KEY (sc_mitem_id) REFERENCES sc_mitem (sc_mitem_id),
+    CONSTRAINT fk_sc_idata_scan_id FOREIGN KEY (scan_id) REFERENCES scan (scan_id),
+    CONSTRAINT fk_sc_idata_newer_id FOREIGN KEY (newer_id) REFERENCES sc_idata (sc_idata_id)
+) TYPE=InnoDB COMMENT='Machine scan item data. Tag:Scan.';
+</source>
+
 ==== Table user ====
 <source lang=sql>
 CREATE TABLE user (

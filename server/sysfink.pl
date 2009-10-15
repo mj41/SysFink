@@ -20,13 +20,13 @@ use SysFink::Utils::DB qw(get_connected_schema);
 
 
 my $ver = 5;
-my $machine = $ARGV[0] || 'tapir1';
+my $machine_name = $ARGV[0] || 'tapir1';
 my $user = $ARGV[1] || 'root';
 my $dist_type = 'linux-bin-64b';
 # test2
 #$dist_type = 'linux-perl-md5';
 
-my $debugging_on_client = 1;
+my $debugging_on_client = 0;
 
 my $conf_fp;
 
@@ -38,8 +38,14 @@ my $conf = load_conf_multi( $conf_fp, 'db' );
 my $schema = get_connected_schema( $conf->{db} );
 
 
+
+
 my $conf_obj = SysFink::Conf::DBIC->new({ schema => $schema, });
-my $general_conf = $conf_obj->load_general_conf( $machine );
+
+my $machine_id = $conf_obj->get_machine_id( { 'name' => $machine_name } );
+my $mconf_id = $conf_obj->get_machine_active_mconf_id( $machine_id );
+
+my $general_conf = $conf_obj->load_general_conf( $machine_id, $mconf_id );
 print Dumper( $general_conf );
 
 
@@ -195,6 +201,62 @@ sub transfer_dir_content {
     return 1;
 }
 
+
+sub get_item_attrs {
+    return {
+        mtime => 1,
+        mode => 1,
+        size => 1,
+        uid => 1,
+        gid => 1,
+        hash => 1,
+        nlink => 1,
+        dev_num => 1,
+        ino_num => 1,
+        user_name => 0,
+        group_name => 0,
+    };
+}
+
+sub has_same_data {
+    my ( $ra, $rb ) = @_;
+
+    my $attrs = get_item_attrs();
+    $attrs->{found} = 1;
+    foreach my $attr_name ( keys %$attrs ) {
+        my $is_numeric = $attrs->{$attr_name};
+        #print "$attr_name is_numeric=$is_numeric\n";
+        if ( $is_numeric ) {
+            return 0 if defined $ra->{$attr_name} && ( (not defined $rb->{$attr_name}) || $rb->{$attr_name} != $ra->{$attr_name} );
+            return 0 if defined $rb->{$attr_name} && ( (not defined $ra->{$attr_name}) || $ra->{$attr_name} != $rb->{$attr_name} );
+        } else {
+            return 0 if defined $ra->{$attr_name} && ( (not defined $rb->{$attr_name}) || $rb->{$attr_name} ne $ra->{$attr_name} );
+            return 0 if defined $rb->{$attr_name} && ( (not defined $ra->{$attr_name}) || $ra->{$attr_name} ne $rb->{$attr_name} );
+        }
+    }
+
+    return 1;
+}
+
+
+sub get_base_idata {
+    my ( $base_data, $raw_data ) = @_;
+
+    my $data = { %$base_data };
+
+    my $attrs = get_item_attrs();
+    foreach my $attr_name ( keys %$attrs ) {
+        if ( exists $raw_data->{ $attr_name } ) {
+            $data->{ $attr_name } = $raw_data->{ $attr_name };
+        } else {
+            $data->{ $attr_name } = undef;
+        }
+    }
+    return $data;
+}
+
+
+
 my $dist_src_dir;
 
 $dist_src_dir = catdir( $client_src_dir, 'dist', '_base' );
@@ -228,7 +290,7 @@ $result_obj = $rpc->run( 'noop', $client_src_dest_fp );
 $result_obj->dump();
 
 
-my $file_to_hash = catfile( $client_src_dest_dir, 'SysFinkFileHashBase.pm' );
+my $file_to_hash = catfile( $client_src_dest_dir, '/lib/SysFink/FileHash/Base.pm' );
 $result_obj = $rpc->run( 'hash_file', $file_to_hash );
 $result_obj->dump();
 
@@ -250,8 +312,144 @@ if ( $debugging_on_client ) {
     my $ret_code = $rpc->debug_run( 'scan_host', $scan_conf );
 
 } else {
+
+    use DateTime;
+
+    # insert scan
+    my $scan_row = $schema->resultset('scan')->create({
+        mconf_id => $mconf_id,
+        start_time => DateTime->now,
+        stop_time => undef,
+        pid => $$,
+        items => undef,
+    });
+    my $scan_id = $scan_row->scan_id;
+
+    $schema->storage->txn_begin;
+
+    #$scan_conf->{debug_recursion_limit} = int( rand(100)+1 ); # debug
     $result_obj = $rpc->run( 'scan_host', $scan_conf );
-    $result_obj->dump();
+    #$result_obj->dump();
+
+    my $response = $result_obj->getResponse();
+    my $loaded_items = $response->{loaded_items};
+    my %path_to_num = ();
+    foreach my $num ( 0..$#$loaded_items ) {
+        my $item = $loaded_items->[ $num ];
+        print "$item->{path} ($num)\n";
+        # 2 .. found on host, initial status
+        # if not changed to 0 (in db and the same) or 1 (in db and changed) then 2 means 'new' -> insert to db
+        $path_to_num{ $item->{path} } = [ 2, $num ];
+    }
+
+    my $prev_sc_idata_rs = $schema->resultset('sc_idata')->search(
+        {
+            'me.found' => 1,
+            'me.newer_id' => undef,
+            'sc_mitem_id.machine_id' => $machine_id,
+        },
+        {
+            'join' => [ 'sc_mitem_id' ],
+            'select' => [ 'me.sc_idata_id', 'me.sc_mitem_id', 'sc_mitem_id.path', 'me.mtime', ],
+            'as' => [ 'sc_idata_id', 'sc_mitem_id', 'path', 'mtime', ],
+            'order_by' => [ 'sc_mitem_id.path', ],
+        },
+    );
+
+    my $sc_mitem_rs = $schema->resultset('sc_mitem');
+    my $sc_idata_rs = $schema->resultset('sc_idata');
+
+    while ( my $row_obj = $prev_sc_idata_rs->next ) {
+        my %row = ( $row_obj->get_columns() );
+        my $path = $row{path};
+        #print Dumper( \%row ) if $ver >= 5;
+
+        my $insert_idata = undef;
+
+        # Found.
+        if ( exists $path_to_num{ $path } ) {
+            my $new_item_data = $loaded_items->[ $path_to_num{ $path }->[1] ];
+            if ( has_same_data($new_item_data,\%row) ) {
+                # Same data -> do nothing.
+                $path_to_num{ $path }->[0] = 0; # 0 .. found in db and not changed
+
+            } else {
+                # Data changed -> do update.
+                $path_to_num{ $path }->[0] = 1; # 1 .. found in db and changed
+
+                my $sc_mitem_id = $row{'sc_mitem_id'};
+                print "updating status to new values sc_mitem_id $sc_mitem_id\n" if $ver >= 4;
+                my $insert_idata_base = {
+                    sc_mitem_id => $sc_mitem_id,
+                    scan_id => $scan_id,
+                    newer_id => undef,
+                    found => 1,
+                };
+                #$new_item_data->{size} = int rand(500); # debug
+                $insert_idata = get_base_idata( $insert_idata_base, $new_item_data );
+            }
+
+        # Not found on during scan on client machine -> delete.
+        } else {
+            my $sc_mitem_id = $row{'sc_mitem_id'};
+            print "updating status to delete sc_mitem_id $sc_mitem_id\n" if $ver >= 4;
+            my $insert_idata_base = {
+                sc_mitem_id => $sc_mitem_id,
+                scan_id => $scan_id,
+                newer_id => undef,
+                found => 0,
+            };
+            $insert_idata = get_base_idata( $insert_idata_base, {} );
+        }
+
+        if ( defined $insert_idata ) {
+            my $sc_idata_row = $sc_idata_rs->create( $insert_idata );
+            my $new_sc_idata_id = $sc_idata_row->sc_idata_id;
+
+            my $old_sc_idata_rs = $schema->resultset('sc_idata')->find( $row{'sc_idata_id'} );
+            $old_sc_idata_rs->update({ newer_id => $new_sc_idata_id });
+        }
+    }
+
+
+    foreach my $num ( 0..$#$loaded_items ) {
+        my $item = $loaded_items->[ $num ];
+        my $path = $item->{path};
+        # insert
+        if ( $path_to_num{ $path }->[0] == 2 ) {
+            print "inserting path $path (sc_mitem_id=" if $ver >= 4;
+
+            my $sc_mitme_row = $sc_mitem_rs->find_or_create({
+                machine_id => $machine_id,
+                path => $path,
+            });
+            my $sc_mitem_id = $sc_mitme_row->sc_mitem_id;
+            print $sc_mitem_id if $ver >= 4;
+
+            my $insert_idata_base = {
+                sc_mitem_id => $sc_mitem_id,
+                scan_id => $scan_id,
+                newer_id => undef,
+                found => 1,
+            };
+            my $insert_idata = get_base_idata( $insert_idata_base, $item );
+            my $sc_idata_row = $sc_idata_rs->create( $insert_idata );
+            my $new_sc_idata_id = $sc_idata_row->sc_idata_id;
+            print ", sc_idata_id=" . $new_sc_idata_id if $ver >= 4;
+            print ")\n"  if $ver >= 4;
+        }
+    }
+
+    $schema->storage->txn_commit;
+
+    #print Dumper( \%path_to_num ) if $ver >= 5;
+
+    # update scan
+    $scan_row->update({
+        items => scalar(@$loaded_items),
+        stop_time => DateTime->now,
+    });
+
 }
 
 

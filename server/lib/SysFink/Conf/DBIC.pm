@@ -36,23 +36,57 @@ sub new {
 }
 
 
+=head2 get_machine_id
+
+Return machine_id for given search params.
+
+=cut
+
+sub get_machine_id {
+    my ( $self, $search_data ) = @_;
+
+    my $machine_row = $self->{schema}->resultset('machine')->find( $search_data );
+    return $machine_row->machine_id;
+}
+
+
+=head2 get_machine_active_mconf_id
+
+Return active mconf_id for machine_id.
+
+=cut
+
+sub get_machine_active_mconf_id {
+    my ( $self, $machine_id ) = @_;
+
+    my $mconf_row = $self->{schema}->resultset('mconf')->find({
+        'machine_id.machine_id' => $machine_id,
+        'me.active' => 1,
+    },{
+        'join' => [ 'machine_id' ],
+    });
+
+
+    return $mconf_row->id;
+}
+
+
 =head2 load_general_conf
 
-Constructor. Parameters: schema.
+Load and canonize configuration for given machine_id.
 
 =cut
 
 sub load_general_conf {
-    my ( $self, $machine_name ) = @_;
+    my ( $self, $machine_id, $mconf_id ) = @_;
 
     my $mconf_rs = $self->{schema}->resultset('mconf_sec_kv')->search(
         {
-            'machine_id.name' => $machine_name,
-            'mconf_id.active' => 1,
+            'mconf_sec_id.mconf_id' => $mconf_id,
             'mconf_sec_id.name' => 'general',
         },
         {
-            'join' => { 'mconf_sec_id' => { 'mconf_id' => 'machine_id' } },
+            'join' => [ 'mconf_sec_id' ],
             'select' => [ 'key', 'value', 'num' ],
             'order_by' => [ 'key', 'num' ],
         },
