@@ -22,7 +22,7 @@ sub get_canon_dir {
 
     my $canon_dir = undef;
 
-    if ( $dir eq "" ) {
+    if ( $dir eq '' ) {
         $canon_dir = '/';
 
     } else {
@@ -280,7 +280,9 @@ sub scan_recurse {
 
     # Directory number limit (this is not file number limit nor recursion limit).
     # Depends on client memory (and swap) size.
-    if ( $self->{debug_out} && $#{ $self->{loaded_items} } > 1_000 ) {
+    if ( ( $self->{debug_out} && $#{ $self->{loaded_items} } > 1_000 )
+         || ( defined $self->{debug_recursion_limit} && $#{ $self->{loaded_items} } > $self->{debug_recursion_limit} )
+    ) {
         unless ( $self->{debug_data}->{recursive_limit} ) {
             $self->add_error("No all files. Recursion limit reached!");
             $self->{debug_data}->{recursive_limit} = 1;
@@ -355,6 +357,7 @@ sub scan {
     my ( $self, $args ) = @_;
 
     $self->process_base_command_args( $args );
+    $self->{debug_recursion_limit} = $args->{debug_recursion_limit};
 
     # Prepare paths.
     $self->{paths} = {};
@@ -367,8 +370,8 @@ sub scan {
 
     $self->{paths_with_processed_flags} = {};
 
-    unless ( exists $self->{paths}->{'/'} ) {
-        $self->add_error("Base path  not found.");
+    unless ( exists $self->{paths}->{''} ) {
+        $self->add_error("Base path not found.");
         return 0;
     }
 
@@ -384,7 +387,7 @@ sub scan {
         print " >>> $full_path flags '" . $self->flags_hash_to_str( %$flags ) . "' (plus_found=$plus_found)\n" if $self->{debug_out} >= 3;
 
         my $is_dir = 1;
-        if ( $full_path ne '/' ) {
+        if ( $full_path ne '' ) {
             my $s_ret_code;
             ( $s_ret_code, $is_dir ) = $self->add_item( $full_path, $flags, '' );
         }

@@ -147,7 +147,7 @@ sub conf_dir_path {
 
 =head2 canon_joined_flag_strs
 
-Canonize flag  strings joined together. E.g. -B+B+S-S-B -> -B-S.
+Canonize flag strings joined together. E.g. -B+B+S-S-B -> -B-S.
 
 =cut
 
@@ -179,9 +179,9 @@ sub flags_hash_to_str {
 }
 
 
-=head2 conf_dir_path
+=head2 get_keyword_flags
 
-Set/get conf_dir_path.
+TODO ...
 
 =cut
 
@@ -477,15 +477,19 @@ sub normalize_paths {
         if ( exists $sec_conf->{paths} ) {
             # Lazy loading.
             unless ( defined $def_flags ) {
-                ( $def_flags, $def_path ) = $self->get_keyword_flags( 'include', '/' );
+                ( $def_flags, $def_path ) = $self->get_keyword_flags( 'include', '' );
             }
 
             # Sort it.
             $sec_conf->{paths} = [ sort { $a->[0] cmp $b->[0] } @{$sec_conf->{paths}} ];
 
-            # If first item don't start \[, then add \ and default (include) flags.
-            unless ( $sec_conf->{paths}->[0] =~ m{^\/\[} ) {
-                unshift @{$sec_conf->{paths}}, [ $def_path, $def_flags];
+            # If first item isn't root path ('').
+            if ( $sec_conf->{paths}->[0]->[0] ne '' ) {
+                unshift @{$sec_conf->{paths}}, [ $def_path, $def_flags ];
+
+            } else {
+                my $base_flag_str = $def_flags . $sec_conf->{paths}->[0]->[1];
+                $sec_conf->{paths}->[0]->[1] = $self->canon_joined_flag_strs( $base_flag_str );
             }
 
             #use Data::Dumper; print Dumper( $sec_conf->{paths} ); # debug
@@ -521,6 +525,7 @@ sub normalize_paths {
         }
     }
 
+    #use Data::Dumper; print Dumper( $host_conf ); exit;
     return 1;
 }
 

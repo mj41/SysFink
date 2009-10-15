@@ -56,7 +56,7 @@ my @all_test_cases = ();
     ];
 
     $test_case->{paths_to_scan} = [
-        [ '/', $default_flags, ],
+        [ '', $default_flags, ],
     ];
 
     $test_case->{expected} = [
@@ -89,7 +89,7 @@ my @all_test_cases = ();
     ];
 
     $test_case->{paths_to_scan} = [
-        [ '/', $default_flags, ],
+        [ '', $default_flags, ],
     ];
 
     $test_case->{expected} = [
@@ -139,7 +139,7 @@ my @all_test_cases = ();
     my $my_flags = { %$default_flags };
     $my_flags->{5} = '-';
     $test_case->{paths_to_scan} = [
-        [ '/', $my_flags ],
+        [ '', $my_flags ],
         [ '/home/mjdir', { '5' => '+' } ],
         [ '/tmp', $skip_flags ],
     ];
@@ -198,7 +198,7 @@ my @all_test_cases = ();
     my $my_flags = { %$default_flags };
     $my_flags->{5} = '-';
     $test_case->{paths_to_scan} = [
-        [ '/', $my_flags ],
+        [ '', $my_flags ],
         [ '/home/mjdir', $skip_flags ],
         [ '/home/mjdir/subfile3yes', { '5' => '+' } ],
         [ '/home/mjdir/asdir1/asdir2/asdir3/sfile6yes', { '5' => '+' } ],

@@ -1,0 +1,5 @@
+path        [-5BD]/*
+path        [-5BDG]/dev/*
+include     /home/*
+exclude     /var/*
+path        [+5B]/dev/some/*
