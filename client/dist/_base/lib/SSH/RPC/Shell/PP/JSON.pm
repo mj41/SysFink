@@ -15,7 +15,7 @@ Main method. Run one command. Pack request/response as JSON.
 =cut
 
 sub run {
-    my ( $self, $fh ) = shift;
+    my ( $self, $fh ) = @_;
 
     $fh = \*STDIN unless defined $fh;
 
