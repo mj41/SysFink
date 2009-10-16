@@ -44,18 +44,33 @@ sub run {
         args    => $args,
     }) . "\n";
     my $ssh = $self->{ssh};
-    my $out;
     my $response;
-    if ( $out = $ssh->capture({ stdin_data => $json, ssh_opts => ['-T'] }, $self->{client_start_cmd}) ) {
+
+    my $out_fh;
+    my ($in_fh, $out_fh, undef, $pid) = $ssh->open_ex(
+        { stdin_pipe => 1, stdout_pipe => 1, ssh_opts => ['-T'] },
+        $self->{client_start_cmd}
+    );
+
+    if ( defined $pid ) {
+        print $in_fh $json;
+
+        my $out = '';
+        while ( my $line = <$out_fh> ) {
+            $out .= $line;
+        }
+
         $response = eval { JSON->new->utf8->decode($out) };
         if ( $@ ) {
             $response = { error=>"Response translation error. $@".$ssh->error, status=>510 };
         }
-    }
-    else {
+
+    } else {
         $response = { error=>"Transmission error. ".$ssh->error, status=>406 };
     }
-    return SSH::RPC::PP::Result->new($response);
+    my $response = SSH::RPC::PP::Result->new($response);
+    #use Data::Dumper; print Dumper( $response ); exit;
+    return $response;
 }
 
 
