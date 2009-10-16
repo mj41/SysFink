@@ -2,15 +2,15 @@ package SysFink::ScanHost;
 
 use strict;
 use warnings;
-use base 'SysFink::RunObj::Base';
+use base 'SSH::RPC::Shell::PP::Cmd::BaseJSON';
 
 use Fcntl ':mode';
 
 
 sub new {
-    my ( $class, $shared_data, $hash_obj ) = @_;
+    my ( $class, $hash_obj ) = @_;
 
-    my $self = $class->SUPER::new( $shared_data );
+    my $self = $class->SUPER::new();
     $self->{hash_obj} = $hash_obj;
 
     return $self;
@@ -332,27 +332,6 @@ sub scan_recurse {
 }
 
 
-sub reset_state {
-    my ( $self ) = @_;
-
-    $self->{paths} = {};
-
-    $self->{loaded_items} = undef;
-    $self->{errors} = [];
-
-    return 1;
-}
-
-
-sub get_result {
-    my ( $self ) = @_;
-    return (
-        loaded_items => $self->{loaded_items},
-        errors => $self->{errors},
-    );
-}
-
-
 sub scan {
     my ( $self, $args ) = @_;
 
@@ -375,8 +354,8 @@ sub scan {
         return 0;
     }
 
+    #$self->send_ok_response( { info => 'started ok', } );
 
-    $self->{loaded_items} = [];
     my $ret_code;
     foreach my $full_path ( sort keys %{ $self->{paths} } ) {
         # Skip already scanned items.
@@ -400,6 +379,22 @@ sub scan {
     }
 
     return $ret_code;
+}
+
+
+sub run_scan_host {
+    my ( $self, $args ) = @_;
+
+    $self->{loaded_items} = [];
+    $self->{errors} = [];
+
+    my $ret_code = $self->scan( $args );
+
+    my $result = {
+        loaded_items => $self->{loaded_items},
+        errors => $self->{errors},
+    };
+    return $self->send_ok_response( $result, 1 );
 }
 
 

@@ -1,15 +1,16 @@
-package SysFink::RunObj::Base;
+package SSH::RPC::Shell::PP::Cmd::Base;
 
 use strict;
 use Data::Dumper;
 
 
 sub new {
-    my ( $class, $shared_data ) = @_;
+    my ( $class ) = @_;
 
     my $self  = {};
     $self->{errors} = [];
-    $self->{shared_data} = $shared_data;
+    $self->{debug} = 0;
+    $self->{debug_out} = 0;
 
     bless( $self, $class );
     return $self;
@@ -21,7 +22,6 @@ sub process_base_command_args {
 
     $self->{debug} = $args->{debug};
 
-    $self->{debug_out} = 0;
     $self->{debug_out} = $args->{debug_out} if $args->{debug_out};
 
     if ( $self->{debug} ) {
@@ -47,7 +47,7 @@ sub get_errors {
 
 sub debug {
     my ( $self, $output_to_add ) = @_;
-    $self->{shared_data}->{debug_output} .= $output_to_add;
+    $self->{debug_output} .= $output_to_add;
     return 1;
 }
 
@@ -64,5 +64,35 @@ sub dump {
     return 1;
 }
 
+
+sub flush_debug_output {
+    my ( $self ) = @_;
+    my $debug_output = $self->{debug_output};
+    $self->{debug_output} = '';
+    return $debug_output;
+}
+
+
+=head2 pack_ok_response ()
+
+Pack result to success response and add debug_output.
+
+=cut
+
+sub pack_ok_response {
+    my ( $self, $response, $is_last ) = @_;
+
+    my $result = {
+        status => 200,
+        response => $response,
+        version => $__PACKAGE__::VERSION,
+    };
+    $result->{is_last} = 1 if $is_last;
+
+    my $debug_output = $self->flush_debug_output();
+    $result->{debug_output} = $debug_output if $debug_output;
+
+    return $result;
+}
 
 1;

@@ -1,5 +1,8 @@
 package SysFink::FileHash;
 
+use base 'SysFink::FileHash::Base';
+
+
 use Digest::MD5;
 
 

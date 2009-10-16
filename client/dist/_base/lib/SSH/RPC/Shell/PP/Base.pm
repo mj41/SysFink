@@ -16,15 +16,15 @@ sub new {
 }
 
 
-=head2 process_request( request ) 
+=head2 process_request( request )
 
 Process request.
 
 =cut
 
 sub process_request {
-    my ($self, $request) = @_;
-    
+    my ( $self, $request ) = @_;
+
     my $command_sub_name = 'run_'.$request->{command};
     my $args = $request->{args};
     if ( my $sub = $self->can($command_sub_name) ) {
@@ -34,26 +34,24 @@ sub process_request {
 }
 
 
-=head2 pack_ok_response () 
-
-Pack result to success response.
-
-=cut
-
-sub pack_ok_response {
-    my ( $self, %response ) = @_;
-    return { status => 200, response => \%response };
+sub init_test_obj {
+    my ( $self ) = @_;
+    $self->{test_obj} = SSH::RPC::Shell::PP::TestCmds->new();
 }
 
 
-=head2 run_noop () 
-
-This command method just returns a successful status so you know that communication is working.
-
-=cut
-
-sub run_noop {
-    return { status => 200 };
+sub run_test_noop {
+    my ( $self, $file ) = @_;
+    $self->init_test_obj() unless $self->{test_obj};
+    return $self->{test_obj}->run_test_noop();
 }
+
+
+sub run_test_three_parts {
+    my ( $self, $file ) = @_;
+    $self->init_test_obj() unless $self->{test_obj};
+    return $self->{test_obj}->run_test_three_parts();
+}
+
 
 1;

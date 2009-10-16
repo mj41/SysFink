@@ -88,6 +88,18 @@ sub getStatus {
 }
 
 
+=head2 isLast ()
+
+Returns 1 if this is last result object.
+
+=cut
+
+sub isLast {
+    my $self = shift;
+    return $self->{result}->{is_last};
+}
+
+
 =head2 getAllStatusMessages ()
 
 Return the status code mesages hash.
@@ -100,9 +112,12 @@ sub getAllStatusMessages {
         '400' => 'Malform request received by shell.',
         '405' => 'RPC called a method that doesn\'t exist.',
         '406' => 'Error transmitting RPC.',
+
         '500' => 'An undefined error occured in the shell.',
         '510' => 'Error translating return document in client.',
         '511' => 'Error translating return document in shell.',
+
+        '600' => 'No response from client.',
     };
 }
 

@@ -13,6 +13,7 @@ sub new {
     $self->{_test_conf_paths} = [];
     $self->{_test_conf_dirs} = {};
     $self->{_test_conf_stat_modifs} = {};
+    $self->{_test_all_results} = [];
 
     foreach my $num ( 0..$#$test_conf ) {
         my $item = $test_conf->[ $num ];
@@ -109,6 +110,22 @@ sub my_lstat {
         $stat{atime}, $stat{mtime}, $stat{ctime},
         $stat{blksize}, $stat{blocks}
     );
+}
+
+
+sub send_ok_response {
+    my ( $self, $response, $is_last ) = @_;
+
+    my $result = $self->pack_ok_response( $response, $is_last );
+    push @{$self->{_test_all_results}}, $result;
+    return 1;
+}
+
+
+sub get_all_results {
+    my ( $self ) = @_;
+
+    return $self->{_test_all_results};
 }
 
 

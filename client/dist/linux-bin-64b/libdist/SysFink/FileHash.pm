@@ -1,6 +1,6 @@
 package SysFink::FileHash;
 
-use base 'SysFink::FileHash::Base';
+use base 'SysFink::FileHash::BaseBinUtil';
 
 
 sub hash_type {

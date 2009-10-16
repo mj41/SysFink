@@ -31,6 +31,7 @@ sub run {
         last if defined $request;
     }
 
+
     my $result = $self->process_request($request);
     my $encoded_result = eval{ JSON->new->pretty->utf8->encode($result) };
     if ( $@ ) {

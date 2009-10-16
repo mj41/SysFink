@@ -269,25 +269,20 @@ run_ssh_cmd( $ssh, "ls -R $client_src_dest_dir" );
 
 
 my $client_src_dest_fp = catfile( $client_src_dest_dir, $client_src_name );
-
 my $client_start_cmd = "nice -n 10 /usr/bin/perl $client_src_dest_fp 5";
-
-# ToDo - use only one Perl process
-#my ( $in_pipe, $out_pipe, undef, $pid ) = $ssh->open_ex(
-#    {
-#        stdin_pipe => 1,
-#        stdout_pipe => 1
-#   },
-#    @cmd
-#);
-
-
 my $rpc = SSH::RPC::PP::Client->new( $ssh, $client_start_cmd );
 
 my $result_obj;
 
-$result_obj = $rpc->run( 'noop', $client_src_dest_fp );
+$result_obj = $rpc->run( 'test_noop', $client_src_dest_fp );
 $result_obj->dump();
+
+$result_obj = $rpc->run( 'test_three_parts', $client_src_dest_fp );
+$result_obj->dump();
+while ( $result_obj->isSuccess && !$result_obj->isLast ) {
+    $result_obj = $rpc->get_next_response();
+    $result_obj->dump();
+}
 
 
 my $file_to_hash = catfile( $client_src_dest_dir, '/lib/SysFink/FileHash/Base.pm' );
@@ -327,8 +322,11 @@ if ( $debugging_on_client ) {
 
     $schema->storage->txn_begin;
 
-    #$scan_conf->{debug_recursion_limit} = int( rand(100)+1 ); # debug
+    $scan_conf->{debug_recursion_limit} = int( rand(100)+1 ); # debug
     $result_obj = $rpc->run( 'scan_host', $scan_conf );
+    $result_obj->dump();
+
+    $result_obj = $rpc->get_next_response();
     #$result_obj->dump();
 
     my $response = $result_obj->getResponse();

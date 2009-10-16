@@ -12,8 +12,8 @@ use lib 'lib';
 use lib 'libext';
 use lib 'dist/_base/lib';
 
-use SysFinkScanHostTest; # SysFink::ScanHostTest
-use SysFinkFileHashTest; # SysFink::FileHashTest
+use SysFink::ScanHostTest;
+use SysFink::FileHashTest;
 
 my $debug_out = $ARGV[0] || 0;
 my $test_num_to_run = $ARGV[1] || undef;
@@ -253,23 +253,28 @@ foreach my $num ( @test_nums ) {
 
     my $shared_data = {};
     my $hash_obj = SysFink::FileHashTest->new();
-    my $scan_obj = SysFink::ScanHostTest->new( $test_case->{test_obj_conf}, $shared_data, $hash_obj );
+    my $scan_obj = SysFink::ScanHostTest->new( $test_case->{test_obj_conf}, $hash_obj );
 
     my $scan_conf = {
         'paths' => [ sort { $a->[0] cmp $b->[0] } @{ $test_case->{paths_to_scan} } ],
         'debug_out' => $debug_out,
     };
 
-    my $ret_code = $scan_obj->scan( $scan_conf );
-    my %result = $scan_obj->get_result();
+    my $ret_code = $scan_obj->run_scan_host( $scan_conf );
+    my $all_results = $scan_obj->get_all_results();
 
-    unless ( $ret_code ) {
-        foreach my $error ( @{ $result{errors} } ) {
-            print "$error\n";
-        }
+    my $joined_results = {};
+    $joined_results->{loaded_items} = [];
+    foreach my $result ( @$all_results ) {
+        $joined_results->{loaded_items} = [
+            @{$joined_results->{loaded_items}},
+            @{$result->{response}->{loaded_items}}
+        ];
     }
+    #use Data::Dumper; print Dumper( $joined_results ); exit;
 
-    my $loaded = $result{loaded_items};
+
+    my $loaded = $joined_results->{loaded_items};
     my $test_name = $test_case->{tescase_name};
     my $ok = is_deeply( $loaded, $test_case->{expected}, $test_name );
 

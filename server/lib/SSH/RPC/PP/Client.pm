@@ -55,27 +55,67 @@ sub run {
     if ( defined $pid ) {
         print $in_fh $json;
 
-        my $out = '';
-        while ( my $line = <$out_fh> ) {
-            $out .= $line;
-        }
+       my $out = '';
+       my $empty_lines = 0;
 
-        $response = eval { JSON->new->utf8->decode($out) };
-        if ( $@ ) {
-            $response = { error=>"Response translation error. $@".$ssh->error, status=>510 };
-        }
+       $self->{next_response_sub} = sub {
+
+            my $out_to_decode = undef;
+            while ( my $line = <$out_fh> ) {
+                if ( $line eq "\n" ) {
+                    $empty_lines++;
+
+                } else {
+                    # two empty lines -> output to decode send
+                    if ( $empty_lines >= 2 ) {
+                        $out_to_decode = $out;
+                        $empty_lines = 0;
+                        $out = $line;
+                        last;
+                    }
+
+                    $empty_lines = 0;
+                    $out .= $line;
+                }
+            }
+
+            $out_to_decode = $out unless defined $out_to_decode;
+
+            if ( $out_to_decode ) {
+                my $response = eval { JSON->new->utf8->decode( $out_to_decode ) };
+                if ( $@ ) {
+                    $response = { error=>"Response translation error. $@".$ssh->error, status=>510 };
+                }
+                return $response;
+            }
+
+            return { error=>"No response from client.", status=>600 };
+
+        }; # sub end
+
+        $response = $self->{next_response_sub}->();
 
     } else {
         $response = { error=>"Transmission error. ".$ssh->error, status=>406 };
     }
-    my $response = SSH::RPC::PP::Result->new($response);
-    #use Data::Dumper; print Dumper( $response ); exit;
-    return $response;
+    my $result_obj = SSH::RPC::PP::Result->new($response);
+    #use Data::Dumper; print Dumper( $result_obj ); exit;
+    return $result_obj;
+}
+
+
+sub get_next_response {
+    my ( $self ) = @_;
+
+    my $response = $self->{next_response_sub}->();
+    my $result_obj = SSH::RPC::PP::Result->new( $response );
+    return $result_obj;
 }
 
 
 sub debug_run {
     my ( $self, $command, $args ) = @_;
+
     my $json = JSON->new->utf8->pretty->encode({
         command => $command,
         args    => $args,
