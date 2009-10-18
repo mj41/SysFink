@@ -4,6 +4,23 @@ use strict;
 use Data::Dumper;
 
 
+=head1 NAME
+
+SSH::RPC::Shell::PP::Cmd::Base - Base class for remote side commands.
+
+=head1 SYNOPSIS
+
+ToDo. See L<SysFink>.
+
+=head1 METHODS
+
+
+=head2 new
+
+Constructor.
+
+=cut
+
 sub new {
     my ( $class ) = @_;
 
@@ -16,6 +33,11 @@ sub new {
     return $self;
 }
 
+=head2 process_base_command_args
+
+Prepare common command parameters.
+
+=cut
 
 sub process_base_command_args {
     my ( $self, $args ) = @_;
@@ -31,6 +53,11 @@ sub process_base_command_args {
     return 1;
 }
 
+=head2 add_error
+
+Add error message to array or errors.
+
+=cut
 
 sub add_error {
     my ( $self, $err_str ) = @_;
@@ -39,11 +66,23 @@ sub add_error {
 }
 
 
+=head2 get_errors
+
+Return array of error messages.
+
+=cut
+
 sub get_errors {
     my ( $self ) = @_;
     return $self->{errors};
 }
 
+
+=head2 debug
+
+Add string to debug output.
+
+=cut
 
 sub debug {
     my ( $self, $output_to_add ) = @_;
@@ -51,6 +90,12 @@ sub debug {
     return 1;
 }
 
+
+=head2 dump
+
+Add stringified perl data structures to debug output.
+
+=cut
 
 sub dump {
     my @caller0 = caller(0);
@@ -64,6 +109,12 @@ sub dump {
     return 1;
 }
 
+
+=head2 flush_debug_output
+
+Return curret debug output and reset it.
+
+=cut
 
 sub flush_debug_output {
     my ( $self ) = @_;
@@ -94,5 +145,6 @@ sub pack_ok_response {
 
     return $result;
 }
+
 
 1;

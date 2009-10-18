@@ -8,7 +8,7 @@ use SSH::RPC::PP::Result;
 
 =head1 NAME
 
-SSH::RPC::PP::Client - The requestor, or client side, of an RPC call over SSH.
+SSH::RPC::PP::Client - The requestor of an RPC call over SSH.
 
 =head1 SYNOPSIS
 
@@ -20,9 +20,10 @@ Based on SSH::RPC::Client, but without Class::InsideOut.
 
 =head1 METHODS
 
+
 =head2 new
 
-Constructor. Parameters: conf_dir_path.
+Constructor.
 
 =cut
 
@@ -32,86 +33,108 @@ sub new {
     my $self = {};
     $self->{ssh} = $ssh_obj;
     $self->{client_start_cmd} = $client_start_cmd;
+
+    $self->{out_fh} = undef;
+
     bless( $self, $class );
     return $self;
 }
 
 
-sub run {
-    my ( $self, $command, $args ) = @_;
-    my $json = JSON->new->utf8->pretty->encode({
-        command => $command,
-        args    => $args,
-    }) . "\n";
-    my $ssh = $self->{ssh};
-    my $response;
+=head2 get_next_raw_response
 
-    my $out_fh;
-    my ($in_fh, $out_fh, undef, $pid) = $ssh->open_ex(
-        { stdin_pipe => 1, stdout_pipe => 1, ssh_opts => ['-T'] },
-        $self->{client_start_cmd}
-    );
+Return next response from client in raw hash format.
 
-    if ( defined $pid ) {
-        print $in_fh $json;
+=cut
 
-       my $out = '';
-       my $empty_lines = 0;
+sub get_next_raw_response {
+    my ( $self ) = @_;
 
-       $self->{next_response_sub} = sub {
-
-            my $out_to_decode = undef;
-            while ( my $line = <$out_fh> ) {
-                if ( $line eq "\n" ) {
-                    $empty_lines++;
-
-                } else {
-                    # two empty lines -> output to decode send
-                    if ( $empty_lines >= 2 ) {
-                        $out_to_decode = $out;
-                        $empty_lines = 0;
-                        $out = $line;
-                        last;
-                    }
-
-                    $empty_lines = 0;
-                    $out .= $line;
-                }
-            }
-
-            $out_to_decode = $out unless defined $out_to_decode;
-
-            if ( $out_to_decode ) {
-                my $response = eval { JSON->new->utf8->decode( $out_to_decode ) };
-                if ( $@ ) {
-                    $response = { error=>"Response translation error. $@".$ssh->error, status=>510 };
-                }
-                return $response;
-            }
-
-            return { error=>"No response from client.", status=>600 };
-
-        }; # sub end
-
-        $response = $self->{next_response_sub}->();
-
-    } else {
-        $response = { error=>"Transmission error. ".$ssh->error, status=>406 };
+    unless ( defined $self->{out_fh} ) {
+        return { error => 'Internal error: No input handle from client.', status => 501 };
     }
-    my $result_obj = SSH::RPC::PP::Result->new($response);
-    #use Data::Dumper; print Dumper( $result_obj ); exit;
-    return $result_obj;
+
+    my $out_to_decode = '';
+    my $empty_lines = 0;
+    my $out_fh = $self->{out_fh};
+    while ( my $line = <$out_fh> ) {
+        if ( $line eq "\n" ) {
+            $empty_lines++;
+            # two empty lines (or eof) -> output to decode finished
+            last if $empty_lines >= 2;
+
+        } else {
+            $empty_lines = 0;
+            $out_to_decode .= $line;
+        }
+    }
+
+    if ( $out_to_decode ) {
+        my $response = eval { JSON->new->utf8->decode( $out_to_decode ) };
+        if ( $@ ) {
+            return { error => "Response translation error. $@".$self->{ssh}->error, status => 510 };
+        }
+        return $response;
+    }
+
+    return { error => "No response from client.", status => 600 };
 }
 
+=head2 get_next_raw_response
+
+Return next response from client as L<SSH::RPC::PP::Result> object.
+
+=cut
 
 sub get_next_response {
     my ( $self ) = @_;
 
-    my $response = $self->{next_response_sub}->();
+    my $response = $self->get_next_raw_response();
     my $result_obj = SSH::RPC::PP::Result->new( $response );
     return $result_obj;
 }
 
+
+=head2 run
+
+Run command with arguments on client throug ssh and return first response (Result object).
+
+=cut
+
+sub run {
+    my ( $self, $command, $args ) = @_;
+
+    my $json = JSON->new->utf8->pretty->encode({
+        command => $command,
+        args    => $args,
+    }) . "\n" . "\n\n";
+
+    my $out_fh;
+    my ($in_fh, $out_fh, undef, $pid) = $self->{ssh}->open_ex(
+        {
+            stdin_pipe => 1,
+            stdout_pipe => 1,
+            ssh_opts => ['-T'],
+        },
+        $self->{client_start_cmd}
+    );
+
+    unless ( defined $pid ) {
+        my $response = { error => "Transmission error. ".$self->{ssh}->error, status => 406 };
+        my $result_obj = SSH::RPC::PP::Result->new( $response );
+        return $result_obj;
+    }
+
+    $self->{out_fh} = $out_fh;
+    print $in_fh $json;
+    return $self->get_next_response();
+}
+
+=head2 run
+
+Run command with arguments on client in debug mode. Do not slurp remote output.
+
+=cut
 
 sub debug_run {
     my ( $self, $command, $args ) = @_;
@@ -120,9 +143,16 @@ sub debug_run {
         command => $command,
         args    => $args,
     }) . "\n";
-    my $ssh = $self->{ssh};
-    my $ret_code = $ssh->system( { stdin_data => $json, ssh_opts => ['-T'] }, $self->{client_start_cmd} );
+
+    my $ret_code = $self->{ssh}->system(
+        {
+            stdin_data => $json,
+            ssh_opts => ['-T'],
+        },
+        $self->{client_start_cmd}
+    );
     return $ret_code;
 }
+
 
 1;

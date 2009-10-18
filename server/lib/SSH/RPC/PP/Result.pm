@@ -107,13 +107,16 @@ Return the status code mesages hash.
 =cut
 
 sub getAllStatusMessages {
+    # ToDo - is this accurate?
     return {
-        '200' => 'Success',
+        '200' => 'Success.',
+
         '400' => 'Malform request received by shell.',
         '405' => 'RPC called a method that doesn\'t exist.',
         '406' => 'Error transmitting RPC.',
 
         '500' => 'An undefined error occured in the shell.',
+        '501' => 'Internal error occured in the shell.',
         '510' => 'Error translating return document in client.',
         '511' => 'Error translating return document in shell.',
 
@@ -134,7 +137,7 @@ sub getStatusMessage {
     $self->{status_messages} = $self->getAllStatusMessages() unless defined $self->{status_messages};
     my $status_code = $self->{result}->{status};
     unless ( exists $self->{status_messages}->{ $status_code } ) {
-        return "Unknown statu message (status code $status_code).";
+        return "Unknown status message (status code $status_code).";
     }
     return $self->{status_messages}->{ $status_code };
 }

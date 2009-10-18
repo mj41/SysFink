@@ -4,42 +4,54 @@ use base 'SSH::RPC::Shell::PP::Base';
 
 use strict;
 use JSON;
-#use JSONPP;
-#use JSONPP5005;
+
+=head1 NAME
+
+SSH::RPC::Shell::PP::Base - Base class for processing requests on remote side in JSON format.
+
+=head1 SYNOPSIS
+
+ToDo. See L<SysFink>.
+
+=head1 METHODS
 
 
 =head2 run ()
 
-Main method. Run one command. Pack request/response as JSON.
+Main method. Run one command. Pack request/response to JSON.
 
 =cut
 
 sub run {
     my ( $self, $fh ) = @_;
-
     $fh = \*STDIN unless defined $fh;
 
-    my $json = JSON->new->utf8;
-    my $request;
+    my $request_text = '';
+    my $empty_lines = '';
     while ( my $line = <$fh> ) {
-        $request = eval { $json->incr_parse($line) };
+        if ( $line eq "\n" ) {
+            $empty_lines++;
+            # two empty lines (or eof) -> output to decode finished
+            last if $empty_lines >= 2;
+
+        } else {
+            $empty_lines = 0;
+            $request_text .= $line;
+        }
+    }
+
+    my $request = JSON->new->utf8->decode( $request_text );
+    my $result = $self->process_request( $request );
+
+    if ( ref $result eq 'HASH' ) {
+        my $encoded_result = eval{ JSON->new->pretty->utf8->encode($result) };
         if ( $@ ) {
-            warn $@;
-            print '{ "error" : "Malformed request.", "status" : "400" }' . "\n";
+            print '{ "error" : "Malformed response.", "status" : "511" }' . "\n";
             return 0;
         }
-        last if defined $request;
+        print $encoded_result."\n";
     }
 
-
-    my $result = $self->process_request($request);
-    my $encoded_result = eval{ JSON->new->pretty->utf8->encode($result) };
-    if ( $@ ) {
-        print '{ "error" : "Malformed response.", "status" : "511" }' . "\n";
-        return 0;
-    }
-
-    print $encoded_result."\n";
     return 1;
 }
 

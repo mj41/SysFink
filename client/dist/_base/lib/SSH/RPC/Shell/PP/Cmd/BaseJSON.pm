@@ -6,6 +6,24 @@ use base 'SSH::RPC::Shell::PP::Cmd::Base';
 use JSON;
 
 
+
+=head1 NAME
+
+SSH::RPC::Shell::PP::Cmd::BaseJSON - Base class for shell commands in JSON format.
+
+=head1 SYNOPSIS
+
+ToDo. See L<SysFink>.
+
+=head1 METHODS
+
+
+=head2 send_ok_response
+
+Pack and send ok response to client as JSON.
+
+=cut
+
 sub send_ok_response {
     my ( $self, $response, $is_last ) = @_;
 

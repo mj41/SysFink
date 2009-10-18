@@ -5,6 +5,27 @@ use strict;
 $SSH::RPC::Shell::PP::Base::VERSION = '0.100';
 
 
+=head1 NAME
+
+Sysfink::SSH::RPC::Shell - The shell of an RPC call over SSH.
+
+=head1 SYNOPSIS
+
+ToDo. See L<SysFink>.
+
+=head1 DESCRIPTION
+
+Based on SSH::RPC::Shell, but without Class::InsideOut.
+
+=head1 METHODS
+
+
+=head2 new
+
+Constructor.
+
+=cut
+
 sub new {
     my ( $class, $ver ) = @_;
 
@@ -18,7 +39,7 @@ sub new {
 
 =head2 process_request( request )
 
-Process request.
+Process request. Return ret_code or result hash.
 
 =cut
 
@@ -34,11 +55,23 @@ sub process_request {
 }
 
 
+=head2 init_test_obj
+
+Initialize test run object (SSH::RPC::Shell::PP::TestCmds).
+
+=cut
+
 sub init_test_obj {
     my ( $self ) = @_;
     $self->{test_obj} = SSH::RPC::Shell::PP::TestCmds->new();
 }
 
+
+=head2 run_test_noop
+
+Roon noop command on test run object.
+
+=cut
 
 sub run_test_noop {
     my ( $self, $file ) = @_;
@@ -46,6 +79,12 @@ sub run_test_noop {
     return $self->{test_obj}->run_test_noop();
 }
 
+
+=head2 run_test_three_parts
+
+Roon test_three_parts command on test run object.
+
+=cut
 
 sub run_test_three_parts {
     my ( $self, $file ) = @_;
