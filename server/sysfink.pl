@@ -297,8 +297,11 @@ $result_obj = $rpc->run( 'hash_type_desc' );
 $result_obj->dump();
 
 
+my $max_items_in_one_response = 1_000;
+$max_items_in_one_response = $general_conf->{max_items_in_one_response} if defined $general_conf->{max_items_in_one_response};
 my $scan_conf = {
     'paths' => $general_conf->{paths},
+    'max_items_in_one_response' => $max_items_in_one_response,
 };
 
 if ( $debugging_on_client ) {
@@ -322,15 +325,25 @@ if ( $debugging_on_client ) {
 
     $schema->storage->txn_begin;
 
-    $scan_conf->{debug_recursion_limit} = int( rand(100)+1 ); # debug
+    #$scan_conf->{debug_recursion_limit} = int( rand(100)+1 ); # debug
+    #$scan_conf->{debug_recursion_limit} = 1_000; # debug
+
     $result_obj = $rpc->run( 'scan_host', $scan_conf );
-    $result_obj->dump();
-
-    $result_obj = $rpc->get_next_response();
-    #$result_obj->dump();
-
     my $response = $result_obj->getResponse();
     my $loaded_items = $response->{loaded_items};
+
+    while ( $result_obj->isSuccess && !$result_obj->isLast ) {
+        $result_obj = $rpc->get_next_response();
+        #$result_obj->dump();
+        $response = $result_obj->getResponse();
+        $loaded_items = [
+            @$loaded_items,
+            @{$response->{loaded_items}}
+        ];
+    }
+    #use Data::Dumper; print Dumper( $loaded_items );
+
+
     my %path_to_num = ();
     foreach my $num ( 0..$#$loaded_items ) {
         my $item = $loaded_items->[ $num ];
@@ -448,6 +461,7 @@ if ( $debugging_on_client ) {
         stop_time => DateTime->now,
     });
 
+    #print "sleeping ...\n"; sleep(10*60); # debug size of used memory
 }
 
 

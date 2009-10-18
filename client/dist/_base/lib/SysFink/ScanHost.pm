@@ -262,6 +262,10 @@ sub add_item {
 
     push @{ $self->{loaded_items} }, $item_info;
 
+    if ( scalar(@{$self->{loaded_items}}) >= $self->{max_items_in_one_response} ) {
+        $self->send_state( 0 );
+    }
+
     return ( 1, $is_dir );
 }
 
@@ -280,8 +284,8 @@ sub scan_recurse {
 
     # Directory number limit (this is not file number limit nor recursion limit).
     # Depends on client memory (and swap) size.
-    if ( ( $self->{debug_out} && $#{ $self->{loaded_items} } > 1_000 )
-         || ( defined $self->{debug_recursion_limit} && $#{ $self->{loaded_items} } > $self->{debug_recursion_limit} )
+    if ( ( $self->{debug_out} && $self->{all_loaded_items_num_offset} > 1_000 )
+         || ( defined $self->{debug_recursion_limit} && $self->{all_loaded_items_num_offset} > $self->{debug_recursion_limit} )
     ) {
         unless ( $self->{debug_data}->{recursive_limit} ) {
             $self->add_error("No all files. Recursion limit reached!");
@@ -332,29 +336,37 @@ sub scan_recurse {
 }
 
 
+sub reset_state {
+    my ( $self, $full_reset ) = @_;
+
+    if ( $full_reset ) {
+        $self->{all_loaded_items_num_offset} = 0;
+    } else {
+        $self->{all_loaded_items_num_offset} += scalar( @{$self->{loaded_items}} );
+    }
+
+    $self->{loaded_items} = [];
+    $self->{errors} = [];
+
+    return 1;
+}
+
+
+sub send_state {
+    my ( $self, $is_last ) = @_;
+
+    my $result = {
+        loaded_items => $self->{loaded_items},
+        errors => $self->{errors},
+    };
+    my $ret_code = $self->send_ok_response( $result, $is_last );
+    $self->reset_state( 0 );
+    return $ret_code;
+}
+
+
 sub scan {
-    my ( $self, $args ) = @_;
-
-    $self->process_base_command_args( $args );
-    $self->{debug_recursion_limit} = $args->{debug_recursion_limit};
-
-    # Prepare paths.
-    $self->{paths} = {};
-    $self->{paths_ordered} = [];
-    foreach my $path_conf ( @{ $args->{paths} } ) {
-        my $full_path = $path_conf->[ 0 ];
-        $self->{paths}->{ $full_path } = $path_conf->[ 1 ];
-        push @{ $self->{paths_ordered} }, $full_path;
-    }
-
-    $self->{paths_with_processed_flags} = {};
-
-    unless ( exists $self->{paths}->{''} ) {
-        $self->add_error("Base path not found.");
-        return 0;
-    }
-
-    #$self->send_ok_response( { info => 'started ok', } );
+    my ( $self ) = @_;
 
     my $ret_code;
     foreach my $full_path ( sort keys %{ $self->{paths} } ) {
@@ -378,6 +390,8 @@ sub scan {
         last unless $ret_code;
     }
 
+    $self->send_state( 1 ) if scalar(@{$self->{loaded_items}}) > 0;
+
     return $ret_code;
 }
 
@@ -385,16 +399,35 @@ sub scan {
 sub run_scan_host {
     my ( $self, $args ) = @_;
 
-    $self->{loaded_items} = [];
-    $self->{errors} = [];
+    $self->process_base_command_args( $args );
 
-    my $ret_code = $self->scan( $args );
+    $self->{max_items_in_one_response} = 1_000;
+    $self->{max_items_in_one_response} = $args->{max_items_in_one_response} if defined $args->{max_items_in_one_response};
 
-    my $result = {
-        loaded_items => $self->{loaded_items},
-        errors => $self->{errors},
-    };
-    return $self->send_ok_response( $result, 1 );
+    $self->{debug_recursion_limit} = undef;
+    $self->{debug_recursion_limit} = $args->{debug_recursion_limit} if defined $args->{debug_recursion_limit};
+
+
+    # Prepare paths.
+    $self->{paths} = {};
+    $self->{paths_ordered} = [];
+    foreach my $path_conf ( @{ $args->{paths} } ) {
+        my $full_path = $path_conf->[ 0 ];
+        $self->{paths}->{ $full_path } = $path_conf->[ 1 ];
+        push @{ $self->{paths_ordered} }, $full_path;
+    }
+
+    $self->{paths_with_processed_flags} = {};
+
+    unless ( exists $self->{paths}->{''} ) {
+        $self->add_error("Base path not found.");
+        return 0;
+    }
+
+    #$self->send_ok_response( { info => 'parameters are ok', } );
+
+    $self->reset_state( 1 );
+    return $self->scan();
 }
 
 
