@@ -19,7 +19,8 @@ CREATE TABLE machine (
     name            VARCHAR(50) NOT NULL,
     `desc`          TEXT DEFAULT NULL COMMENT 'Description.',
     ip              VARCHAR(15) DEFAULT NUL,
-    disabled        BOOLEAN NOT NULL DEFAULT 0
+    disabled        BOOLEAN NOT NULL DEFAULT 0,
+    INDEX i_name (name)
 ) TYPE=InnoDB COMMENT='Machine (computer or virtual machine) info. Tag:Machine.';
 </source>
 
@@ -30,6 +31,8 @@ CREATE TABLE mconf (
     machine_id      INT UNSIGNED NOT NULL,
     active          INT UNSIGNED NOT NULL,
     create_time     DATETIME NOT NULL,
+    INDEX i_machine (machine_id),
+    INDEX i_machine_id_active (machine_id, active),
     CONSTRAINT fk_mconf_machine_id FOREIGN KEY (machine_id) REFERENCES machine (machine_id)
 ) TYPE=InnoDB COMMENT='Machine configuratio. Tag:Machine.';
 </source>
@@ -40,6 +43,8 @@ CREATE TABLE mconf_sec (
     mconf_sec_id    INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     mconf_id        INT UNSIGNED NOT NULL,
     name            VARCHAR(50) NOT NULL,
+    INDEX i_mconf_id (mconf_id),
+    INDEX i_mconf_id_name (mconf_id, name),
     CONSTRAINT fk_mconf_sec_mconf_id FOREIGN KEY (mconf_id) REFERENCES mconf (mconf_id)
 ) TYPE=InnoDB COMMENT='Machine configuratio section. Tag:Machine.';
 </source>
@@ -52,6 +57,8 @@ CREATE TABLE mconf_sec_kv (
     num                 INT UNSIGNED DEFAULT NULL,
     `key`               VARCHAR(50) NOT NULL,
     value               VARCHAR(255) NOT NULL,
+    INDEX i_mconf_sec_id (mconf_sec_id),
+    INDEX i_mconf_sec_id_num (mconf_sec_id, num),
     CONSTRAINT fk_mconf_sec_kv_mconf_sec_id FOREIGN KEY (mconf_sec_id) REFERENCES mconf_sec (mconf_sec_id)
 ) TYPE=InnoDB COMMENT='Machine configuration section key and value pairs. Tag:Machine.';
 </source>
@@ -65,6 +72,7 @@ CREATE TABLE scan (
     stop_time       DATETIME DEFAULT NULL,
     pid             INT UNSIGNED NOT NULL COMMENT 'OS process id of scanning process.',
     items           INT UNSIGNED DEFAULT NULL COMMENT 'Number of items found during the scan.',
+    INDEX i_mconf_id (mconf_id),
     CONSTRAINT fk_scan_mconf_id FOREIGN KEY (mconf_id) REFERENCES mconf (mconf_id)
 ) TYPE=InnoDB COMMENT='Machine scan. Tag:Scan.';
 </source>
@@ -75,6 +83,8 @@ CREATE TABLE sc_mitem (
     sc_mitem_id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     machine_id          INT UNSIGNED NOT NULL,
     path                VARCHAR(255) NOT NULL,
+    INDEX i_machine_id (machine_id),
+    INDEX i_machine_id_path (machine_id, path),
     CONSTRAINT fk_sc_mitem_machine_id FOREIGN KEY (machine_id) REFERENCES machine (machine_id)
 ) TYPE=InnoDB COMMENT='Machine paths (all history). Tag:Scan.';
 </source>
@@ -98,6 +108,9 @@ CREATE TABLE sc_idata (
     nlink           INT UNSIGNED DEFAULT NULL,
     dev_num         INT UNSIGNED DEFAULT NULL,
     ino_num         INT UNSIGNED DEFAULT NULL,
+    INDEX i_sc_mitem_id (sc_mitem_id),
+    INDEX i_sc_mitem_id_found (sc_mitem_id, found),
+    INDEX i_sc_mitem_id_found_newer_id (sc_mitem_id, found, newer_id),
     CONSTRAINT fk_sc_idata_sc_mitem_id FOREIGN KEY (sc_mitem_id) REFERENCES sc_mitem (sc_mitem_id),
     CONSTRAINT fk_sc_idata_scan_id FOREIGN KEY (scan_id) REFERENCES scan (scan_id),
     CONSTRAINT fk_sc_idata_newer_id FOREIGN KEY (newer_id) REFERENCES sc_idata (sc_idata_id)
