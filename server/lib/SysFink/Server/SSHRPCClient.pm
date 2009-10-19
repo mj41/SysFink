@@ -31,17 +31,31 @@ sub new {
     my ( $class ) = @_;
 
     my $self  = {};
+    bless $self, $class;
 
-    $self->{debug} = 0;
-    $self->{host} = 'localhost';
-    $self->{user} = 'root';
+    return undef unless $self->set_default_values();
+    return $self;
+}
+
+
+=head2 set_default_values
+
+Validate and sets options.
+
+=cut
+
+sub set_default_values {
+    my ( $self ) = @_;
 
     $self->{ver} = 0;
     $self->{err} = undef;
     $self->{ssh} = undef;
 
-    bless $self, $class;
-    return $self;
+    $self->{host} = 'localhost';
+    $self->{user} = 'root';
+    $self->{client_dir} = $self->set_client_dir();
+
+    return 1;
 }
 
 
@@ -121,6 +135,35 @@ sub set_host {
 }
 
 
+=head2 get_client_dir
+
+Return SysFink directory path on client for user name.
+
+=cut
+
+sub get_client_dir {
+    my ( $self ) = @_;
+
+    return '/root/sysfink-client' if $self->{user} eq 'root';
+    return '/home/' . $self->{user} . '/sysfink-client';
+}
+
+
+=head2 set_client_dir
+
+Sets SysFink directory path on client for user name.
+
+=cut
+
+sub set_client_dir {
+    my ( $self ) = @_;
+
+    $self->{client_dir} = $self->get_client_dir();
+    print "New client_dir: '$self->{client_dir}'\n" if $self->{ver} >= 4;
+    return 1;
+}
+
+
 =head2 set_user
 
 Validate user name and set it.
@@ -152,7 +195,8 @@ sub set_user {
 
     $self->disconnect if defined $self->{ssh};
     $self->{user} = $user;
-    return 1;
+
+    return $self->set_client_dir();
 }
 
 
@@ -189,6 +233,38 @@ sub connect {
 }
 
 
+sub err_rpc_cmd {
+    my ( $self, $cmd, $err ) = @_;
+    my $full_err = "RPC '$cmd' return error output: '$err'";
+    return $self->err( $full_err );
+}
+
+
+=head2 do_rpc
+
+Run command on client over SSH.
+
+=cut
+
+sub do_rpc {
+    my ( $self, $cmd, $report_err ) = @_;
+    $report_err = 1 unless defined $report_err;
+
+    print "Running client command '$cmd':\n" if $self->{ver} >= 5;
+    my ( $out, $err ) = $self->{ssh}->capture2( $cmd );
+    if ( $self->{ver} >= 4 && ( $out || $err ) ) {
+        print "out: '$out', err:'$err'\n";
+    }
+
+    # Set error. Caller should do "return 0 if $err;".
+    if ( $err && $report_err ) {
+        $self->err_rpc_cmd( $cmd, $err );
+    }
+
+    return ( $out, $err );
+}
+
+
 =head2 test_hostname
 
 Call hostname command on client and compare it.
@@ -198,7 +274,7 @@ Call hostname command on client and compare it.
 sub test_hostname {
     my ( $self ) = @_;
 
-    my ( $out, $err ) = $self->{ssh}->capture2('hostname');
+    my ( $out, $err ) = $self->do_rpc( 'hostname', 1 );
     return $self->err("Remote 'hostname' command failed: ". $self->{ssh}->error ) if $self->{ssh}->error;
 
     my $hostname = $out;
@@ -207,6 +283,83 @@ sub test_hostname {
     return 1 if $self->{host} eq $hostname;
     return $self->err("Hostname reported from client is '$hostname', but object attribute host is '$self->{host}'.");
 }
+
+
+=head2 ls_output_contains_unknown_dir
+
+Return 1 if output captured from ls command contains any unknown directory. This is useful to check
+if we are not doing critical mistake by recursively removing (rm -rf).
+
+=cut
+
+sub ls_output_contains_unknown_dir {
+    my ( $self, $out ) = @_;
+
+    chomp $out;
+    my @lines = split( /\n/, $out );
+    shift @lines; # remove line "total \d+"
+    foreach my $line ( @lines ) {
+        if ( $line =~ /^\s*d/ ) {
+            return 1 if $line !~ /(bin|lib|libcpan|libdist){1}\s*$/;
+        }
+    }
+    return 0;
+}
+
+
+=head2 check_client_dir_content
+
+Run ls command on client and validate output. See L<ls_output_contains_unknown_dir> method.
+
+=cut
+
+sub check_client_dir_content {
+    my ( $self ) = @_;
+
+    my $client_dir = $self->{client_dir};
+
+    # Process error output of command own way.
+    my $cmd = "ls -l $client_dir";
+    my ( $out, $err ) = $self->do_rpc( $cmd, 0 );
+    if ( $err ) {
+        if ( $err =~ /No such file or directory/i ) {
+            print "Directory '$client_dir' doesn't exists on host." if $self->{ver} >= 3;
+        } else {
+            return $self->err_rpc_cmd( $cmd, $err );
+        }
+
+    } elsif ( $self->ls_output_contains_unknown_dir($out) ) {
+        $self->err("Directory '$client_dir' on client contains some unknown directories.\nCmd 'ls -l' output is\n$out.");
+        return 0;
+    }
+
+    return 1;
+}
+
+
+=head2 empty_client_dir
+
+L<check_client_dir_content> and erase its content with rm -rf.
+
+=cut
+
+sub empty_client_dir {
+    my ( $self ) = @_;
+
+    # ToDo - safe enought?
+    return 0 unless $self->check_client_dir_content();
+
+    my $client_dir = $self->{client_dir};
+
+    my ( $out, $err );
+
+    # ToDo - path escaping?
+    ( $out, $err ) = $self->do_rpc( "rm -rf $client_dir/*", 1 );
+    return 0 if $err;
+
+    return 1;
+}
+
 
 
 =head1 SEE ALSO

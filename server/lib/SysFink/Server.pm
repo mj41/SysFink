@@ -34,7 +34,9 @@ sub new {
 
     $self->{ver} = 0;
     $self->{err} = undef;
+
     $self->{rpc} = undef;
+    $self->{rpc_connected} = 0;
 
     bless $self, $class;
     return $self;
@@ -79,9 +81,17 @@ sub run {
     return $self->err("No command selected. Use --cmd option.") unless $opt->{cmd};
     $opt->{cmd} = lc( $opt->{cmd} );
 
-    return $self->test_hostname( $opt ) if $opt->{cmd} eq 'test_hostname';
+    # Commands:
 
-    return 1;
+    # Next commands needs prepared SSH RPC object.
+    return 0 unless $self->prepare_rpc( $opt );
+
+    return $self->test_hostname() if $opt->{cmd} eq 'test_hostname';
+    return $self->check_client_dir_content() if $opt->{cmd} eq 'check_client_dir_content';
+    return $self->empty_client_dir() if $opt->{cmd} eq 'empty_client_dir';
+
+    $self->err("Unknown command '$self->{cmd}'.");
+    return 0;
 }
 
 
@@ -110,10 +120,39 @@ sub init_rpc_obj  {
     my ( $self, $opt ) = @_;
 
     my $rpc = SysFink::Server::SSHRPCClient->new();
-    return 0 unless $rpc;
+    unless ( defined $rpc ) {
+        $self->err('Initialization of SSH RPC Client object failed.');
+        return 0;
+    }
+
     $self->{rpc} = $rpc;
+    $self->{rpc_connected} = 0;
 
     return $self->rpc_err() unless $self->{rpc}->set_options( $opt );
+    return 1;
+}
+
+
+=head2 prepare_rpc
+
+Call command test_hostname on client.
+
+=cut
+
+sub prepare_rpc {
+    my ( $self, $opt ) = @_;
+
+    return 1 if $self->{rpc_connected};
+
+    unless ( defined $self->{rpc} ) {
+        return 0 unless $self->init_rpc_obj( $opt );
+    }
+
+    unless ( $self->{rpc_connected} ) {
+        return $self->rpc_err() unless $self->{rpc}->connect();
+        $self->{rpc_connected} = 1;
+    }
+
     return 1;
 }
 
@@ -125,11 +164,37 @@ Call command test_hostname on client.
 =cut
 
 sub test_hostname {
-    my ( $self, $opt ) = @_;
+    my ( $self ) = @_;
 
-    return 0 unless $self->init_rpc_obj( $opt );
-    return $self->rpc_err() unless $self->{rpc}->connect( $opt );
     return $self->rpc_err() unless $self->{rpc}->test_hostname();
+    return 1;
+}
+
+
+=head2 check_client_dir_content
+
+Call command check_client_dir_content on client.
+
+=cut
+
+sub check_client_dir_content {
+    my ( $self ) = @_;
+
+    return $self->rpc_err() unless $self->{rpc}->check_client_dir_content();
+    return 1;
+}
+
+
+=head2 empty_client_dir
+
+Call command empty_client_dir on client.
+
+=cut
+
+sub empty_client_dir {
+    my ( $self ) = @_;
+
+    return $self->rpc_err() unless $self->{rpc}->empty_client_dir();
     return 1;
 }
 

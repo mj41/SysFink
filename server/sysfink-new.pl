@@ -63,13 +63,24 @@ sysfink.pl - Run SysFink server commands.
 perl sysfink.pl [options]
 
  Options:
-   --help
-   --ver=$NUM .. Verbosity level 0..5. Default 2.
+    --help
+    --ver=$NUM .. Verbosity level 0..5. Default 2.
 
     --cmd
 
     --cmd=test_hostname
         For testing purpose. Run hostname command on client and compare it to --host.
+        Return nothing (on success) or error message.
+        Also required: --host, --user.
+
+    --cmd=check_client_dir_content
+        Run 'ls -l' command on client and validate output.
+        Return nothing (on success) or error message.
+        Also required: --host, --user.
+
+    --cmd=empty_client_dir
+        Same as 'check_client_dir_content' command but also erase all contetn in SysFink directory
+        on client.
         Return nothing (on success) or error message.
         Also required: --host, --user.
 
