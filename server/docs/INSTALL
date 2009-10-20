@@ -1,18 +1,53 @@
-Base install documentation.
+# Base SysFink server install documentation.
+
+# -- CPAN Module install to ~/sysfink-cpan -----------------
+#
+# See http://search.cpan.org/~andk/CPAN/lib/CPAN.pm#FAQ or 'man CPAN'.
+
+mkdir ~/sysfink-cpan
+mkdir ~/sysfink-cpan/lib
+export PERL5LIB=/root/sysfink-cpan/lib
+
+# Run 'cpan' and inside it:
+
+o conf makepl_arg "LIB=~/sysfink-cpan/lib INSTALLMAN1DIR=~/sysfink-cpan/man/man1 INSTALLMAN3DIR=~/sysfink-cpan/man/man3 INSTALLSCRIPT=~/sysfink-cpan/bin INSTALLBIN=~/sysfink-cpan/bin"
+o conf mbuildpl_arg "--lib=~/sysfink-cpan/lib --installman1dir=~/sysfink-cpan/man/man1 --installman3dir=~/sysfink-cpan/man/man3 --installscript=~/sysfink-cpan/bin --installbin=~/sysfink-cpan/bin"
+o conf halt_on_failure on
+
+install TAP::Harness
+
+install Class::Singleton
+install DateTime::Locale
+install DateTime
+install Config::Multi
+
+install Test::Tester
+install DBIx::Class
+
+install SQL::Translator
+install Net::OpenSSH
+install YAML::Any
+
+exit
+
+# You should call e.g. 'export PERL5LIB=/root/sysfink-cpan/lib' before running any SysFink command.
+
+
+# -- SySFink  ----------------------------------------------
 
 # Login as root to server machine.
 # Check out ~/sysfink if not exists: svn co http://sysfink.googlecode.com/svn/trunk ~/sysfink
 
-cd ~/sysfink
-
 
 # -- Client ------------------------------------------------
+
 cd ~/sysfink/client
 
 perl t/harness.pl
 
 
 # -- Server ------------------------------------------------
+
 cd ~/sysfink/server
 
 # Create/edit server config files.
