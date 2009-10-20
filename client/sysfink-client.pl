@@ -3,7 +3,7 @@ package main;
 use strict;
 use FindBin qw($RealBin);
 
-use lib "$RealBin/../../sysfink-libs";
+use lib "$RealBin/../../sysfink-cpan/libs";
 use lib "$RealBin/libcpan";
 use lib "$RealBin/lib";
 use lib "$RealBin/libdist";

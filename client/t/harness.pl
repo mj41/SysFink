@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use FindBin qw($RealBin);
 
-use lib "$RealBin/../../../sysfink-libs";
+use lib "$RealBin/../../../sysfink-cpan/lib ";
 
 use TAP::Harness;
 
