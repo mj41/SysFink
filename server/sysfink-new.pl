@@ -91,6 +91,12 @@ perl sysfink.pl [options]
         Also required: --host, --user.
         Also used: --host_dist_type.
 
+    --cmd=test_noop_rpc
+        Try to run noop command on client sheel over RPC. Use 'renew_client_dir' cmd  to transfer RPC source code
+        to client.
+        Return nothing (on success) or error message.
+        Also required: --host, --user.
+
     --user .. User name for SSH connect.
 
     --host .. Full hostname of client for SSH connect.

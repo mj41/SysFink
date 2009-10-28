@@ -40,15 +40,15 @@ sub getResult {
 }
 
 
-=head2 getError ()
+=head2 getResponseError ()
 
 Returns the human readable error message (if any).
 
 =cut
 
-sub getError {
+sub getResponseError {
     my $self = shift;
-    return $self->{result}->{error};
+    return $self->{result}->{response}->{error};
 }
 
 
@@ -135,6 +135,11 @@ sub getStatusMessage {
     my $self = shift;
 
     $self->{status_messages} = $self->getAllStatusMessages() unless defined $self->{status_messages};
+
+    unless ( defined $self->{result}->{status} ) {
+        return "Status code not found. Can't determine status message";
+    }
+
     my $status_code = $self->{result}->{status};
     unless ( exists $self->{status_messages}->{ $status_code } ) {
         return "Unknown status message (status code $status_code).";
@@ -151,7 +156,7 @@ Returns true if the request was successful, or false if it wasn't.
 
 sub isSuccess {
     my $self = shift;
-    return ($self->getStatus == 200);
+    return ( $self->{result}->{status} == 200 );
 }
 
 

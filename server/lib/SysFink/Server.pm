@@ -37,7 +37,7 @@ sub new {
     $self->{err} = undef;
 
     $self->{rpc} = undef;
-    $self->{rpc_connected} = 0;
+    $self->{rpc_ssh_connected} = 0;
 
     $self->{RealBin} = $FindBin::RealBin;
 
@@ -86,14 +86,26 @@ sub run {
 
     # Commands:
 
-    # Next commands needs prepared SSH RPC object.
-    return 0 unless $self->prepare_rpc( $opt );
+    # Next commands needs prepared SSH part of object.
+    return 0 unless $self->prepare_rpc_ssh_part( $opt );
 
     return $self->test_hostname() if $opt->{cmd} eq 'test_hostname';
 
     return $self->check_client_dir() if $opt->{cmd} eq 'check_client_dir';
     return $self->remove_client_dir() if $opt->{cmd} eq 'remove_client_dir';
     return $self->renew_client_dir() if $opt->{cmd} eq 'renew_client_dir';
+
+
+    my $psh_commands = {
+        'test_noop_rpc' => 1,
+    };
+    if ( exists $psh_commands->{ $opt->{cmd} } ) {
+        # Start perl shell on client.
+        return 0 unless $self->start_rpc_shell();
+
+        # Run command.
+        return $self->test_noop_rpc() if $opt->{cmd} eq 'test_noop_rpc';
+    }
 
     $self->err("Unknown command '$opt->{cmd}'.");
     return 0;
@@ -117,7 +129,7 @@ sub rpc_err  {
 
 =head2 init_rpc_obj
 
-Initializce object for RPC over SSH and connect to client.
+Initializce object for RPC over SSH and connect to client. Do not start perl shell for RPC.
 
 =cut
 
@@ -131,7 +143,7 @@ sub init_rpc_obj  {
     }
 
     $self->{rpc} = $rpc;
-    $self->{rpc_connected} = 0;
+    $self->{rpc_ssh_connected} = 0;
 
     my $full_opt = { %$opt };
     $full_opt->{RealBin} = $self->{RealBin};
@@ -141,24 +153,24 @@ sub init_rpc_obj  {
 }
 
 
-=head2 prepare_rpc
+=head2 prepare_rpc_ssh_part
 
-Call command test_hostname on client.
+Prepare SSH part of RPC object.
 
 =cut
 
-sub prepare_rpc {
+sub prepare_rpc_ssh_part {
     my ( $self, $opt ) = @_;
 
-    return 1 if $self->{rpc_connected};
+    return 1 if $self->{rpc_ssh_connected};
 
     unless ( defined $self->{rpc} ) {
         return 0 unless $self->init_rpc_obj( $opt );
     }
 
-    unless ( $self->{rpc_connected} ) {
+    unless ( $self->{rpc_ssh_connected} ) {
         return $self->rpc_err() unless $self->{rpc}->connect();
-        $self->{rpc_connected} = 1;
+        $self->{rpc_ssh_connected} = 1;
     }
 
     return 1;
@@ -217,6 +229,34 @@ sub renew_client_dir {
     my ( $self ) = @_;
 
     return $self->rpc_err() unless $self->{rpc}->renew_client_dir();
+    return 1;
+}
+
+
+=head2 start_rpc_shell
+
+Start perl shell on client.
+
+=cut
+
+sub start_rpc_shell {
+    my ( $self ) = @_;
+
+    return $self->rpc_err() unless $self->{rpc}->start_rpc_shell();
+    return 1;
+}
+
+
+=head2 test_noop_rpc
+
+Call command test_noop on client's perl shell.
+
+=cut
+
+sub test_noop_rpc {
+    my ( $self ) = @_;
+
+    return $self->rpc_err() unless $self->{rpc}->test_noop_rpc();
     return 1;
 }
 

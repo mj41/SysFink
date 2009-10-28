@@ -6,6 +6,7 @@ use warnings;
 use Net::OpenSSH;
 use File::Spec::Functions;
 
+use SSH::RPC::PP::Client;
 
 =head1 NAME
 
@@ -48,7 +49,7 @@ Validate and sets options.
 sub set_default_values {
     my ( $self ) = @_;
 
-    $self->{ver} = 0;
+    $self->{ver} = 1;
     $self->{err} = undef;
     $self->{ssh} = undef;
 
@@ -56,6 +57,10 @@ sub set_default_values {
     $self->{host} = 'localhost';
     $self->{host_dist_type} = 'linux-perl-md5';
     $self->{client_dir} = $self->set_client_dir();
+
+    $self->{rpc} = undef;
+    $self->{rpc_ver} = 1;
+    $self->{rpc_nice} = 10;
 
     $self->{RealBin} = '';
     $self->{client_src_dir} = $self->get_client_src_dir();
@@ -92,6 +97,12 @@ sub set_options {
     } elsif ( defined $options->{RealBin} ) {
         $self->{RealBin} = $options->{RealBin};
         $self->{client_src_dir} = $self->get_client_src_dir();
+    }
+
+    if ( defined $options->{rpc_ver} ) {
+        $self->{rpc_ver} = $options->{rpc_ver};
+    } else {
+        $self->{rpc_ver} = $self->{ver};
     }
 
     return 1;
@@ -131,6 +142,7 @@ Disconnect from client.
 sub disconnect {
     my ( $self ) = @_;
 
+    $self->stop_perl_shell() if defined $self->{rpc};
     $self->{ssh} = undef;
     return 1;
 }
@@ -261,22 +273,28 @@ sub connect {
 }
 
 
-sub err_rpc_cmd {
+=head2 err_rcc_cmd
+
+Create and set error message for command.
+
+=cut
+
+sub err_rcc_cmd {
     my ( $self, $cmd, $err ) = @_;
 
     chomp($err);
-    my $full_err = "RPC '$cmd' return error output: '$err'";
+    my $full_err = "RCC '$cmd' return error output: '$err'";
     return $self->err( $full_err );
 }
 
 
-=head2 do_rpc
+=head2 do_rcc
 
 Run command on client over SSH.
 
 =cut
 
-sub do_rpc {
+sub do_rcc {
     my ( $self, $cmd, $report_err ) = @_;
     $report_err = 1 unless defined $report_err;
 
@@ -300,7 +318,7 @@ sub do_rpc {
 
     # Set error. Caller should do "return 0 if $err;".
     if ( $err && $report_err ) {
-        $self->err_rpc_cmd( $cmd, $err );
+        $self->err_rcc_cmd( $cmd, $err );
     }
 
     return ( $out, $err, $exit_code );
@@ -316,14 +334,18 @@ Call hostname command on client and compare it.
 sub test_hostname {
     my ( $self ) = @_;
 
-    my ( $out, $err ) = $self->do_rpc( 'hostname', 1 );
+    my ( $out, $err ) = $self->do_rcc( 'hostname', 1 );
     return 0 if $err;
 
     my $hostname = $out;
     chomp( $hostname );
 
-    return 1 if $self->{host} eq $hostname;
-    return $self->err("Hostname reported from client is '$hostname', but object attribute host is '$self->{host}'.");
+    if ( $self->{host} ne $hostname ) {
+        return $self->err("Hostname reported from client is '$hostname', but object attribute host is '$self->{host}'.");
+    }
+
+    print "Command 'test_hostname' succeeded.\n" if $self->{ver} >= 3;
+    return 1;
 }
 
 
@@ -337,7 +359,7 @@ sub check_is_dir {
     my ( $self, $path ) = @_;
 
     my $cmd = "test -d $path";
-    my ( $out, $err, $exit_code ) = $self->do_rpc( $cmd, 1 );
+    my ( $out, $err, $exit_code ) = $self->do_rcc( $cmd, 1 );
     return undef if $err;
     return 0 if $exit_code;
     return 1;
@@ -379,12 +401,12 @@ sub check_client_dir {
 
     # Process error output of command own way.
     my $cmd = "ls -l $client_dir";
-    my ( $out, $err ) = $self->do_rpc( $cmd, 0 );
+    my ( $out, $err ) = $self->do_rcc( $cmd, 0 );
     if ( $err ) {
         if ( $err =~ /No such file or directory/i ) {
             print "Directory '$client_dir' doesn't exists on host.\n" if $self->{ver} >= 3;
         } else {
-            return $self->err_rpc_cmd( $cmd, $err );
+            return $self->err_rcc_cmd( $cmd, $err );
         }
 
     } elsif ( $self->ls_output_contains_unknown_dir($out) ) {
@@ -413,9 +435,10 @@ sub remove_client_dir {
     my ( $out, $err );
 
     # ToDo - path escaping?
-    ( $out, $err ) = $self->do_rpc( "rm -rf $client_dir", 1 );
+    ( $out, $err ) = $self->do_rcc( "rm -rf $client_dir", 1 );
     return 0 if $err;
 
+    print "Command 'remove_client_dir' succeeded.\n" if $self->{ver} >= 3;
     return 1;
 }
 
@@ -485,7 +508,7 @@ sub put_dir_content {
     foreach my $sub_dir ( sort @$sub_dirs ) {
         my $new_sub_src_dir = catdir( $sub_src_dir, $sub_dir );
         my $full_dest_fpath = catdir( $base_dest_dir, $new_sub_src_dir );
-        my ( $err, $out ) = $self->do_rpc( "mkdir $full_dest_fpath", 1 );
+        my ( $err, $out ) = $self->do_rcc( "mkdir $full_dest_fpath", 1 );
         return 0 if $err;
         return 0 unless $self->put_dir_content( $base_src_dir, $new_sub_src_dir, $base_dest_dir );
     }
@@ -505,10 +528,10 @@ sub renew_client_dir {
     my ( $self ) = @_;
 
     my $client_src_dir = $self->{client_src_dir};
-    my $client_src_dest_dir = catdir( $self->{client_dir} );
+    my $client_dir = $self->{client_dir};
 
     # check if dir (source on client) exists
-    my $dir_exists = $self->check_is_dir( $client_src_dest_dir );
+    my $dir_exists = $self->check_is_dir( $client_dir );
     return 0 unless defined $dir_exists;
 
     # remove old dir
@@ -517,23 +540,121 @@ sub renew_client_dir {
     }
 
     # create new
-    my ( $err, $out ) = $self->do_rpc( "mkdir $client_src_dest_dir", 1 );
+    my ( $err, $out ) = $self->do_rcc( "mkdir $client_dir", 1 );
     return 0 if $err;
 
     # put base script
     my $client_src_name = 'sysfink-client.pl';
     my $client_src_fpath = catfile( $client_src_dir, $client_src_name );
-    $self->{ssh}->scp_put( $client_src_fpath, $client_src_dest_dir );
+    $self->{ssh}->scp_put( $client_src_fpath, $client_dir );
 
     # put base dist directory
     my $dist_base_src_dir = catdir( $client_src_dir, 'dist', '_base' );
-    return 0 unless $self->put_dir_content( $dist_base_src_dir, '', $client_src_dest_dir );
+    return 0 unless $self->put_dir_content( $dist_base_src_dir, '', $client_dir );
 
     # put arch dist directory
     my $dist_type = $self->{host_dist_type};
     my $dist_arch_src_dir = catdir( $client_src_dir, 'dist', $dist_type );
-    return 0 unless $self->put_dir_content( $dist_arch_src_dir, '', $client_src_dest_dir );
+    return 0 unless $self->put_dir_content( $dist_arch_src_dir, '', $client_dir );
 
+    print "Command 'renew_client_dir' succeeded.\n" if $self->{ver} >= 3;
+    return 1;
+}
+
+
+=head2 start_rpc_shell
+
+Start SysFink RPC shell on client machine.
+
+=cut
+
+sub start_rpc_shell {
+    my ( $self ) = @_;
+
+    my $client_src_name = 'sysfink-client.pl';
+    my $client_script_fpath = catfile( $self->{client_dir}, $client_src_name );
+
+    my $client_start_cmd = "nice -n $self->{rpc_nice} /usr/bin/perl $client_script_fpath $self->{rpc_ver}";
+
+    my $rpc = SSH::RPC::PP::Client->new( $self->{ssh}, $client_start_cmd );
+    $self->{rpc} = $rpc;
+
+    return 1;
+}
+
+
+=head2 stop_rpc_shell
+
+Stop SysFink RPC shell on client machine.
+
+=cut
+
+sub stop_rpc_shell {
+    my ( $self ) = @_;
+
+    $self->{rpc} = undef;
+    return 1;
+}
+
+
+=head2 do_rpc
+
+Run command (remote procedure) on client shell. Return result_obj or undef (on error).
+
+=cut
+
+sub do_rpc {
+    my ( $self, $cmd, $report_response_error ) = @_;
+    $report_response_error = 1 unless defined $report_response_error;
+
+    print "Running shell command '$cmd':\n" if $self->{ver} >= 5;
+
+    my $result_obj = $self->{rpc}->run( $cmd );
+    my $is_ok = $result_obj->isSuccess;
+
+    $result_obj->dump() if $self->{ver} >= 5 || ( !$is_ok && $self->{ver} >= 1 );
+
+    if ( ! $is_ok ) {
+        my $err_msg = "Fatal error for client shell command '$cmd': '" . $result_obj->getStatusMessage() . "'";
+        $self->err( $err_msg );
+        return undef;
+    }
+
+    if ( $report_response_error ) {
+        my $err = $result_obj->getResponseError();
+        if ( defined  $err )  {
+            my $err_msg = "Error for client shell command '$cmd': '$err'";
+            $self->err( $err_msg );
+            return undef;
+        }
+    }
+
+    return $result_obj;
+}
+
+
+=head2 test_noop_rpc
+
+Run test_noop remote procedure.
+
+=cut
+
+sub test_noop_rpc {
+    my ( $self ) = @_;
+
+    my $result_obj = $self->do_rpc( 'test_noop', 1 );
+    return 0 unless defined $result_obj;
+
+    my $response = $result_obj->getResponse();
+    my $test_name = $response->{test};
+
+    if ( (not defined $test_name) || $test_name ne 'noop' ) {
+        my $msg_test_name = 'undef';
+        $msg_test_name = "'$test_name'" if defined $test_name;
+        return $self->err("Command 'test_noop' shoul return 'noop' as test name, but return $msg_test_name.");
+    }
+
+    print "Command 'test_noop' succeeded.\n" if $self->{ver} >= 3;
     return 1;
 }
 
