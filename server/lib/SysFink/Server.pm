@@ -90,9 +90,10 @@ sub run {
     return 0 unless $self->prepare_rpc( $opt );
 
     return $self->test_hostname() if $opt->{cmd} eq 'test_hostname';
-    return $self->check_client_dir_content() if $opt->{cmd} eq 'check_client_dir_content';
-    return $self->empty_client_dir() if $opt->{cmd} eq 'empty_client_dir';
-    return $self->put_client_src_code() if $opt->{cmd} eq 'put_client_src_code';
+
+    return $self->check_client_dir() if $opt->{cmd} eq 'check_client_dir';
+    return $self->remove_client_dir() if $opt->{cmd} eq 'remove_client_dir';
+    return $self->renew_client_dir() if $opt->{cmd} eq 'renew_client_dir';
 
     $self->err("Unknown command '$self->{cmd}'.");
     return 0;
@@ -178,44 +179,44 @@ sub test_hostname {
 }
 
 
-=head2 check_client_dir_content
+=head2 check_client_dir
 
-Call command check_client_dir_content on client.
+Call command check_client_dir on client.
 
 =cut
 
-sub check_client_dir_content {
+sub check_client_dir {
     my ( $self ) = @_;
 
-    return $self->rpc_err() unless $self->{rpc}->check_client_dir_content();
+    return $self->rpc_err() unless $self->{rpc}->check_client_dir();
     return 1;
 }
 
 
-=head2 empty_client_dir
+=head2 remove_client_dir
 
-Call command empty_client_dir on client.
+Call command remove_client_dir on client.
 
 =cut
 
-sub empty_client_dir {
+sub remove_client_dir {
     my ( $self ) = @_;
 
-    return $self->rpc_err() unless $self->{rpc}->empty_client_dir();
+    return $self->rpc_err() unless $self->{rpc}->remove_client_dir();
     return 1;
 }
 
 
-=head2 put_client_src_code
+=head2 renew_client_dir
 
-Call command put_client_src_code on client.
+Call command renew_client_dir on client.
 
 =cut
 
-sub put_client_src_code {
+sub renew_client_dir {
     my ( $self ) = @_;
 
-    return $self->rpc_err() unless $self->{rpc}->put_client_src_code();
+    return $self->rpc_err() unless $self->{rpc}->renew_client_dir();
     return 1;
 }
 

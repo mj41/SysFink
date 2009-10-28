@@ -366,13 +366,13 @@ sub ls_output_contains_unknown_dir {
 }
 
 
-=head2 check_client_dir_content
+=head2 check_client_dir
 
 Run ls command on client and validate output. See L<ls_output_contains_unknown_dir> method.
 
 =cut
 
-sub check_client_dir_content {
+sub check_client_dir {
     my ( $self ) = @_;
 
     my $client_dir = $self->{client_dir};
@@ -382,7 +382,7 @@ sub check_client_dir_content {
     my ( $out, $err ) = $self->do_rpc( $cmd, 0 );
     if ( $err ) {
         if ( $err =~ /No such file or directory/i ) {
-            print "Directory '$client_dir' doesn't exists on host." if $self->{ver} >= 3;
+            print "Directory '$client_dir' doesn't exists on host.\n" if $self->{ver} >= 3;
         } else {
             return $self->err_rpc_cmd( $cmd, $err );
         }
@@ -396,24 +396,24 @@ sub check_client_dir_content {
 }
 
 
-=head2 empty_client_dir
+=head2 remove_client_dir
 
-L<check_client_dir_content> and erase its content with rm -rf.
+L<check_client_dir> and erase its content with rm -rf.
 
 =cut
 
-sub empty_client_dir {
+sub remove_client_dir {
     my ( $self ) = @_;
 
     # ToDo - safe enought?
-    return 0 unless $self->check_client_dir_content();
+    return 0 unless $self->check_client_dir();
 
     my $client_dir = $self->{client_dir};
 
     my ( $out, $err );
 
     # ToDo - path escaping?
-    ( $out, $err ) = $self->do_rpc( "rm -rf $client_dir/*", 1 );
+    ( $out, $err ) = $self->do_rpc( "rm -rf $client_dir", 1 );
     return 0 if $err;
 
     return 1;
@@ -494,36 +494,43 @@ sub put_dir_content {
 }
 
 
-=head2 put_client_src_code
+=head2 renew_client_dir
 
-Put all SysFink source files (script, base dist and arch dist libraries) on client.
+Remove old (if needed) and put new SysFink source files (script, base dist and
+arch dist libraries) on client.
 
 =cut
 
-sub put_client_src_code {
+sub renew_client_dir {
     my ( $self ) = @_;
 
     my $client_src_dir = $self->{client_src_dir};
     my $client_src_dest_dir = catdir( $self->{client_dir} );
 
+    # check if dir (source on client) exists
     my $dir_exists = $self->check_is_dir( $client_src_dest_dir );
     return 0 unless defined $dir_exists;
-    unless ( $dir_exists ) {
-        my ( $err, $out ) = $self->do_rpc( "mkdir $client_src_dest_dir", 1 );
-        return 0 if $err;
+
+    # remove old dir
+    if ( $dir_exists ) {
+        return 0 unless $self->remove_client_dir();
     }
 
-    # base script
+    # create new
+    my ( $err, $out ) = $self->do_rpc( "mkdir $client_src_dest_dir", 1 );
+    return 0 if $err;
+
+    # put base script
     my $client_src_name = 'sysfink-client.pl';
     my $client_src_fpath = catfile( $client_src_dir, $client_src_name );
     $self->{ssh}->scp_put( $client_src_fpath, $client_src_dest_dir );
 
-    # base dist directory
+    # put base dist directory
     my $dist_base_src_dir = catdir( $client_src_dir, 'dist', '_base' );
     return 0 unless $self->put_dir_content( $dist_base_src_dir, '', $client_src_dest_dir );
 
-    # arch dist directory
-    my $dist_type = $self->{client_dist_type};
+    # put arch dist directory
+    my $dist_type = $self->{host_dist_type};
     my $dist_arch_src_dir = catdir( $client_src_dir, 'dist', $dist_type );
     return 0 unless $self->put_dir_content( $dist_arch_src_dir, '', $client_src_dest_dir );
 

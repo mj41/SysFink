@@ -70,24 +70,23 @@ perl sysfink.pl [options]
     --cmd
 
     --cmd=test_hostname
-        For testing purpose. Run hostname command on client and compare it to --host.
+        For testing purpose. Run 'hostname' command on client and compare it to --host.
         Return nothing (on success) or error message.
         Also required: --host, --user.
 
-    --cmd=check_client_dir_content
+    --cmd=check_client_dir
         Run 'ls -l' command on client and validate output.
         Return nothing (on success) or error message.
         Also required: --host, --user.
 
-    --cmd=empty_client_dir
-        Same as 'check_client_dir_content' command but also erase all content of SysFink directory
-        on client.
+    --cmd=remove_client_dir
+        Remove SysFink directory on client. Call 'check_client_dir' to ensure that anything else will be removed.
         Return nothing (on success) or error message.
         Also required: --host, --user.
 
-    --cmd=put_client_src_code
-        Put client source code (scripts and libraries) on client machine. You should call 'empty_client_dir'
-        first probably.
+    --cmd=renew_client_dir
+        Remove old and put new client source code (scripts and libraries) on client machine. Call 'remove_client_dir'
+        (and 'check_client_dir') and then put new code.
         Return nothing (on success) or error message.
         Also required: --host, --user.
         Also used: --host_dist_type.
