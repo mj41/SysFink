@@ -95,7 +95,7 @@ sub run {
     return $self->remove_client_dir() if $opt->{cmd} eq 'remove_client_dir';
     return $self->renew_client_dir() if $opt->{cmd} eq 'renew_client_dir';
 
-    $self->err("Unknown command '$self->{cmd}'.");
+    $self->err("Unknown command '$opt->{cmd}'.");
     return 0;
 }
 
