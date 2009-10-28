@@ -3,6 +3,7 @@ package SysFink::Server;
 use strict;
 use warnings;
 
+use FindBin;
 use Data::Dumper;
 use SysFink::Server::SSHRPCClient;
 
@@ -37,6 +38,8 @@ sub new {
 
     $self->{rpc} = undef;
     $self->{rpc_connected} = 0;
+
+    $self->{RealBin} = $FindBin::RealBin;
 
     bless $self, $class;
     return $self;
@@ -89,6 +92,7 @@ sub run {
     return $self->test_hostname() if $opt->{cmd} eq 'test_hostname';
     return $self->check_client_dir_content() if $opt->{cmd} eq 'check_client_dir_content';
     return $self->empty_client_dir() if $opt->{cmd} eq 'empty_client_dir';
+    return $self->put_client_src_code() if $opt->{cmd} eq 'put_client_src_code';
 
     $self->err("Unknown command '$self->{cmd}'.");
     return 0;
@@ -128,7 +132,10 @@ sub init_rpc_obj  {
     $self->{rpc} = $rpc;
     $self->{rpc_connected} = 0;
 
-    return $self->rpc_err() unless $self->{rpc}->set_options( $opt );
+    my $full_opt = { %$opt };
+    $full_opt->{RealBin} = $self->{RealBin};
+
+    return $self->rpc_err() unless $self->{rpc}->set_options( $full_opt );
     return 1;
 }
 
@@ -195,6 +202,20 @@ sub empty_client_dir {
     my ( $self ) = @_;
 
     return $self->rpc_err() unless $self->{rpc}->empty_client_dir();
+    return 1;
+}
+
+
+=head2 put_client_src_code
+
+Call command put_client_src_code on client.
+
+=cut
+
+sub put_client_src_code {
+    my ( $self ) = @_;
+
+    return $self->rpc_err() unless $self->{rpc}->put_client_src_code();
     return 1;
 }
 

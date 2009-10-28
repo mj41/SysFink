@@ -20,9 +20,10 @@ sub main {
 
     my $options = {
         ver => 2,
-        hostname => undef,
         user => undef,
-    };
+        host => undef,
+        host_dist_type => undef,
+   };
 
     my $options_ok = GetOptions(
         'help|h|?' => \$help,
@@ -30,9 +31,9 @@ sub main {
 
         'cmd=s' => \$options->{'cmd'},
 
-        'host=s' => \$options->{'host'},
         'user=s' => \$options->{'user'},
-
+        'host=s' => \$options->{'host'},
+        'host_dist_type=s' => \$options->{'host_dist_type'},
     );
 
     if ( $help || !$options_ok ) {
@@ -79,13 +80,24 @@ perl sysfink.pl [options]
         Also required: --host, --user.
 
     --cmd=empty_client_dir
-        Same as 'check_client_dir_content' command but also erase all contetn in SysFink directory
+        Same as 'check_client_dir_content' command but also erase all content of SysFink directory
         on client.
         Return nothing (on success) or error message.
         Also required: --host, --user.
 
-    --host .. Full hostname of client for SSH connect.
+    --cmd=put_client_src_code
+        Put client source code (scripts and libraries) on client machine. You should call 'empty_client_dir'
+        first probably.
+        Return nothing (on success) or error message.
+        Also required: --host, --user.
+        Also used: --host_dist_type.
+
     --user .. User name for SSH connect.
+
+    --host .. Full hostname of client for SSH connect.
+
+    --host_dist_type .. Distribution type for hashing (linux-bin-64b, linux-bin-64b, ... ). See client 'dist'
+                        directory content.
 
 
 =head1 DESCRIPTION
