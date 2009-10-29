@@ -34,4 +34,6 @@ perl sysfink-new.pl --user=root --host=$HOST --cmd=test_noop_rpc --ver=$VER
 
 perl sysfink-new.pl --user=root --host=$HOST --cmd=test_three_parts_rpc --ver=$VER
 
+perl sysfink-new.pl --user=root --host=$HOST --cmd=scan --ver=$VER
+
 echo ""

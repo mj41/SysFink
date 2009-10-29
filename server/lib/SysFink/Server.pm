@@ -5,8 +5,13 @@ use warnings;
 
 use FindBin;
 use Data::Dumper;
+use File::Spec::Functions;
 
 use SysFink::Server::SSHRPCClient;
+
+use SysFink::Conf::DBIC;
+use SysFink::Utils::Conf;
+use SysFink::Utils::DB;
 
 
 =head1 NAME
@@ -35,13 +40,14 @@ sub new {
 
     my $self  = {};
 
-    $self->{ver} = 0;
+    $self->{ver} = 1;
     $self->{err} = undef;
+    $self->{RealBin} = $FindBin::RealBin;
 
     $self->{rpc} = undef;
     $self->{rpc_ssh_connected} = 0;
 
-    $self->{RealBin} = $FindBin::RealBin;
+    $self->{conf_path} = catdir( $self->{RealBin}, 'conf' );
 
     bless $self, $class;
     return $self;
@@ -80,40 +86,56 @@ Start options processing and run given command.
 sub run {
     my ( $self, $opt ) = @_;
 
-    my $ver = $opt->{ver}; # shortcup
-    print Dumper( $opt ) if $ver >= 5;
+    $self->{ver} = $opt->{ver} if defined $opt->{ver};
+
+    print Dumper( $opt ) if $self->{ver} >= 5;
 
     return $self->err("No command selected. Use --cmd option.") unless $opt->{cmd};
 
     # Commands configuration.
     my $all_cmd_confs = {
+
+        # Base remote command.
         'test_hostname' => {
-            'ssh' => 1,
+            'ssh_connect' => 1,
             'type' => 'rpc',
         },
         'check_client_dir' => {
-            'ssh' => 1,
+            'ssh_connect' => 1,
             'type' => 'rpc',
         },
         'remove_client_dir' => {
-            'ssh' => 1,
+            'ssh_connect' => 1,
             'type' => 'rpc',
         },
         'renew_client_dir' => {
-            'ssh' => 1,
+            'ssh_connect' => 1,
             'type' => 'rpc',
         },
+
+        # Base test procedure calls.
         'test_noop_rpc' => {
-            'ssh' => 1,
-            'rpc' => 1,
+            'ssh_connect' => 1,
+            'start_rpc_shell' => 1,
             'type' => 'rpc',
         },
         'test_three_parts_rpc' => {
-            'ssh' => 1,
-            'rpc' => 1,
+            'ssh_connect' => 1,
+            'start_rpc_shell' => 1,
             'type' => 'rpc',
         },
-    };
+
+        # Commands which work with database.
+        'scan' => {
+            'connect_to_db' => 1,
+            'load_host_conf_from_db' => 1,
+            'ssh_connect' => 1,
+            'start_rpc_shell' => 1,
+            'type' => 'self',
+        },
+
+    }; # $all_cmd_confs end
+
 
     my $cmd = lc( $opt->{cmd} );
 
@@ -124,27 +146,39 @@ sub run {
 
     my $cmd_conf = $all_cmd_confs->{ $cmd };
 
-    if ( $cmd_conf->{ssh} ) {
-        # Next commands needs prepared SSH part of object.
-        return 0 unless $self->prepare_rpc_ssh_part( $opt );
+    # Load db config and connect do DB.
+    if ( $cmd_conf->{connect_to_db} ) {
+        return 0 unless $self->connect_db();
     }
 
-    if ( $cmd_conf->{rpc} ) {
-        # Start perl shell on client.
+    # Load host config from connected DB.
+    return 0 unless $self->prepare_base_host_conf( $opt );
+    if ( $cmd_conf->{load_host_conf_from_db} ) {
+        return 0 unless $self->prepare_host_conf_from_db();
+    }
+
+    # Next commands needs prepared SSH part of object.
+    if ( $cmd_conf->{ssh_connect} ) {
+        return 0 unless $self->prepare_rpc_ssh_part();
+    }
+
+    # Start perl shell on client.
+    if ( $cmd_conf->{start_rpc_shell} ) {
         return 0 unless $self->start_rpc_shell();
     }
 
     my $cmd_type = $cmd_conf->{type};
-    my $cmd_method_name = $cmd;
 
     # Run simple RPC command on RPC object.
-    if ( defined $cmd_type && $cmd_type eq 'rpc' ) {
+    if ( $cmd_type eq 'rpc' ) {
         my $rpc_obj = $self->{rpc};
+        my $cmd_method_name = $cmd;
         return $self->rpc_err() unless $rpc_obj->$cmd_method_name();
         return 1;
     }
 
     # Run given comman method.
+    my $cmd_method_name = $cmd . '_cmd';
     return $self->$cmd_method_name();
 }
 
@@ -164,6 +198,32 @@ sub rpc_err  {
 }
 
 
+=head2 prepare_base_host_conf
+
+Init base host_conf from fiven options.
+
+=cut
+
+sub prepare_base_host_conf {
+    my ( $self, $opt ) = @_;
+
+    my $host_conf = {
+        ver => $self->{ver},
+        RealBin => $self->{RealBin},
+
+        user => $opt->{user},
+        host => $opt->{host},
+    };
+
+    $host_conf->{host_dist_type} = $opt->{host_dist_type} if defined $opt->{host_dist_type};
+    $host_conf->{rpc_ver} = $opt->{rpc_ver} if defined $opt->{rpc_ver};
+    $host_conf->{client_src_dir} = $opt->{client_src_dir} if defined $opt->{client_src_dir};
+
+    $self->{host_conf} = $host_conf;
+    return 1;
+}
+
+
 =head2 init_rpc_obj
 
 Initializce object for RPC over SSH and connect to client. Do not start perl shell for RPC.
@@ -171,7 +231,7 @@ Initializce object for RPC over SSH and connect to client. Do not start perl she
 =cut
 
 sub init_rpc_obj  {
-    my ( $self, $opt ) = @_;
+    my ( $self ) = @_;
 
     my $rpc = SysFink::Server::SSHRPCClient->new();
     unless ( defined $rpc ) {
@@ -182,10 +242,7 @@ sub init_rpc_obj  {
     $self->{rpc} = $rpc;
     $self->{rpc_ssh_connected} = 0;
 
-    my $full_opt = { %$opt };
-    $full_opt->{RealBin} = $self->{RealBin};
-
-    return $self->rpc_err() unless $self->{rpc}->set_options( $full_opt );
+    return $self->rpc_err() unless $self->{rpc}->set_options( $self->{host_conf} );
     return 1;
 }
 
@@ -197,12 +254,12 @@ Prepare SSH part of RPC object.
 =cut
 
 sub prepare_rpc_ssh_part {
-    my ( $self, $opt ) = @_;
+    my ( $self ) = @_;
 
     return 1 if $self->{rpc_ssh_connected};
 
     unless ( defined $self->{rpc} ) {
-        return 0 unless $self->init_rpc_obj( $opt );
+        return 0 unless $self->init_rpc_obj();
     }
 
     unless ( $self->{rpc_ssh_connected} ) {
@@ -224,6 +281,81 @@ sub start_rpc_shell {
     my ( $self ) = @_;
 
     return $self->rpc_err() unless $self->{rpc}->start_rpc_shell();
+    return 1;
+}
+
+
+=head2 connect_db
+
+Load configs and connect do database.
+
+=cut
+
+sub connect_db {
+    my ( $self ) = @_;
+
+    my $conf = SysFink::Utils::Conf::load_conf_multi( $self->{conf_path}, 'db' );
+    return $self->err("Can't load database configuration from conf path '$self->{conf_path}'.") unless $conf;
+
+    $self->{conf} = $conf;
+    my $schema = SysFink::Utils::DB::get_connected_schema( $self->{conf}->{db} );
+    return $self->err("Can't connect do database.") unless $schema;
+
+    $self->{schema} = $schema;
+    return 1;
+}
+
+
+=head2 prepare_host_conf_from_db
+
+Load host related configuration from database.
+
+=cut
+
+sub prepare_host_conf_from_db {
+    my ( $self ) = @_;
+
+    my $conf_obj = SysFink::Conf::DBIC->new({
+        schema => $self->{schema},
+    });
+    return $self->err("Can't load config object.") unless $conf_obj;
+
+    my $machine_name = $self->{host_conf}->{host};
+
+    my $machine_id = $conf_obj->get_machine_id( { 'name' => $machine_name } );
+    return $self->err("Can't find machine_if for name '$machine_name' in DB.") unless $machine_id;
+
+    my $mconf_id = $conf_obj->get_machine_active_mconf_id( $machine_id );
+    return $self->err("Can't find mconf_id for machine_id '$machine_id' in DB.") unless $mconf_id;
+
+    my $general_conf = $conf_obj->load_general_conf( $machine_id, $mconf_id );
+    return $self->err("Can't load configuration for machine_id ''$machine_id and mconf_id '$mconf_id' in DB.") unless $general_conf;
+
+    my $max_items_in_one_response = 1_000;
+    if ( defined $general_conf->{max_items_in_one_response} ) {
+        $max_items_in_one_response = $general_conf->{max_items_in_one_response}
+    }
+
+    $self->{host_conf}->{machine_id} = $machine_id;
+    $self->{host_conf}->{mconf_id} = $mconf_id;
+    $self->{host_conf}->{paths} = $general_conf->{paths};
+    $self->{host_conf}->{max_items_in_one_response} = $max_items_in_one_response;
+
+    return 1;
+}
+
+
+=head2 scan_cmd
+
+Run scan command.
+
+=cut
+
+sub scan_cmd {
+    my ( $self ) = @_;
+
+
+    print "Command 'scan' succeeded.\n" if $self->{ver} >= 3;
     return 1;
 }
 

@@ -46,6 +46,7 @@ sub get_machine_id {
     my ( $self, $search_data ) = @_;
 
     my $machine_row = $self->{schema}->resultset('machine')->find( $search_data );
+    return undef unless defined $machine_row;
     return $machine_row->machine_id;
 }
 
@@ -66,7 +67,7 @@ sub get_machine_active_mconf_id {
         'join' => [ 'machine_id' ],
     });
 
-
+    return undef unless defined $mconf_row;
     return $mconf_row->id;
 }
 
