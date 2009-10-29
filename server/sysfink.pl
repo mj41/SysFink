@@ -203,18 +203,20 @@ sub transfer_dir_content {
 
 
 sub get_item_attrs {
+    # 1 is number, 0 is string
     return {
-        mtime => 1,
         mode => 1,
+        # symlink => 0, # string
+        hash => 1,
         size => 1,
         uid => 1,
+        user_name => 0, # string
         gid => 1,
-        hash => 1,
+        group_name => 0, # string
+        mtime => 1,
         nlink => 1,
         dev_num => 1,
         ino_num => 1,
-        user_name => 0,
-        group_name => 0,
     };
 }
 
@@ -353,6 +355,15 @@ if ( $debugging_on_client ) {
         $path_to_num{ $item->{path} } = [ 2, $num ];
     }
 
+    my $select_items = [ 'me.sc_idata_id', 'me.sc_mitem_id', 'sc_mitem_id.path', ];
+    my $select_as_items = [ 'sc_idata_id', 'sc_mitem_id', 'path', ];
+
+    my $attrs = get_item_attrs();
+    foreach my $attr_name ( keys %$attrs ) {
+        push @$select_items, 'me.' . $attr_name;
+        push @$select_as_items, $attr_name;
+    }
+
     my $prev_sc_idata_rs = $schema->resultset('sc_idata')->search(
         {
             'me.found' => 1,
@@ -361,8 +372,8 @@ if ( $debugging_on_client ) {
         },
         {
             'join' => [ 'sc_mitem_id' ],
-            'select' => [ 'me.sc_idata_id', 'me.sc_mitem_id', 'sc_mitem_id.path', 'me.mtime', ],
-            'as' => [ 'sc_idata_id', 'sc_mitem_id', 'path', 'mtime', ],
+            'select' => $select_items,
+            'as' => $select_as_items,
             'order_by' => [ 'sc_mitem_id.path', ],
         },
     );
@@ -387,6 +398,8 @@ if ( $debugging_on_client ) {
             } else {
                 # Data changed -> do update.
                 $path_to_num{ $path }->[0] = 1; # 1 .. found in db and changed
+                print Dumper( $new_item_data );
+                print Dumper ( \%row );
 
                 my $sc_mitem_id = $row{'sc_mitem_id'};
                 print "updating status to new values sc_mitem_id $sc_mitem_id\n" if $ver >= 4;

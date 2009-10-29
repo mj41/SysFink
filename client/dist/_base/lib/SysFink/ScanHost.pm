@@ -161,9 +161,18 @@ sub get_dir_items {
         $self->add_error("Directory '$dir_name' not open for read.");
         return 0;
     }
-    my @dir_items = readdir($dir_handle);
+    my @all_dir_items = readdir($dir_handle);
     close($dir_handle);
-    return  \@dir_items;
+
+    my @dir_items = ();
+    foreach my $item ( @all_dir_items ) {
+        next if $item eq '.';
+        next if $item eq '..';
+        next if $item =~ /^\s*$/;
+        push @dir_items, $item;
+    }
+
+    return \@dir_items;
 }
 
 
@@ -173,7 +182,7 @@ sub my_lstat {
 }
 
 
-sub add_item {
+sub add_item_and_send_if_needed {
     my ( $self, $full_path, $flags, $debug_prefix ) = @_;
 
     #  0 dev - device number of filesystem
@@ -231,14 +240,14 @@ sub add_item {
     if ( $flags->{U} eq '+' ) {
         $item_info->{uid} = $uid;
         my $user_name = getpwuid( $uid );
-        $item_info->{user} = $user_name if defined $user_name;
+        $item_info->{user_name} = $user_name if defined $user_name;
     }
 
     # flag G - group
     if ( $flags->{G} eq '+' ) {
         $item_info->{gid} = $gid;
         my $group_name = getgrgid( $gid );
-        $item_info->{group} = $group_name if defined $group_name;
+        $item_info->{group_name} = $group_name if defined $group_name;
     }
 
     # flag M - mtime
@@ -253,8 +262,8 @@ sub add_item {
 
     # D - major and minor device number
     if ( $flags->{D} eq '+' ) {
-        $item_info->{dev} = $dev;
-        $item_info->{ino} = $ino;
+        $item_info->{dev_num} = $dev;
+        $item_info->{ino_num} = $ino;
     }
 
     # B - do backup this item
@@ -306,10 +315,6 @@ sub scan_recurse {
 
     my $full_path;
     ITEM: foreach my $name ( sort @$dir_items ) {
-        next if $name =~ /^\.$/;
-        next if $name =~ /^\..$/;
-        next if $name =~ /^\s*$/;
-
         $full_path = $dir_name . $name;
         print $debug_prefix."item $full_path\n" if $self->{debug_out} >= 2;
 
@@ -319,7 +324,7 @@ sub scan_recurse {
         # Skip this file/directory if nothing to check selected.
         next ITEM unless $plus_found;
 
-        my ( $ret_code, $is_dir ) = $self->add_item( $full_path, $flags, $debug_prefix  );
+        my ( $ret_code, $is_dir ) = $self->add_item_and_send_if_needed( $full_path, $flags, $debug_prefix );
 
         if ( $is_dir ) {
             # ToDo - why not '$flags' only instead of '{ %$flags }' ?
@@ -380,7 +385,7 @@ sub scan {
         my $is_dir = 1;
         if ( $full_path ne '' ) {
             my $s_ret_code;
-            ( $s_ret_code, $is_dir ) = $self->add_item( $full_path, $flags, '' );
+            ( $s_ret_code, $is_dir ) = $self->add_item_and_send_if_needed( $full_path, $flags, '' );
         }
 
         if ( $is_dir ) {
