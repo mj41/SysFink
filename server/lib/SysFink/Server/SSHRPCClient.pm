@@ -59,8 +59,9 @@ sub set_default_values {
     $self->{client_dir} = $self->set_client_dir();
 
     $self->{rpc} = undef;
-    $self->{rpc_ver} = 1;
+    $self->{rpc_ver} = $self->{ver};
     $self->{rpc_nice} = 10;
+    $self->{rpc_last_cmd} = undef;
 
     $self->{RealBin} = '';
     $self->{client_src_dir} = $self->get_client_src_dir();
@@ -578,6 +579,7 @@ sub start_rpc_shell {
 
     my $rpc = SSH::RPC::PP::Client->new( $self->{ssh}, $client_start_cmd );
     $self->{rpc} = $rpc;
+    $self->{rpc_last_cmd} = undef;
 
     return 1;
 }
@@ -593,7 +595,41 @@ sub stop_rpc_shell {
     my ( $self ) = @_;
 
     $self->{rpc} = undef;
+    $self->{rpc_last_cmd} = undef;
     return 1;
+}
+
+
+=head2 validate_result_obj
+
+Validate result_obj from do_rpc or get_next_response method.
+
+=cut
+
+sub validate_result_obj {
+    my ( $self, $result_obj, $report_response_error ) = @_;
+
+    my $is_ok = $result_obj->isSuccess;
+
+    $result_obj->dump() if $self->{ver} >= 5 || ( !$is_ok && $self->{ver} >= 1 );
+
+    if ( ! $is_ok ) {
+        my $err_msg = "Fatal error for client shell command '$self->{rpc_last_cmd}': '" . $result_obj->getStatusMessage() . "'";
+        $self->err( $err_msg );
+        return undef;
+    }
+
+    if ( $report_response_error ) {
+        my $err = $result_obj->getResponseError();
+        if ( defined  $err )  {
+            my $err_msg = "Error for client shell command '$self->{rpc_last_cmd}': '$err'";
+            $self->err( $err_msg );
+            return undef;
+        }
+    }
+
+    return $result_obj;
+
 }
 
 
@@ -608,34 +644,54 @@ sub do_rpc {
     $report_response_error = 1 unless defined $report_response_error;
 
     print "Running shell command '$cmd':\n" if $self->{ver} >= 5;
+    $self->{rpc_last_cmd} = $cmd;
 
     my $result_obj = $self->{rpc}->run( $cmd );
-    my $is_ok = $result_obj->isSuccess;
+    return $self->validate_result_obj( $result_obj, $report_response_error );
 
-    $result_obj->dump() if $self->{ver} >= 5 || ( !$is_ok && $self->{ver} >= 1 );
+}
 
-    if ( ! $is_ok ) {
-        my $err_msg = "Fatal error for client shell command '$cmd': '" . $result_obj->getStatusMessage() . "'";
-        $self->err( $err_msg );
-        return undef;
+
+
+=head2 get_next_response
+
+Run next response for running command started by do_rpc method.
+
+=cut
+
+sub get_next_response {
+    my ( $self, $report_response_error ) = @_;
+    $report_response_error = 1 unless defined $report_response_error;
+
+    my $result_obj = $self->{rpc}->get_next_response();
+    return $self->validate_result_obj( $result_obj, $report_response_error );
+}
+
+
+=head2 compare_test_name
+
+Compare test name in given response. Return 1 on succeed or sets error.
+
+=cut
+
+sub compare_test_name {
+    my ( $self, $response, $expected_test_name ) = @_;
+
+    my $test_name = $response->{test};
+
+    if ( (not defined $test_name) || $test_name ne $expected_test_name ) {
+        my $msg_test_name = 'undef';
+        $msg_test_name = "'$test_name'" if defined $test_name;
+        return $self->err("Response should contain '$expected_test_name' as test name, but contains $msg_test_name.");
     }
 
-    if ( $report_response_error ) {
-        my $err = $result_obj->getResponseError();
-        if ( defined  $err )  {
-            my $err_msg = "Error for client shell command '$cmd': '$err'";
-            $self->err( $err_msg );
-            return undef;
-        }
-    }
-
-    return $result_obj;
+    return 1;
 }
 
 
 =head2 test_noop_rpc
 
-Run test_noop remote procedure.
+Run 'test_noop' remote procedure.
 
 =cut
 
@@ -646,15 +702,59 @@ sub test_noop_rpc {
     return 0 unless defined $result_obj;
 
     my $response = $result_obj->getResponse();
-    my $test_name = $response->{test};
-
-    if ( (not defined $test_name) || $test_name ne 'noop' ) {
-        my $msg_test_name = 'undef';
-        $msg_test_name = "'$test_name'" if defined $test_name;
-        return $self->err("Command 'test_noop' shoul return 'noop' as test name, but return $msg_test_name.");
-    }
+    return 0 unless $self->compare_test_name( $response, 'noop' );
 
     print "Command 'test_noop' succeeded.\n" if $self->{ver} >= 3;
+    return 1;
+}
+
+
+=head2 compare_test_three_parts_response
+
+Compare test name in given response. Return 1 on succeed or sets error.
+
+=cut
+
+sub compare_test_three_parts_response {
+    my ( $self, $response, $expected_test_name, $expected_test_part_num ) = @_;
+
+    return 0 unless $self->compare_test_name( $response, $expected_test_name );
+
+    my $test_part_num = $response->{part_num};
+    if ( (not defined $test_part_num) || $test_part_num ne $expected_test_part_num ) {
+        $test_part_num = 'undef' unless defined $test_part_num;
+        return $self->err("Attribute part_num in response should be $expected_test_part_num, but is $test_part_num.");
+    }
+
+    return 1;
+}
+
+
+=head2 test_three_parts_rpc
+
+Run 'test_three_parts' remote procedure.
+
+=cut
+
+sub test_three_parts_rpc {
+    my ( $self ) = @_;
+
+    my $expected_test_part_num = 1;
+    my $result_obj = $self->do_rpc( 'test_three_parts', 1 );
+    return 0 unless defined $result_obj;
+
+    my $response = $result_obj->getResponse();
+    return 0 unless $self->compare_test_three_parts_response( $response, 'three_parts', $expected_test_part_num );
+
+    while ( $result_obj->isSuccess && !$result_obj->isLast ) {
+        $expected_test_part_num++;
+        $result_obj = $self->get_next_response( 1 );
+
+        $response = $result_obj->getResponse();
+        return 0 unless $self->compare_test_three_parts_response( $response, 'three_parts', $expected_test_part_num );
+    }
+
+    print "Command 'test_three_parts_rpc' succeeded.\n" if $self->{ver} >= 3;
     return 1;
 }
 

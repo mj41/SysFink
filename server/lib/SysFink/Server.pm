@@ -98,6 +98,7 @@ sub run {
 
     my $psh_commands = {
         'test_noop_rpc' => 1,
+        'test_three_parts_rpc' => 1,
     };
     if ( exists $psh_commands->{ $opt->{cmd} } ) {
         # Start perl shell on client.
@@ -105,6 +106,7 @@ sub run {
 
         # Run command.
         return $self->test_noop_rpc() if $opt->{cmd} eq 'test_noop_rpc';
+        return $self->test_three_parts_rpc() if $opt->{cmd} eq 'test_three_parts_rpc';
     }
 
     $self->err("Unknown command '$opt->{cmd}'.");
@@ -249,7 +251,7 @@ sub start_rpc_shell {
 
 =head2 test_noop_rpc
 
-Call command test_noop on client's perl shell.
+Call command 'test_noop' on client's perl shell.
 
 =cut
 
@@ -257,6 +259,21 @@ sub test_noop_rpc {
     my ( $self ) = @_;
 
     return $self->rpc_err() unless $self->{rpc}->test_noop_rpc();
+    return 1;
+}
+
+
+
+=head2 test_three_parts_rpc
+
+Call command 'test_three_parts' on client's perl shell.
+
+=cut
+
+sub test_three_parts_rpc {
+    my ( $self ) = @_;
+
+    return $self->rpc_err() unless $self->{rpc}->test_three_parts_rpc();
     return 1;
 }
 

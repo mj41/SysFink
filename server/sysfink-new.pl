@@ -92,8 +92,14 @@ perl sysfink.pl [options]
         Also used: --host_dist_type.
 
     --cmd=test_noop_rpc
-        Try to run noop command on client sheel over RPC. Use 'renew_client_dir' cmd  to transfer RPC source code
-        to client.
+        Try to run 'noop' test command on client shell over RPC. You should run 'renew_client_dir' cmd to transfer
+        RPC source code to client first.
+        Return nothing (on success) or error message.
+        Also required: --host, --user.
+
+    --cmd=test_three_parts_rpc
+        Try to run 'tree_parts' test command on client shell over RPC. You should run 'renew_client_dir' cmd to transfer
+        RPC source code to client first.
         Return nothing (on success) or error message.
         Also required: --host, --user.
 
