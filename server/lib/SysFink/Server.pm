@@ -5,7 +5,9 @@ use warnings;
 
 use FindBin;
 use Data::Dumper;
+
 use SysFink::Server::SSHRPCClient;
+
 
 =head1 NAME
 
@@ -82,35 +84,68 @@ sub run {
     print Dumper( $opt ) if $ver >= 5;
 
     return $self->err("No command selected. Use --cmd option.") unless $opt->{cmd};
-    $opt->{cmd} = lc( $opt->{cmd} );
 
-    # Commands:
-
-    # Next commands needs prepared SSH part of object.
-    return 0 unless $self->prepare_rpc_ssh_part( $opt );
-
-    return $self->test_hostname() if $opt->{cmd} eq 'test_hostname';
-
-    return $self->check_client_dir() if $opt->{cmd} eq 'check_client_dir';
-    return $self->remove_client_dir() if $opt->{cmd} eq 'remove_client_dir';
-    return $self->renew_client_dir() if $opt->{cmd} eq 'renew_client_dir';
-
-
-    my $psh_commands = {
-        'test_noop_rpc' => 1,
-        'test_three_parts_rpc' => 1,
+    # Commands configuration.
+    my $all_cmd_confs = {
+        'test_hostname' => {
+            'ssh' => 1,
+            'type' => 'rpc',
+        },
+        'check_client_dir' => {
+            'ssh' => 1,
+            'type' => 'rpc',
+        },
+        'remove_client_dir' => {
+            'ssh' => 1,
+            'type' => 'rpc',
+        },
+        'renew_client_dir' => {
+            'ssh' => 1,
+            'type' => 'rpc',
+        },
+        'test_noop_rpc' => {
+            'ssh' => 1,
+            'rpc' => 1,
+            'type' => 'rpc',
+        },
+        'test_three_parts_rpc' => {
+            'ssh' => 1,
+            'rpc' => 1,
+            'type' => 'rpc',
+        },
     };
-    if ( exists $psh_commands->{ $opt->{cmd} } ) {
-        # Start perl shell on client.
-        return 0 unless $self->start_rpc_shell();
 
-        # Run command.
-        return $self->test_noop_rpc() if $opt->{cmd} eq 'test_noop_rpc';
-        return $self->test_three_parts_rpc() if $opt->{cmd} eq 'test_three_parts_rpc';
+    my $cmd = lc( $opt->{cmd} );
+
+    unless ( exists $all_cmd_confs->{$cmd} ) {
+        $self->err("Unknown command '$cmd'.");
+        return 0;
     }
 
-    $self->err("Unknown command '$opt->{cmd}'.");
-    return 0;
+    my $cmd_conf = $all_cmd_confs->{ $cmd };
+
+    if ( $cmd_conf->{ssh} ) {
+        # Next commands needs prepared SSH part of object.
+        return 0 unless $self->prepare_rpc_ssh_part( $opt );
+    }
+
+    if ( $cmd_conf->{rpc} ) {
+        # Start perl shell on client.
+        return 0 unless $self->start_rpc_shell();
+    }
+
+    my $cmd_type = $cmd_conf->{type};
+    my $cmd_method_name = $cmd;
+
+    # Run simple RPC command on RPC object.
+    if ( defined $cmd_type && $cmd_type eq 'rpc' ) {
+        my $rpc_obj = $self->{rpc};
+        return $self->rpc_err() unless $rpc_obj->$cmd_method_name();
+        return 1;
+    }
+
+    # Run given comman method.
+    return $self->$cmd_method_name();
 }
 
 
@@ -179,62 +214,6 @@ sub prepare_rpc_ssh_part {
 }
 
 
-=head2 test_hostname
-
-Call command test_hostname on client.
-
-=cut
-
-sub test_hostname {
-    my ( $self ) = @_;
-
-    return $self->rpc_err() unless $self->{rpc}->test_hostname();
-    return 1;
-}
-
-
-=head2 check_client_dir
-
-Call command check_client_dir on client.
-
-=cut
-
-sub check_client_dir {
-    my ( $self ) = @_;
-
-    return $self->rpc_err() unless $self->{rpc}->check_client_dir();
-    return 1;
-}
-
-
-=head2 remove_client_dir
-
-Call command remove_client_dir on client.
-
-=cut
-
-sub remove_client_dir {
-    my ( $self ) = @_;
-
-    return $self->rpc_err() unless $self->{rpc}->remove_client_dir();
-    return 1;
-}
-
-
-=head2 renew_client_dir
-
-Call command renew_client_dir on client.
-
-=cut
-
-sub renew_client_dir {
-    my ( $self ) = @_;
-
-    return $self->rpc_err() unless $self->{rpc}->renew_client_dir();
-    return 1;
-}
-
-
 =head2 start_rpc_shell
 
 Start perl shell on client.
@@ -245,35 +224,6 @@ sub start_rpc_shell {
     my ( $self ) = @_;
 
     return $self->rpc_err() unless $self->{rpc}->start_rpc_shell();
-    return 1;
-}
-
-
-=head2 test_noop_rpc
-
-Call command 'test_noop' on client's perl shell.
-
-=cut
-
-sub test_noop_rpc {
-    my ( $self ) = @_;
-
-    return $self->rpc_err() unless $self->{rpc}->test_noop_rpc();
-    return 1;
-}
-
-
-
-=head2 test_three_parts_rpc
-
-Call command 'test_three_parts' on client's perl shell.
-
-=cut
-
-sub test_three_parts_rpc {
-    my ( $self ) = @_;
-
-    return $self->rpc_err() unless $self->{rpc}->test_three_parts_rpc();
     return 1;
 }
 
