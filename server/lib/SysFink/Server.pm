@@ -215,7 +215,6 @@ sub prepare_base_host_conf {
         host => $opt->{host},
     };
 
-    $host_conf->{host_dist_type} = $opt->{host_dist_type} if defined $opt->{host_dist_type};
     $host_conf->{rpc_ver} = $opt->{rpc_ver} if defined $opt->{rpc_ver};
     $host_conf->{client_src_dir} = $opt->{client_src_dir} if defined $opt->{client_src_dir};
 
@@ -320,10 +319,10 @@ sub prepare_host_conf_from_db {
     });
     return $self->err("Can't load config object.") unless $conf_obj;
 
-    my $machine_name = $self->{host_conf}->{host};
+    my $host = $self->{host_conf}->{host};
 
-    my $machine_id = $conf_obj->get_machine_id( { 'name' => $machine_name } );
-    return $self->err("Can't find machine_if for name '$machine_name' in DB.") unless $machine_id;
+    my $machine_id = $conf_obj->get_machine_id( { 'name' => $host } );
+    return $self->err("Can't find machine_if for host '$host' in DB.") unless $machine_id;
 
     my $mconf_id = $conf_obj->get_machine_active_mconf_id( $machine_id );
     return $self->err("Can't find mconf_id for machine_id '$machine_id' in DB.") unless $mconf_id;
@@ -331,14 +330,28 @@ sub prepare_host_conf_from_db {
     my $general_conf = $conf_obj->load_general_conf( $machine_id, $mconf_id );
     return $self->err("Can't load configuration for machine_id ''$machine_id and mconf_id '$mconf_id' in DB.") unless $general_conf;
 
-    my $max_items_in_one_response = 1_000;
-    if ( defined $general_conf->{max_items_in_one_response} ) {
-        $max_items_in_one_response = $general_conf->{max_items_in_one_response}
+    my @mandatory_keys = qw/paths dist_type/;
+
+    # Check mandatory.
+    foreach my $key ( @mandatory_keys ) {
+        unless ( $general_conf->{ $key } ) {
+            return $self->err("Can't find mandatory configuration key '$key' for host '$host' DB.");
+        }
     }
 
     $self->{host_conf}->{machine_id} = $machine_id;
     $self->{host_conf}->{mconf_id} = $mconf_id;
-    $self->{host_conf}->{paths} = $general_conf->{paths};
+
+    # Set mandatory.
+    foreach my $key ( @mandatory_keys ) {
+         $self->{host_conf}->{ $key } = $general_conf->{ $key };
+    }
+
+    # Optional.
+    my $max_items_in_one_response = 1_000;
+    if ( defined $general_conf->{max_items_in_one_response} ) {
+        $max_items_in_one_response = $general_conf->{max_items_in_one_response}
+    }
     $self->{host_conf}->{max_items_in_one_response} = $max_items_in_one_response;
 
     return 1;

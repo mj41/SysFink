@@ -89,7 +89,6 @@ perl sysfink.pl [options]
         (and 'check_client_dir') and then put new code.
         Return nothing (on success) or error message.
         Also required: --host, --user.
-        Also used: --host_dist_type.
 
     --cmd=test_noop_rpc
         Try to run 'noop' test command on client shell over RPC. You should run 'renew_client_dir' cmd to transfer
@@ -103,13 +102,14 @@ perl sysfink.pl [options]
         Return nothing (on success) or error message.
         Also required: --host, --user.
 
+    --cmd=scan
+        Run scan on given host. Load config from database and save results there.
+        Return nothing (on success) or error message.
+        Also required: --host, --user.
+
     --user .. User name for SSH connect.
 
     --host .. Full hostname of client for SSH connect.
-
-    --host_dist_type .. Distribution type for hashing (linux-bin-64b, linux-bin-64b, ... ). See client 'dist'
-                        directory content.
-
 
 =head1 DESCRIPTION
 

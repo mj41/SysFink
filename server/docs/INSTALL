@@ -57,6 +57,7 @@ cp conf/web_db.yml.example conf/web_db.yml
 # Create client's machine config files
 cat > conf-machines/my-first-machine
 hostname    my-first-machine.my-domain.com
+dist_type   linux-perl-md5
 exclude     /dev/* /home/* /proc/* /sys/* /var/*
 Ctrl+D
 
