@@ -640,13 +640,13 @@ Run command (remote procedure) on client shell. Return result_obj or undef (on e
 =cut
 
 sub do_rpc {
-    my ( $self, $cmd, $report_response_error ) = @_;
+    my ( $self, $cmd, $cmd_conf, $report_response_error ) = @_;
     $report_response_error = 1 unless defined $report_response_error;
 
     print "Running shell command '$cmd':\n" if $self->{ver} >= 5;
     $self->{rpc_last_cmd} = $cmd;
 
-    my $result_obj = $self->{rpc}->run( $cmd );
+    my $result_obj = $self->{rpc}->run( $cmd, $cmd_conf );
     return $self->validate_result_obj( $result_obj, $report_response_error );
 }
 
@@ -713,7 +713,7 @@ Run 'test_noop' remote procedure.
 sub test_noop_rpc {
     my ( $self ) = @_;
 
-    my $result_obj = $self->do_rpc( 'test_noop', 1 );
+    my $result_obj = $self->do_rpc( 'test_noop', undef, 1 );
     return 0 unless defined $result_obj;
 
     my $response = $result_obj->getResponse();
@@ -755,7 +755,7 @@ sub test_three_parts_rpc {
     my ( $self ) = @_;
 
     my $expected_test_part_num = 1;
-    my $result_obj = $self->do_rpc( 'test_three_parts', 1 );
+    my $result_obj = $self->do_rpc( 'test_three_parts', undef, 1 );
     return 0 unless defined $result_obj;
 
     my $response = $result_obj->getResponse();

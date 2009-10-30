@@ -13,6 +13,8 @@ use SysFink::Conf::DBIC;
 use SysFink::Utils::Conf;
 use SysFink::Utils::DB;
 
+use DateTime; # scan_cmd
+
 
 =head1 NAME
 
@@ -403,6 +405,119 @@ sub scan_test_cmd {
 }
 
 
+=head2 get_item_attrs
+
+Return list of monitored attributes. Key is name. Value tupe (1 number, 0 string).
+
+=cut
+
+sub get_item_attrs {
+    my ( $self ) = @_;
+
+    return {
+        mtime => 1,
+        mode => 1,
+        size => 1,
+        uid => 1,
+        gid => 1,
+        hash => 1,
+        nlink => 1,
+        dev_num => 1,
+        ino_num => 1,
+        user_name => 0,
+        group_name => 0,
+    };
+}
+
+
+=head2 get_sc_idata_rs
+
+Return ResultSet to actual idata for given machine_id.
+
+=cut
+
+sub get_sc_idata_rs {
+    my ( $self, $machine_id ) = @_;
+
+    my $select_items = [ 'me.sc_idata_id', 'me.sc_mitem_id', 'sc_mitem_id.path', ];
+    my $select_as_items = [ 'sc_idata_id', 'sc_mitem_id', 'path', ];
+
+    my $attrs = $self->get_item_attrs();
+    foreach my $attr_name ( keys %$attrs ) {
+        push @$select_items, 'me.' . $attr_name;
+        push @$select_as_items, $attr_name;
+    }
+
+    my $prev_sc_idata_rs = $self->{schema}->resultset('sc_idata')->search(
+        {
+            'me.found' => 1,
+            'me.newer_id' => undef,
+            'sc_mitem_id.machine_id' => $machine_id,
+        },
+        {
+            'join' => [ 'sc_mitem_id' ],
+            'select' => $select_items,
+            'as' => $select_as_items,
+            'order_by' => [ 'sc_mitem_id.path', ],
+        },
+    );
+
+    return $prev_sc_idata_rs;
+}
+
+
+=head2 has_same_data
+
+Run scan command.
+
+=cut
+
+sub has_same_data {
+    my ( $self, $ra, $rb ) = @_;
+
+    my $attrs = $self->get_item_attrs();
+    # Add additional attribute 'found'.
+    $attrs->{found} = 1;
+
+    foreach my $attr_name ( keys %$attrs ) {
+        my $is_numeric = $attrs->{$attr_name};
+        #print "$attr_name is_numeric=$is_numeric\n";
+        if ( $is_numeric ) {
+            return 0 if defined $ra->{$attr_name} && ( (not defined $rb->{$attr_name}) || $rb->{$attr_name} != $ra->{$attr_name} );
+            return 0 if defined $rb->{$attr_name} && ( (not defined $ra->{$attr_name}) || $ra->{$attr_name} != $rb->{$attr_name} );
+        } else {
+            return 0 if defined $ra->{$attr_name} && ( (not defined $rb->{$attr_name}) || $rb->{$attr_name} ne $ra->{$attr_name} );
+            return 0 if defined $rb->{$attr_name} && ( (not defined $ra->{$attr_name}) || $ra->{$attr_name} ne $rb->{$attr_name} );
+        }
+    }
+
+    return 1;
+}
+
+
+=head2 get_base_idata
+
+Return hash ref for database. Hash is created from base_data completed with values from raw_data.
+
+=cut
+
+sub get_base_idata {
+    my ( $self, $base_data, $raw_data ) = @_;
+
+    my $data = { %$base_data };
+
+    my $attrs = get_item_attrs();
+    foreach my $attr_name ( keys %$attrs ) {
+        if ( exists $raw_data->{ $attr_name } ) {
+            $data->{ $attr_name } = $raw_data->{ $attr_name };
+        } else {
+            $data->{ $attr_name } = undef;
+        }
+    }
+    return $data;
+}
+
+
 =head2 scan_cmd
 
 Run scan command.
@@ -412,8 +527,158 @@ Run scan command.
 sub scan_cmd {
     my ( $self ) = @_;
 
+    my $ver = $self->{ver};
+    my $schema  = $self->{schema};
+
     my $scan_conf = $self->get_scan_conf( 0 );
 
+    my $machine_id = $self->{host_conf}->{machine_id};
+    my $mconf_id = $self->{host_conf}->{mconf_id};
+
+    # Insert scan row.
+    my $scan_row = $schema->resultset('scan')->create({
+        mconf_id => $mconf_id,
+        start_time => DateTime->now,
+        stop_time => undef,
+        pid => $$,
+        items => undef,
+    });
+    my $scan_id = $scan_row->scan_id;
+
+    $schema->storage->txn_begin;
+
+    #$scan_conf->{debug_recursion_limit} = int( rand(100)+1 ); # debug
+    #$scan_conf->{debug_recursion_limit} = 1_000; # debug
+
+    # First part.
+    my $result_obj = $self->{rpc}->do_rpc( 'scan_host', $scan_conf, 1 );
+    return 0 unless defined $result_obj;
+
+    my $response = $result_obj->getResponse();
+    my $loaded_items = $response->{loaded_items};
+
+    # Next parts.
+    while ( $result_obj->isSuccess && !$result_obj->isLast ) {
+        $result_obj = $self->{rpc}->get_next_response( 1 );
+        $response = $result_obj->getResponse();
+        $loaded_items = [
+            @$loaded_items,
+            @{$response->{loaded_items}}
+        ];
+    }
+    # print Dumper( $loaded_items ); exit; # debug
+
+    my %path_to_num = ();
+    foreach my $num ( 0..$#$loaded_items ) {
+        my $item = $loaded_items->[ $num ];
+        print "$item->{path} ($num)\n" if $ver >= 5;
+        # 2 .. found on host, initial status
+        # if not changed to 0 (in db and the same) or 1 (in db and changed) then 2 means 'new' -> insert to db
+        $path_to_num{ $item->{path} } = [ 2, $num ];
+    }
+
+    my $prev_sc_idata_rs = $self->get_sc_idata_rs( $machine_id );
+
+    my $sc_mitem_rs = $schema->resultset('sc_mitem');
+    my $sc_idata_rs = $schema->resultset('sc_idata');
+
+    while ( my $row_obj = $prev_sc_idata_rs->next ) {
+        my %row = ( $row_obj->get_columns() );
+        my $path = $row{path};
+        #print Dumper( \%row ) if $ver >= 5;
+
+        my $insert_idata = undef;
+
+        # Found.
+        if ( exists $path_to_num{ $path } ) {
+            my $new_item_data = $loaded_items->[ $path_to_num{ $path }->[1] ];
+            if ( $self->has_same_data($new_item_data,\%row) ) {
+                # Same data -> do nothing.
+                $path_to_num{ $path }->[0] = 0; # 0 .. found in db and not changed
+
+            } else {
+                # Data changed -> do update.
+                $path_to_num{ $path }->[0] = 1; # 1 .. found in db and changed
+                if ( $ver >= 4 ) {
+                    print "Item data changed:\n";
+                    print Dumper( $new_item_data );
+                    print Dumper ( \%row );
+                }
+
+                my $sc_mitem_id = $row{'sc_mitem_id'};
+                print "updating status to new values sc_mitem_id $sc_mitem_id\n" if $ver >= 5;
+                my $insert_idata_base = {
+                    sc_mitem_id => $sc_mitem_id,
+                    scan_id => $scan_id,
+                    newer_id => undef,
+                    found => 1,
+                };
+                #$new_item_data->{size} = int rand(500); # debug
+                $insert_idata = $self->get_base_idata( $insert_idata_base, $new_item_data );
+            }
+
+        # Not found on during scan on client machine -> delete.
+        } else {
+            my $sc_mitem_id = $row{'sc_mitem_id'};
+            print "updating status to delete sc_mitem_id $sc_mitem_id\n" if $ver >= 5;
+            my $insert_idata_base = {
+                sc_mitem_id => $sc_mitem_id,
+                scan_id => $scan_id,
+                newer_id => undef,
+                found => 0,
+            };
+            $insert_idata = $self->get_base_idata( $insert_idata_base, {} );
+        }
+
+        if ( defined $insert_idata ) {
+            my $sc_idata_row = $sc_idata_rs->create( $insert_idata );
+            my $new_sc_idata_id = $sc_idata_row->sc_idata_id;
+
+            my $old_sc_idata_rs = $schema->resultset('sc_idata')->find( $row{'sc_idata_id'} );
+            $old_sc_idata_rs->update({ newer_id => $new_sc_idata_id });
+        }
+    }
+
+
+    foreach my $num ( 0..$#$loaded_items ) {
+        my $item = $loaded_items->[ $num ];
+        my $path = $item->{path};
+        # insert
+        if ( $path_to_num{ $path }->[0] == 2 ) {
+            print "inserting path $path (sc_mitem_id=" if $ver >= 4;
+
+            my $sc_mitme_row = $sc_mitem_rs->find_or_create({
+                machine_id => $machine_id,
+                path => $path,
+            });
+            my $sc_mitem_id = $sc_mitme_row->sc_mitem_id;
+            print $sc_mitem_id if $ver >= 4;
+
+            my $insert_idata_base = {
+                sc_mitem_id => $sc_mitem_id,
+                scan_id => $scan_id,
+                newer_id => undef,
+                found => 1,
+            };
+            my $insert_idata = $self->get_base_idata( $insert_idata_base, $item );
+            my $sc_idata_row = $sc_idata_rs->create( $insert_idata );
+            my $new_sc_idata_id = $sc_idata_row->sc_idata_id;
+            print ", sc_idata_id=" . $new_sc_idata_id if $ver >= 4;
+            print ")\n"  if $ver >= 4;
+        }
+    }
+
+    #print Dumper( \%path_to_num ) if $ver >= 5;
+
+    $schema->storage->txn_commit;
+
+    # Update scan row.
+    $scan_row->update({
+        items => scalar(@$loaded_items),
+        stop_time => DateTime->now,
+    });
+
+    #print "sleeping ...\n"; sleep(10*60); # debug size of used memory
     print "Command 'scan' succeeded.\n" if $self->{ver} >= 3;
     return 1;
 }
