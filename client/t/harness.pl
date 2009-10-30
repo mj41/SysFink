@@ -7,7 +7,11 @@ use TAP::Harness;
 
 my @default_tests = (
     't/*.t',
-    't/base/*',
+    't/base/*.t',
+    't/dist/*.t',
+    't/dist/irix-bin-64b/*.t',
+    't/dist/linux-bin-64b/*.t',
+    't/dist/linux-perl-md5/*.t',
 );
 my @tests = map { glob($_) } (@ARGV ? @ARGV : @default_tests);
 
