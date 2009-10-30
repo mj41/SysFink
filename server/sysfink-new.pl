@@ -102,6 +102,12 @@ perl sysfink.pl [options]
         Return nothing (on success) or error message.
         Also required: --host, --user.
 
+    --cmd=scan_test
+        Run scan_test command on given host. Load config from database, run scan comand in debug mode (online debug
+        output) and do not change anything inside DB.
+        Return nothing (on success) or error message.
+        Also required: --host, --user.
+
     --cmd=scan
         Run scan on given host. Load config from database and save results there.
         Return nothing (on success) or error message.

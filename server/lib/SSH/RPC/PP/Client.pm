@@ -80,6 +80,7 @@ sub get_next_raw_response {
     return { error => "No response from client.", status => 600 };
 }
 
+
 =head2 get_next_raw_response
 
 Return next response from client as L<SSH::RPC::PP::Result> object.
@@ -129,6 +130,7 @@ sub run {
     print $in_fh $json;
     return $self->get_next_response();
 }
+
 
 =head2 run
 

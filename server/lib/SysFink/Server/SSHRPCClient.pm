@@ -648,9 +648,24 @@ sub do_rpc {
 
     my $result_obj = $self->{rpc}->run( $cmd );
     return $self->validate_result_obj( $result_obj, $report_response_error );
-
 }
 
+
+=head2 do_debug_rpc
+
+Run command (remote procedure) on client shell in debug mode. Return exit code of SSH system command.
+
+=cut
+
+sub do_debug_rpc {
+    my ( $self, $cmd, $cmd_conf ) = @_;
+
+    print "Running shell command '$cmd' in debug mode:\n" if $self->{ver} >= 5;
+    $self->{rpc_last_cmd} = $cmd;
+
+    my $ret_code = $self->{rpc}->debug_run( $cmd, $cmd_conf );
+    return $ret_code;
+}
 
 
 =head2 get_next_response

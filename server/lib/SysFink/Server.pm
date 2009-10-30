@@ -126,6 +126,14 @@ sub run {
         },
 
         # Commands which work with database.
+        'scan_test' => {
+            'connect_to_db' => 1,
+            'load_host_conf_from_db' => 1,
+            'ssh_connect' => 1,
+            'start_rpc_shell' => 1,
+            'type' => 'self',
+        },
+
         'scan' => {
             'connect_to_db' => 1,
             'load_host_conf_from_db' => 1,
@@ -358,6 +366,43 @@ sub prepare_host_conf_from_db {
 }
 
 
+=head2 get_scan_conf
+
+Return configuration for scan command.
+
+=cut
+
+sub get_scan_conf {
+    my ( $self, $debug_run ) = @_;
+
+    my $scan_conf = {
+        'paths' => $self->{host_conf}->{paths},
+        'max_items_in_one_response' => $self->{host_conf}->{max_items_in_one_response},
+    };
+    $scan_conf->{debug_out} = 1 if $debug_run;
+
+    return $scan_conf;
+}
+
+
+
+=head2 scan_test_cmd
+
+Run scan_test command. Similar to scan_cmd, but do not update database, only list
+items info while scanning on client.
+
+=cut
+
+sub scan_test_cmd {
+    my ( $self ) = @_;
+
+    my $scan_conf = $self->get_scan_conf( 1 );
+    return $self->rpc_err() unless $self->{rpc}->do_debug_rpc( 'scan_host', $scan_conf );
+    print "Command 'scan_test' succeeded.\n" if $self->{ver} >= 3;
+    return 1;
+}
+
+
 =head2 scan_cmd
 
 Run scan command.
@@ -367,6 +412,7 @@ Run scan command.
 sub scan_cmd {
     my ( $self ) = @_;
 
+    my $scan_conf = $self->get_scan_conf( 0 );
 
     print "Command 'scan' succeeded.\n" if $self->{ver} >= 3;
     return 1;
