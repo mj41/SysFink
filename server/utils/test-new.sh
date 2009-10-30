@@ -34,6 +34,7 @@ perl sysfink.pl --user=root --host=$HOST --cmd=test_noop_rpc --ver=$VER
 
 perl sysfink.pl --user=root --host=$HOST --cmd=test_three_parts_rpc --ver=$VER
 
-perl sysfink.pl --user=root --host=$HOST --cmd=scan_test --ver=$VER
+echo "Running '... scan_test | tail 10':"
+perl sysfink.pl --user=root --host=$HOST --cmd=scan_test --ver=$VER | tail -n 10
 
 echo ""

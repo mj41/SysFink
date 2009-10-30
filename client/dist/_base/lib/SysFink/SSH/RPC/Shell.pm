@@ -7,6 +7,8 @@ use base 'SSH::RPC::Shell::PP::JSON';
 use strict;
 
 use SSH::RPC::Shell::PP::TestCmds;
+
+# loaded from one of dist directories
 use SysFink::FileHash;
 use SysFink::ScanHost;
 

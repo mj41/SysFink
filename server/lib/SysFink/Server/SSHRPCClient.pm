@@ -188,7 +188,7 @@ sub set_client_dir {
     my ( $self ) = @_;
 
     $self->{client_dir} = $self->get_client_dir();
-    print "New client_dir: '$self->{client_dir}'\n" if $self->{ver} >= 4;
+    print "New client_dir: '$self->{client_dir}'\n" if $self->{ver} >= 5;
     return 1;
 }
 

@@ -2,9 +2,10 @@ package SysFink::Conf::SysFink;
 
 use strict;
 use warnings;
-use File::Spec::Functions;
 
 use base 'SysFink::Conf';
+
+use File::Spec::Functions;
 
 
 =head1 NAME
@@ -20,6 +21,7 @@ ToDo
 ToDo
 
 =head1 METHODS
+
 
 =head2 new
 
