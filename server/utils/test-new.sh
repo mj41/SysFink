@@ -23,17 +23,17 @@ VER="$2"
 echo "Online tests on host '$HOST':"
 echo ""
 
-perl sysfink-new.pl --user=root --host=$HOST --cmd=test_hostname --ver=$VER
+perl sysfink.pl --user=root --host=$HOST --cmd=test_hostname --ver=$VER
 
-perl sysfink-new.pl --user=root --host=$HOST --cmd=check_client_dir --ver=$VER
-perl sysfink-new.pl --user=root --host=$HOST --cmd=remove_client_dir --ver=$VER
+perl sysfink.pl --user=root --host=$HOST --cmd=check_client_dir --ver=$VER
+perl sysfink.pl --user=root --host=$HOST --cmd=remove_client_dir --ver=$VER
 
-perl sysfink-new.pl --user=root --host=$HOST --cmd=renew_client_dir --ver=$VER
+perl sysfink.pl --user=root --host=$HOST --cmd=renew_client_dir --ver=$VER
 
-perl sysfink-new.pl --user=root --host=$HOST --cmd=test_noop_rpc --ver=$VER
+perl sysfink.pl --user=root --host=$HOST --cmd=test_noop_rpc --ver=$VER
 
-perl sysfink-new.pl --user=root --host=$HOST --cmd=test_three_parts_rpc --ver=$VER
+perl sysfink.pl --user=root --host=$HOST --cmd=test_three_parts_rpc --ver=$VER
 
-perl sysfink-new.pl --user=root --host=$HOST --cmd=scan --ver=$VER
+perl sysfink.pl --user=root --host=$HOST --cmd=scan_test --ver=$VER
 
 echo ""
