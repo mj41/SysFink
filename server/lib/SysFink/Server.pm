@@ -69,13 +69,34 @@ sub err {
     return $self->{err} unless defined $err;
 
     # Set.
-    print "Setting error to: '$err'\n" if $self->{ver} >= 5;
+    print "Server - Setting error to: '$err'\n" if $self->{ver} >= 5;
     $self->{err} = $err;
 
     # return 0 is ok here.
     # You can use  e.g.
     #   return $self->err('Err msg') if $some_error;
     return 0;
+}
+
+
+=head2 dump
+
+Print given message and dump other parameters.
+
+=cut
+
+sub dump {
+    my $self = shift;
+    my $msg = shift;
+
+    print $msg . " ";
+    {
+        local $Data::Dumper::Indent = 1;
+        local $Data::Dumper::Purity = 1;
+        local $Data::Dumper::Terse = 1;
+        print Data::Dumper->Dump( [ @_ ], [] );
+    }
+    return 1;
 }
 
 
@@ -89,8 +110,7 @@ sub run {
     my ( $self, $opt ) = @_;
 
     $self->{ver} = $opt->{ver} if defined $opt->{ver};
-
-    print Dumper( $opt ) if $self->{ver} >= 5;
+    $self->dump( 'Given parameters', $opt ) if $self->{ver} >= 6;
 
     return $self->err("No command selected. Use --cmd option.") unless $opt->{cmd};
 
@@ -146,6 +166,8 @@ sub run {
 
     }; # $all_cmd_confs end
 
+    # Options used somewhere below:
+    # * use_db
 
     my $cmd = lc( $opt->{cmd} );
 
@@ -157,14 +179,17 @@ sub run {
     my $cmd_conf = $all_cmd_confs->{ $cmd };
 
     # Load db config and connect do DB.
-    if ( $cmd_conf->{connect_to_db} ) {
+    if ( $cmd_conf->{connect_to_db} || $opt->{use_db} ) {
         return 0 unless $self->connect_db();
     }
 
     # Load host config from connected DB.
     return 0 unless $self->prepare_base_host_conf( $opt );
-    if ( $cmd_conf->{load_host_conf_from_db} ) {
+    $self->dump( 'Host conf:', $self->{host_conf} ) if $self->{ver} >= 6;
+
+    if ( $cmd_conf->{load_host_conf_from_db} || $opt->{use_db} ) {
         return 0 unless $self->prepare_host_conf_from_db();
+        $self->dump( 'Host conf from DB:', $self->{host_conf} ) if $self->{ver} >= 6;
     }
 
     # Next commands needs prepared SSH part of object.
@@ -227,6 +252,7 @@ sub prepare_base_host_conf {
 
     $host_conf->{rpc_ver} = $opt->{rpc_ver} if defined $opt->{rpc_ver};
     $host_conf->{client_src_dir} = $opt->{client_src_dir} if defined $opt->{client_src_dir};
+    $host_conf->{host_dist_type} = $opt->{host_dist_type} if defined $opt->{host_dist_type};
 
     $self->{host_conf} = $host_conf;
     return 1;
@@ -340,10 +366,14 @@ sub prepare_host_conf_from_db {
     my $general_conf = $conf_obj->load_general_conf( $machine_id, $mconf_id );
     return $self->err("Can't load configuration for machine_id ''$machine_id and mconf_id '$mconf_id' in DB.") unless $general_conf;
 
-    my @mandatory_keys = qw/paths dist_type/;
+    # All options given on command line are rewrited by values loaded from DB.
+    my $mandatory_keys = {
+        paths => 'paths',
+        dist_type => 'host_dist_type',
+    };
 
     # Check mandatory.
-    foreach my $key ( @mandatory_keys ) {
+    foreach my $key ( keys %$mandatory_keys ) {
         unless ( $general_conf->{ $key } ) {
             return $self->err("Can't find mandatory configuration key '$key' for host '$host' DB.");
         }
@@ -353,8 +383,9 @@ sub prepare_host_conf_from_db {
     $self->{host_conf}->{mconf_id} = $mconf_id;
 
     # Set mandatory.
-    foreach my $key ( @mandatory_keys ) {
-         $self->{host_conf}->{ $key } = $general_conf->{ $key };
+    foreach my $key ( keys %$mandatory_keys ) {
+        my $host_conf_key = $mandatory_keys->{ $key };
+        $self->{host_conf}->{ $host_conf_key } = $general_conf->{ $key };
     }
 
     # Optional.
@@ -566,12 +597,12 @@ sub scan_cmd {
             @{$response->{loaded_items}}
         ];
     }
-    # print Dumper( $loaded_items ); exit; # debug
+    # $self->dump( 'Loaded items', $loaded_items ); exit; # debug
 
     my %path_to_num = ();
     foreach my $num ( 0..$#$loaded_items ) {
         my $item = $loaded_items->[ $num ];
-        print "$item->{path} ($num)\n" if $ver >= 5;
+        print "Loaded item $item->{path} ($num)\n" if $ver >= 6;
         # 2 .. found on host, initial status
         # if not changed to 0 (in db and the same) or 1 (in db and changed) then 2 means 'new' -> insert to db
         $path_to_num{ $item->{path} } = [ 2, $num ];
@@ -585,7 +616,7 @@ sub scan_cmd {
     while ( my $row_obj = $prev_sc_idata_rs->next ) {
         my %row = ( $row_obj->get_columns() );
         my $path = $row{path};
-        #print Dumper( \%row ) if $ver >= 5;
+        #$self->dump( 'Prev idata row', \%row ) if $ver >= 6;
 
         my $insert_idata = undef;
 
@@ -601,12 +632,12 @@ sub scan_cmd {
                 $path_to_num{ $path }->[0] = 1; # 1 .. found in db and changed
                 if ( $ver >= 4 ) {
                     print "Item data changed:\n";
-                    print Dumper( $new_item_data );
-                    print Dumper ( \%row );
+                    $self->dump( 'new item data', $new_item_data );
+                    $self->dump( 'prev item data', \%row );
                 }
 
                 my $sc_mitem_id = $row{'sc_mitem_id'};
-                print "updating status to new values sc_mitem_id $sc_mitem_id\n" if $ver >= 5;
+                print "Updating status to new values sc_mitem_id $sc_mitem_id.\n" if $ver >= 6;
                 my $insert_idata_base = {
                     sc_mitem_id => $sc_mitem_id,
                     scan_id => $scan_id,
@@ -620,7 +651,7 @@ sub scan_cmd {
         # Not found on during scan on client machine -> delete.
         } else {
             my $sc_mitem_id = $row{'sc_mitem_id'};
-            print "updating status to delete sc_mitem_id $sc_mitem_id\n" if $ver >= 5;
+            print "Updating status to delete sc_mitem_id $sc_mitem_id.\n" if $ver >= 4;
             my $insert_idata_base = {
                 sc_mitem_id => $sc_mitem_id,
                 scan_id => $scan_id,
@@ -645,14 +676,14 @@ sub scan_cmd {
         my $path = $item->{path};
         # insert
         if ( $path_to_num{ $path }->[0] == 2 ) {
-            print "inserting path $path (sc_mitem_id=" if $ver >= 4;
+            print "Inserting path $path (sc_mitem_id=" if $ver >= 6;
 
             my $sc_mitme_row = $sc_mitem_rs->find_or_create({
                 machine_id => $machine_id,
                 path => $path,
             });
             my $sc_mitem_id = $sc_mitme_row->sc_mitem_id;
-            print $sc_mitem_id if $ver >= 4;
+            print $sc_mitem_id if $ver >= 6;
 
             my $insert_idata_base = {
                 sc_mitem_id => $sc_mitem_id,
@@ -663,12 +694,12 @@ sub scan_cmd {
             my $insert_idata = $self->get_base_idata( $insert_idata_base, $item );
             my $sc_idata_row = $sc_idata_rs->create( $insert_idata );
             my $new_sc_idata_id = $sc_idata_row->sc_idata_id;
-            print ", sc_idata_id=" . $new_sc_idata_id if $ver >= 4;
-            print ")\n"  if $ver >= 4;
+            print ", sc_idata_id=" . $new_sc_idata_id if $ver >= 6;
+            print ").\n"  if $ver >= 6;
         }
     }
 
-    #print Dumper( \%path_to_num ) if $ver >= 5;
+    #$self->dump( 'Path to num', \%path_to_num ) if $ver >= 6;
 
     $schema->storage->txn_commit;
 

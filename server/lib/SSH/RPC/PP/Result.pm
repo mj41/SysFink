@@ -189,7 +189,7 @@ sub dump {
         print $response_dump;
 
     } else {
-        my $error = $self->getError;
+        my $error = $self->getResponseError;
         print "error: '$error'\n" if $error;
     }
 

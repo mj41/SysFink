@@ -6,11 +6,12 @@ use base 'SSH::RPC::Shell::PP::JSON';
 
 use strict;
 
+# Common commands.
 use SSH::RPC::Shell::PP::TestCmds;
-
-# loaded from one of dist directories
-use SysFink::FileHash;
 use SysFink::ScanHost;
+
+# Loaded from dist directory.
+use SysFink::FileHash;
 
 
 =head1 NAME

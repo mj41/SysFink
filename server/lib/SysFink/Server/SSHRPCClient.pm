@@ -55,7 +55,7 @@ sub set_default_values {
 
     $self->{user} = 'root';
     $self->{host} = 'localhost';
-    $self->{host_dist_type} = 'linux-perl-md5';
+    $self->{host_dist_type} = undef;
     $self->{client_dir} = $self->set_client_dir();
 
     $self->{rpc} = undef;
@@ -124,7 +124,7 @@ sub err {
 
     # Set.
     $self->{err} = $err;
-    print "Setting error to: '$err'\n" if $self->{ver} >= 5;
+    print "SSHRPCClient - Setting error to: '$err'\n" if $self->{ver} >= 5;
 
     # return 0 is ok here.
     # You can use  e.g.
@@ -528,6 +528,10 @@ arch dist libraries) on client.
 sub renew_client_dir {
     my ( $self ) = @_;
 
+    unless ( $self->{host_dist_type} ) {
+        return $self->err("Parameter 'host_dist_type' is mandatory for this command.");
+    }
+
     my $client_src_dir = $self->{client_src_dir};
     my $client_dir = $self->{client_dir};
 
@@ -611,7 +615,7 @@ sub validate_result_obj {
 
     my $is_ok = $result_obj->isSuccess;
 
-    $result_obj->dump() if $self->{ver} >= 5 || ( !$is_ok && $self->{ver} >= 1 );
+    $result_obj->dump() if $self->{ver} >= 7 || ( !$is_ok && $self->{ver} >= 1 );
 
     if ( ! $is_ok ) {
         my $err_msg = "Fatal error for client shell command '$self->{rpc_last_cmd}': '" . $result_obj->getStatusMessage() . "'";

@@ -23,6 +23,7 @@ sub main {
         user => undef,
         host => undef,
         host_dist_type => undef,
+        use_db => 0,
    };
 
     my $options_ok = GetOptions(
@@ -34,6 +35,8 @@ sub main {
         'user=s' => \$options->{'user'},
         'host=s' => \$options->{'host'},
         'host_dist_type=s' => \$options->{'host_dist_type'},
+
+        'use_db' => \$options->{'use_db'},
     );
 
     if ( $help || !$options_ok ) {
@@ -89,6 +92,7 @@ perl sysfink.pl [options]
         (and 'check_client_dir') and then put new code.
         Return nothing (on success) or error message.
         Also required: --host, --user.
+        Also require --host_dist_type if not --use_db given.
 
     --cmd=test_noop_rpc
         Try to run 'noop' test command on client shell over RPC. You should run 'renew_client_dir' cmd to transfer
@@ -116,6 +120,10 @@ perl sysfink.pl [options]
     --user .. User name for SSH connect.
 
     --host .. Full hostname of client for SSH connect.
+
+    --use_db .. Try to load some parameters from DB (e.g. host_dist_type).
+
+    --host_dist_type .. Distribution type e.g. irix-bin-64b, linux-perl-md5, ...
 
 =head1 DESCRIPTION
 

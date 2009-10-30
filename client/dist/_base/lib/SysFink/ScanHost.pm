@@ -2,6 +2,7 @@ package SysFink::ScanHost;
 
 use strict;
 use warnings;
+
 use base 'SSH::RPC::Shell::PP::Cmd::BaseJSON';
 
 use Fcntl ':mode';
