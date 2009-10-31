@@ -451,7 +451,7 @@ sub get_item_attrs {
         size => 1,
         uid => 1,
         gid => 1,
-        hash => 1,
+        hash => 0,
         nlink => 1,
         dev_num => 1,
         ino_num => 1,
