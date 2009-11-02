@@ -247,7 +247,7 @@ sub add_item_and_send_if_needed {
     # flag G - group
     if ( $flags->{G} eq '+' ) {
         $item_info->{gid} = $gid;
-        my $group_name = undef
+        my $group_name = undef;
         $group_name = getgrgid( $gid ) if defined $gid;
         $item_info->{group_name} = $group_name if defined $group_name;
     }
