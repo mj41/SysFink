@@ -1,6 +1,7 @@
 #!/bin/bash
 
-TOGREP="perl sysfink"
+TOGREP="perl sysfink.pl"
+TOGREP="/usr/bin/perl /root/sysfink-client/sysfink-client.pl"
 OUT_FN="sysfink-mem-usage.txt"
 SLEEP_TIME=1
 

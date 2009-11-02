@@ -224,30 +224,31 @@ sub add_item_and_send_if_needed {
 
     # file
     } elsif ( S_ISREG($mode) ) {
+        # flag S - file size
+        if ( $flags->{S} eq '+' && $size > 0 ) {
+            $item_info->{size} = $size;
+        }
+
         # flag 5 - file md5 sum
         if ( $flags->{5} eq '+' ) {
             my $hash = $self->{hash_obj}->hash_file( $full_path );
             $item_info->{hash} = $hash;
         }
-
-        # flag S - file size
-        if ( $flags->{S} eq '+' ) {
-            $item_info->{size} = $size;
-        }
-
     }
 
     # flag U - user
     if ( $flags->{U} eq '+' ) {
         $item_info->{uid} = $uid;
-        my $user_name = getpwuid( $uid );
+        my $user_name = undef;
+        $user_name = getgrgid( $uid ) if defined $uid;
         $item_info->{user_name} = $user_name if defined $user_name;
     }
 
     # flag G - group
     if ( $flags->{G} eq '+' ) {
         $item_info->{gid} = $gid;
-        my $group_name = getgrgid( $gid );
+        my $group_name = undef
+        $group_name = getgrgid( $gid ) if defined $gid;
         $item_info->{group_name} = $group_name if defined $group_name;
     }
 
