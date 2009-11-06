@@ -42,15 +42,26 @@ sub getResult {
 
 =head2 getResponseError ()
 
-Returns the human readable error message (if any).
+Returns error message from response. Error during command execution.
 
 =cut
 
 sub getResponseError {
     my $self = shift;
-    return $self->{result}->{response}->{error};
+    return $self->{result}->{response}->{err};
 }
 
+
+=head2 getError ()
+
+Returns the human readable error message (if any).
+
+=cut
+
+sub getError {
+    my $self = shift;
+    return $self->{result}->{error};
+}
 
 =head2 getResponse ()
 
@@ -170,7 +181,7 @@ sub dump {
     my ( $self ) = @_;
 
     my $result = $self->{result};
-    #print "full result: " . Dumper($result) . "\n";
+    #print "Full result: " . Dumper($result) . "\n" if $self->{ver} >= 10;
 
     if ( $self->isSuccess ) {
         print "=== response is ok =============================================\n";
@@ -189,8 +200,11 @@ sub dump {
         print $response_dump;
 
     } else {
-        my $error = $self->getResponseError;
-        print "error: '$error'\n" if $error;
+        my $result_error = $self->getError();
+        print "result error: '$result_error'\n" if $result_error;
+
+        my $response_error = $self->getResponseError();
+        print "response error: '$response_error'\n" if $response_error;
     }
 
     if ( $result->{debug_output} ) {

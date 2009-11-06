@@ -28,7 +28,7 @@ sub run_test_noop {
 
     my $result = { test => 'noop' };
     #return $result; # debug, really bad error
-    #$result = { error => 'response error test' }; # debug, command error
+    #$result = { err => 'response error test' }; # debug, command error
     return $self->pack_ok_response( $result );
 }
 
