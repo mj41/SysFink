@@ -358,7 +358,7 @@ sub prepare_host_conf_from_db {
     my $host = $self->{host_conf}->{host};
 
     my $machine_id = $conf_obj->get_machine_id( { 'name' => $host } );
-    return $self->err("Can't find machine_if for host '$host' in DB.") unless $machine_id;
+    return $self->err("Can't find machine_id for host '$host' in DB.") unless $machine_id;
 
     my $mconf_id = $conf_obj->get_machine_active_mconf_id( $machine_id );
     return $self->err("Can't find mconf_id for machine_id '$machine_id' in DB.") unless $mconf_id;

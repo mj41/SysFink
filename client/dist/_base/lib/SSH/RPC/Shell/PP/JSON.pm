@@ -29,7 +29,7 @@ sub run {
     my $request_text = '';
     my $empty_lines = '';
     while ( my $line = <$fh> ) {
-        if ( $line eq "\n" ) {
+        if ( $line eq "\n" || $line eq "\r\n" ) {
             $empty_lines++;
             # two empty lines (or eof) -> output to decode finished
             last if $empty_lines >= 2;

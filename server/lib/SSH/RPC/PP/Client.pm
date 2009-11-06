@@ -28,11 +28,12 @@ Constructor.
 =cut
 
 sub new {
-    my ( $class, $ssh_obj, $client_start_cmd ) = @_;
+    my ( $class, $ssh_obj, $client_start_cmd, $ver ) = @_;
 
     my $self = {};
     $self->{ssh} = $ssh_obj;
     $self->{client_start_cmd} = $client_start_cmd;
+    $self->{ver} = $ver;
 
     $self->{out_fh} = undef;
 
@@ -58,7 +59,7 @@ sub get_next_raw_response {
     my $empty_lines = 0;
     my $out_fh = $self->{out_fh};
     while ( my $line = <$out_fh> ) {
-        if ( $line eq "\n" ) {
+        if ( $line eq "\n" || $line eq "\r\n" ) {
             $empty_lines++;
             # two empty lines (or eof) -> output to decode finished
             last if $empty_lines >= 2;
@@ -69,6 +70,7 @@ sub get_next_raw_response {
         }
     }
 
+    print "Output from client: '$out_to_decode'\n" if $self->{ver} >= 10;
     if ( $out_to_decode ) {
         my $response = eval { JSON->new->utf8->decode( $out_to_decode ) };
         if ( $@ ) {

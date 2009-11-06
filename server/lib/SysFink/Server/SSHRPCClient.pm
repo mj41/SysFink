@@ -580,8 +580,16 @@ sub start_rpc_shell {
     my $client_script_fpath = catfile( $self->{client_dir}, $client_src_name );
 
     my $client_start_cmd = "nice -n $self->{rpc_nice} /usr/bin/perl $client_script_fpath $self->{rpc_ver}";
+    #$client_script_fpath = 'c:\cygwin\home\jurosz\sysfink-client\sysfink-client.pl';
+    #$client_start_cmd = "nice -n $self->{rpc_nice} perl '$client_script_fpath' $self->{rpc_ver}";
+    
+    print "Client start command: '$client_start_cmd'\n" if $self->{ver} >= 5;
 
-    my $rpc = SSH::RPC::PP::Client->new( $self->{ssh}, $client_start_cmd );
+    my $rpc = SSH::RPC::PP::Client->new(
+        $self->{ssh},
+        $client_start_cmd,
+        $self->{ver}
+    );
     $self->{rpc} = $rpc;
     $self->{rpc_last_cmd} = undef;
 
