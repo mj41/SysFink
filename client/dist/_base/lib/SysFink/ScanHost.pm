@@ -7,6 +7,27 @@ use base 'SSH::RPC::Shell::PP::Cmd::BaseJSON';
 
 use Fcntl ':mode';
 
+=head1 NAME
+
+SysFink::ScanHost - Scannig on clients class.
+
+=head1 SYNOPSIS
+
+ToDo. See L<SysFink::Client>.
+
+=head1 DESCRIPTION
+
+Run 'scan' client command.
+
+=head1 METHODS
+
+
+=head2 new
+
+Constructor.
+
+=cut
+
 
 sub new {
     my ( $class, $hash_obj ) = @_;
@@ -17,6 +38,12 @@ sub new {
     return $self;
 }
 
+
+=head2 get_canon_dir
+
+Canonize given path.
+
+=cut
 
 sub get_canon_dir {
     my ( $self, $dir ) = @_;
@@ -35,15 +62,23 @@ sub get_canon_dir {
 }
 
 
+=head2 get_flags
+
+Canonize given path.
+
+=cut
+
 sub get_flags {
     my ( $self, $full_path, $base_flags ) = @_;
 
     my $flags;
     my $plus_found = 0;
 
-    unless ( exists $self->{paths}->{ $full_path } ) {
+    # Config for given path doesn't exist.
+    if ( not exists $self->{paths}->{ $full_path } ) {
         $flags = $base_flags;
 
+    # Config exists. Join it with base_flags.
     } else {
         $flags = { %$base_flags };
         my $path_flags = $self->{paths}->{ $full_path };
@@ -55,6 +90,7 @@ sub get_flags {
         $self->{paths_with_processed_flags}->{ $full_path } = { %$flags };
     }
 
+    # Check if there is some positive flag.
     foreach my $value ( values %$flags ) {
         if ( $value eq '+' ) {
             $plus_found = 1;
@@ -65,6 +101,14 @@ sub get_flags {
     return ( $flags, $plus_found );
 }
 
+
+=head2 get_parent_path_flags
+
+Find and return flags for given path. Lookup inside configuration for given
+path. If not found then for parent direcotry of path. If not found then for 
+parent of parent ...
+
+=cut
 
 sub get_parent_path_flags {
     my ( $self, $full_path ) = @_;
@@ -110,9 +154,9 @@ sub flags_hash_to_str {
 }
 
 
-=head2 flags_hash_to_str
+=head2 mode_to_lsmode
 
-Convert numeric node number to ls format.
+Convert numeric node number to ls format. Used for debug output.
 
 =cut
 
@@ -153,6 +197,12 @@ sub mode_to_lsmode() {
 }
 
 
+=head2 get_dir_items
+
+Load directory items list. Subclassed by L<SysFink::ScanHostTest> for testing.
+
+=cut
+
 sub get_dir_items {
     my ( $self, $dir_name ) = @_;
 
@@ -177,11 +227,24 @@ sub get_dir_items {
 }
 
 
+=head2 my_lstat
+
+Encapsulate 'lstat' function. Subclassed by L<SysFink::ScanHostTest> for testing.
+
+=cut
+
 sub my_lstat {
     my ( $self, $full_path ) = @_;
     return lstat( $full_path );
 }
 
+
+=head2 add_item_and_send_if_needed
+
+Loads item (directory, file, symlink, ... ) information. Push it to result buffer.
+Send result buffer if its full enought.
+
+=cut
 
 sub add_item_and_send_if_needed {
     my ( $self, $full_path, $flags, $debug_prefix ) = @_;
@@ -281,10 +344,20 @@ sub add_item_and_send_if_needed {
 }
 
 
+=head2 scan_recurse
+
+Start recursive scanning from given path.
+
+=cut
+
 sub scan_recurse {
     my ( $self, $recursion_depth, $dir_name, $dir_flags ) = @_;
 
-    my $debug_prefix = '  ' x $recursion_depth;
+    # Prepare debug prefix string.
+    my $debug_prefix;
+    $debug_prefix = '  ' x $recursion_depth if $self->{debug_out};
+
+    # Print some debug output.
     if ( $self->{debug_out} > 1 ) {
         print "\n";
         print "in '$dir_name' ($recursion_depth):\n";
@@ -305,9 +378,11 @@ sub scan_recurse {
         return 1;
     }
 
+    # Canonize directory path;
     $dir_name = $self->get_canon_dir( $dir_name );
-    #$self->dump( $dir_name );
+    #$self->dump( $dir_name ); # debug
 
+    # Load directory items.
     my $dir_items = $self->get_dir_items( $dir_name );
     return 0 unless ref $dir_items;
 
@@ -315,17 +390,21 @@ sub scan_recurse {
     # Sub dirs to follow using recursive call of this sub.
     my $sub_dirs = [];
 
+    # For each directory item loop. Add items to result buffer and prepare dir list 
+    # (and their flags config) for recursive scanning. 
     my $full_path;
     ITEM: foreach my $name ( sort @$dir_items ) {
         $full_path = $dir_name . $name;
         print $debug_prefix."item $full_path\n" if $self->{debug_out} >= 2;
 
+        # Get path flags. Use parent's flags as default.
         my ( $flags, $plus_found ) = $self->get_flags( $full_path, $dir_flags );
         print $debug_prefix."  flags '" . $self->flags_hash_to_str( %$flags ) . "' (plus_found=$plus_found)\n" if $self->{debug_out} >= 3;
 
         # Skip this file/directory if nothing to check selected.
         next ITEM unless $plus_found;
 
+        # Get item (directory, file, symlink, ...) info. Send results if buffer is full.
         my ( $ret_code, $is_dir ) = $self->add_item_and_send_if_needed( $full_path, $flags, $debug_prefix );
 
         if ( $is_dir ) {
@@ -334,6 +413,7 @@ sub scan_recurse {
         }
     }
 
+    # For each subdirectory also run this method (scan_recurse).
     foreach my $sub_dir_data ( sort @$sub_dirs ) {
         my ( $sub_dir_path, $sub_dir_flags ) = @$sub_dir_data;
         $self->scan_recurse( $recursion_depth+1, $sub_dir_path, $sub_dir_flags );
@@ -342,6 +422,12 @@ sub scan_recurse {
     return 1;
 }
 
+
+=head2 reset_state
+
+Reset info about result's buffer.
+
+=cut
 
 sub reset_state {
     my ( $self, $full_reset ) = @_;
@@ -359,6 +445,12 @@ sub reset_state {
 }
 
 
+=head2 send_state
+
+Send actual result's buffer.
+
+=cut
+
 sub send_state {
     my ( $self, $is_last ) = @_;
 
@@ -372,24 +464,41 @@ sub send_state {
 }
 
 
+=head2 scan
+
+Main scanning part. Call 'scan_recurse' method for each path in given paths 
+configuration.
+
+=cut
+
 sub scan {
     my ( $self ) = @_;
 
     my $ret_code;
-    foreach my $full_path ( sort keys %{ $self->{paths} } ) {
-        # Skip already scanned items.
+    PATH_CONF: foreach my $full_path ( sort keys %{ $self->{paths} } ) {
+        # Skip already scanned items. E.g. will skip '/a/b' here for config 
+        # include '/a/*', include '/a/b/*', because '/a/b' is found during '/a' scanning.
+        # But do not skip '/a/b/c/*' here for config include '/a/*', exclude '/a/b/*', 
+        # include '/a/b/c/*'.
         next if exists $self->{paths_with_processed_flags}->{ $full_path };
 
+        # Get path flags. Use parent's flags as default.
         my $parent_flags = $self->get_parent_path_flags( $full_path );
         my ( $flags, $plus_found ) = $self->get_flags( $full_path, $parent_flags );
         print " >>> $full_path flags '" . $self->flags_hash_to_str( %$flags ) . "' (plus_found=$plus_found)\n" if $self->{debug_out} >= 3;
 
+        # Skip this file/directory if nothing to check selected.
+        next PATH_CONF unless $plus_found;
+
         my $is_dir = 1;
+        # Add item to results. Skip item '/'.
         if ( $full_path ne '' ) {
+            # Get item (directory, file, symlink, ...) info. Send results if buffer is full.
             my $s_ret_code;
             ( $s_ret_code, $is_dir ) = $self->add_item_and_send_if_needed( $full_path, $flags, '' );
         }
 
+        # Start recursive scannig for this directory.
         if ( $is_dir ) {
             $ret_code = $self->scan_recurse( 0, $full_path, $flags );
         }
@@ -402,6 +511,12 @@ sub scan {
     return $ret_code;
 }
 
+
+=head2 run_scan_host
+
+Start 'scan_host' command. Prepare all variables, reset state and call 'scan' method.
+
+=cut
 
 sub run_scan_host {
     my ( $self, $args ) = @_;
