@@ -17,10 +17,14 @@ o conf halt_on_failure on
 install TAP::Harness
 
 install Class::Singleton
+
 install Spiffy
 install DateTime::Locale
 install DateTime::TimeZone
 install DateTime
+
+install JSON
+
 install Config::Multi
 
 install Test::Tester
