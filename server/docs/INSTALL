@@ -1,5 +1,12 @@
 # Base SysFink server install documentation.
 
+# Upgade perl
+yum upgrade perl
+
+# Install DBD::SQLite
+yum install perl-DBD-SQLite
+
+
 # -- CPAN Module install to ~/sysfink-cpan -----------------
 #
 # See http://search.cpan.org/~andk/CPAN/lib/CPAN.pm#FAQ or 'man CPAN'.
@@ -30,9 +37,12 @@ install Config::Multi
 install Test::Tester
 install DBIx::Class
 
-install SQL::Translator
 install Net::OpenSSH
 install YAML::Any
+install YAML::XS
+
+# For some devel utils.
+# install SQL::Translator
 
 exit
 
@@ -75,9 +85,9 @@ cp sysfink-base-stable.db sysfink.db
 # Load config files to database
 perl utils/conf-to-db.pl
 
-# Run sysfink server
+# Run SysFink servers' tests
 perl t/harness.pl
 
-# Run sysfink server
-perl sysfink.pl
+# Check if you can run SysFink server
+perl sysfink.pl --help
 
