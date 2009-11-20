@@ -20,14 +20,20 @@ ok( $conf_obj->load_config(), 'load config' );
 
 my $conf = $conf_obj->conf;
 
-#use Data::Dumper; print Dumper( $conf ); exit;
 
 my $expected_paths = [
-    '[-5-B-D+G+H+L+M+S+U]',
-    '/dev[-5-B-D-G]',
-    '/dev/some[+5+B]',
-    '/home[+5-B+D+G+H+L+M+S+U]',
-    '/var[-5-B-D-G-H-L-M-S-U]'
+    '[-5-B-D-G-H-L-M-S-U]',
+    '/[-5-B-D]',
+    '/dev[+5+B+D+G]',
+    '/dev/[-5-B-D-G]',
+    '/dev/bar[-5-B+D-G+H+L+M+S+U]',
+    '/dev/foo[-5-B+D+G-H-L-M-S-U]',
+    '/dev/some/[+5+B]',
+    '/home/*[+5-B+D+G+H+L+M+S+U]',
+    '/var/[-5-B-D-G-H-L-M-S-U]'
 ];
+
+#use Data::Dumper; print Dumper( $conf ); print Dumper( $expected_paths ); exit;
+
 is_deeply( $conf->{gorilla}->{general}->{paths}, $expected_paths, 'gorilla paths are ok' );
 

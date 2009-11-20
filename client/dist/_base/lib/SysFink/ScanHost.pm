@@ -113,6 +113,7 @@ parent of parent ...
 sub get_parent_path_flags {
     my ( $self, $full_path ) = @_;
 
+    return {} if $full_path eq '';
     return {} if $full_path eq '/';
 
     # Try to find parent path ( or parent of parent path or ... ) with flags definition.
@@ -235,7 +236,12 @@ Encapsulate 'lstat' function. Subclassed by L<SysFink::ScanHostTest> for testing
 
 sub my_lstat {
     my ( $self, $full_path ) = @_;
-    return lstat( $full_path );
+
+    # Root path '' is '/' for lstat.
+    my $lstat_full_path = $full_path;
+    $lstat_full_path = '/' unless $full_path;
+
+    return lstat( $lstat_full_path );
 }
 
 
@@ -247,7 +253,7 @@ Send result buffer if its full enought.
 =cut
 
 sub add_item_and_send_if_needed {
-    my ( $self, $full_path, $flags, $debug_prefix ) = @_;
+    my ( $self, $full_path, $flags, $add_it, $debug_prefix ) = @_;
 
     #  0 dev - device number of filesystem
     #  1 ino - inode number
@@ -262,18 +268,23 @@ sub add_item_and_send_if_needed {
     # 10 ctime - inode change time in seconds since the epoch (non-portable)
     # 11 blksize - preferred block size for file system I/O
     # 12 blocks - actual number of blocks allocated
+
     my ( $dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, $atime, $mtime, $ctime, $blksize, $blocks ) = $self->my_lstat( $full_path );
     print $debug_prefix."  mode '$mode', nlink '$nlink', uid '$uid', gid '$gid', size '$size'\n" if $self->{debug_out} >= 3;
     #print $debug_prefix."  atime '$atime', mtime '$mtime', ctime '$ctime'\n" if $self->{debug_out} if $self->{debug_out} >= 3;
     #print $debug_prefix."  dev '$dev', ino '$ino', rdev '$rdev', size '$size', blksize '$blksize', blocks '$blocks'\n" if $self->{debug_out} if $self->{debug_out} >= 3;
 
+    my $is_dir = S_ISDIR($mode);
+    
+    return ( 1, $is_dir ) unless $add_it;
+
     #my $lsmode_str = $self->mode_to_lsmode( $mode );
+    my $tmp_full_path = $full_path;
+    $tmp_full_path = '/' unless $full_path;
     my $item_info = {
-        path => $full_path,
+        path => $tmp_full_path,
         mode => $mode,
     };
-
-    my $is_dir = S_ISDIR($mode);
 
     # directory
     if ( $is_dir ) {
@@ -395,7 +406,7 @@ sub scan_recurse {
     my $full_path;
     ITEM: foreach my $name ( sort @$dir_items ) {
         $full_path = $dir_name . $name;
-        print $debug_prefix."item $full_path\n" if $self->{debug_out} >= 2;
+        print $debug_prefix."item '$full_path'\n" if $self->{debug_out} >= 2;
 
         # Get path flags. Use parent's flags as default.
         my ( $flags, $plus_found ) = $self->get_flags( $full_path, $dir_flags );
@@ -405,17 +416,29 @@ sub scan_recurse {
         next ITEM unless $plus_found;
 
         # Get item (directory, file, symlink, ...) info. Send results if buffer is full.
-        my ( $ret_code, $is_dir ) = $self->add_item_and_send_if_needed( $full_path, $flags, $debug_prefix );
-
+        my ( $ret_code, $is_dir ) = $self->add_item_and_send_if_needed(
+            $full_path, 
+            $flags,      
+            $plus_found, # $add_it
+            $debug_prefix
+        );
         if ( $is_dir ) {
             # ToDo - why not '$flags' only instead of '{ %$flags }' ?
             push @$sub_dirs, [ $full_path, { %$flags } ];
         }
     }
 
+    $sub_dirs = [ sort { $a->[0] cmp $b->[0] } @$sub_dirs ];
+    
     # For each subdirectory also run this method (scan_recurse).
-    foreach my $sub_dir_data ( sort @$sub_dirs ) {
+    SUB_DIR: foreach my $sub_dir_data ( @$sub_dirs ) {
         my ( $sub_dir_path, $sub_dir_flags ) = @$sub_dir_data;
+        
+        my $content_full_path = $sub_dir_path . '/';
+        my ( $content_flags, $content_plus_found ) = $self->get_flags( $content_full_path, $sub_dir_flags );
+        print " >>> '$content_full_path' content flags '" . $self->flags_hash_to_str( %$content_flags ) . "' (plus_found=$content_plus_found)\n" if $self->{debug_out} >= 3;
+        next SUB_DIR unless $content_plus_found;
+        
         $self->scan_recurse( $recursion_depth+1, $sub_dir_path, $sub_dir_flags );
     }
 
@@ -476,31 +499,37 @@ sub scan {
 
     my $ret_code;
     PATH_CONF: foreach my $full_path ( sort keys %{ $self->{paths} } ) {
+        print " ---> conf path: '$full_path'\n" if $self->{debug_out} >= 5;
+        
         # Skip already scanned items. E.g. will skip '/a/b' here for config 
         # include '/a/*', include '/a/b/*', because '/a/b' is found during '/a' scanning.
         # But do not skip '/a/b/c/*' here for config include '/a/*', exclude '/a/b/*', 
         # include '/a/b/c/*'.
-        next if exists $self->{paths_with_processed_flags}->{ $full_path };
+        next PATH_CONF if exists $self->{paths_with_processed_flags}->{ $full_path };
 
         # Get path flags. Use parent's flags as default.
         my $parent_flags = $self->get_parent_path_flags( $full_path );
         my ( $flags, $plus_found ) = $self->get_flags( $full_path, $parent_flags );
-        print " >>> $full_path flags '" . $self->flags_hash_to_str( %$flags ) . "' (plus_found=$plus_found)\n" if $self->{debug_out} >= 3;
-
-        # Skip this file/directory if nothing to check selected.
-        next PATH_CONF unless $plus_found;
+        print " >>> '$full_path' flags '" . $self->flags_hash_to_str( %$flags ) . "' (plus_found=$plus_found)\n" if $self->{debug_out} >= 3;
 
         my $is_dir = 1;
-        # Add item to results. Skip item '/'.
-        if ( $full_path ne '' ) {
-            # Get item (directory, file, symlink, ...) info. Send results if buffer is full.
-            my $s_ret_code;
-            ( $s_ret_code, $is_dir ) = $self->add_item_and_send_if_needed( $full_path, $flags, '' );
-        }
+        # Add item to results.
+        # Get item (directory, file, symlink, ...) info. Send results if buffer is full.
+        my $s_ret_code;
+        ( $s_ret_code, $is_dir ) = $self->add_item_and_send_if_needed( 
+            $full_path, 
+            $flags,      
+            $plus_found, # $add_it
+            ''           # $debug_prefix
+        );
 
         # Start recursive scannig for this directory.
         if ( $is_dir ) {
-            $ret_code = $self->scan_recurse( 0, $full_path, $flags );
+            my $content_full_path = $full_path . '/';
+            my ( $content_flags, $content_plus_found ) = $self->get_flags( $content_full_path, $flags );
+            print " >>> '$content_full_path' content flags '" . $self->flags_hash_to_str( %$content_flags ) . "' (plus_found=$content_plus_found)\n" if $self->{debug_out} >= 3;
+            next PATH_CONF unless $content_plus_found;
+            $ret_code = $self->scan_recurse( 0, $full_path, $content_flags );
         }
 
         last unless $ret_code;

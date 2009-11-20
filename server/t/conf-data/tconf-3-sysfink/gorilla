@@ -1,5 +1,9 @@
-path        [-5BD]/*
-path        [-5BDG]/dev/*
+path        [-*]
+path        [-5BD]/
+path        [+5BDG]/dev
+path        [-5BDG]/dev/
 include     /home/*
-exclude     /var/*
-path        [+5B]/dev/some/*
+exclude     /var/
+path        [+5B]/dev/some/
+path        [-*-5B+DG]/dev/foo
+path        [#+5-5-G]/dev/bar

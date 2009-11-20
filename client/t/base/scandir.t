@@ -20,9 +20,9 @@ my $test_num_to_run = $ARGV[1] || undef;
 
 my $default_flags = {
    'S' => '-',
-   'B' => '+',
+   'B' => '-',
    'H' => '-',
-   'M' => '-',
+   'M' => '+',
    'D' => '-',
    'G' => '-',
    'L' => '-',
@@ -51,6 +51,7 @@ my @all_test_cases = ();
     $test_case->{tescase_name} = 'two simple items';
 
     $test_case->{test_obj_conf} = [
+        '/',
         '/etc/',
         '/myfile',
     ];
@@ -60,6 +61,10 @@ my @all_test_cases = ();
     ];
 
     $test_case->{expected} = [
+        {
+            'mode' => 16877,
+            'path' => '/'
+        },
         {
             'mode' => 16877,
             'path' => '/etc'
@@ -81,6 +86,7 @@ my @all_test_cases = ();
     $test_case->{tescase_name} = 'more items, mode modification';
 
     $test_case->{test_obj_conf} = [
+        '/',
         '/etc/',
         '/etc/passwd',
         '/home/',
@@ -93,6 +99,10 @@ my @all_test_cases = ();
     ];
 
     $test_case->{expected} = [
+        {
+            'mode' => 16877,
+            'path' => '/'
+        },
         {
             'mode' => 16877,
             'path' => '/etc'
@@ -113,7 +123,7 @@ my @all_test_cases = ();
         {
             'mode' => 16876,
             'path' => '/tmp/myfile'
-        }
+        },
     ];
 
     push @all_test_cases, $test_case;
@@ -126,6 +136,7 @@ my @all_test_cases = ();
     $test_case->{tescase_name} = 'skip some items';
 
     $test_case->{test_obj_conf} = [
+        '/',
         '/etc/',
         '/home/',
         '/home/file1',
@@ -145,6 +156,10 @@ my @all_test_cases = ();
     ];
 
     $test_case->{expected} = [
+        {
+            'mode' => 16877,
+            'path' => '/'
+        },
         {
             'mode' => 16877,
             'path' => '/etc'
@@ -173,9 +188,10 @@ my @all_test_cases = ();
 # --- test 4 -----------------------------------------------------------------
 {
     my $test_case = {};
-    $test_case->{tescase_name} = 'items included inside excluded dir';
+    $test_case->{tescase_name} = 'items included inside excluded dir, root dir excluded';
 
     $test_case->{test_obj_conf} = [
+        '/',
         '/etc/',
         '/home/',
         '/home/file1',
@@ -198,7 +214,8 @@ my @all_test_cases = ();
     my $my_flags = { %$default_flags };
     $my_flags->{5} = '-';
     $test_case->{paths_to_scan} = [
-        [ '', $my_flags ],
+        [ '', $skip_flags ],
+        [ '/', $my_flags ],
         [ '/home/mjdir', $skip_flags ],
         [ '/home/mjdir/subfile3yes', { '5' => '+' } ],
         [ '/home/mjdir/asdir1/asdir2/asdir3/sfile6yes', { '5' => '+' } ],
@@ -238,6 +255,89 @@ my @all_test_cases = ();
             'mode' => 33188,
             'path' => '/home/mjdir/subfile3yes'
         },
+    ];
+    push @all_test_cases, $test_case;
+}
+
+
+# --- test 5 -----------------------------------------------------------------
+{
+    my $test_case = {};
+    $test_case->{tescase_name} = "dir vs. dir's content, duplicated conf";
+
+    $test_case->{test_obj_conf} = [
+        '/',
+        '/aroot-file1',
+        '/home/',
+        '/home/file2',
+        '/home/mjdir/',
+        '/home/mjdir/fileC',
+        '/home/mjdir/subdirA/',
+        '/home/mjdir/subdirA/file3',
+        '/home/mjdir/subdirA/subdirB1/',
+        '/home/mjdir/subdirA/subdirB1/file4',
+        '/home/mjdir/subdirA/subdirB1/file5',
+        '/home/mjdir/subdirA/subdirB2/',
+        '/home/mjdir/subdirA/subdirB2/file6',
+        '/home/mjdir/subdirA/subdirB2/file7',
+        '/home/mjdir/subdirA/subdirB3/',
+        '/home/mjdir/subdirA/subdirB3/file8',
+        '/home/mjdir/subdirA/subdirB3/file9',
+        '/tmp/',
+        '/tmp/tmp.11',
+    ];
+
+    my $my_flags = { %$default_flags };
+    $my_flags->{5} = '-';
+    $test_case->{paths_to_scan} = [
+        [ '', $my_flags ],
+        [ '/', $skip_flags ],
+
+        # duplicated conf
+        [ '/home', $my_flags ],
+        [ '/home/mjdir/', $skip_flags ],
+        [ '/home', $my_flags ],
+        [ '/home/mjdir/', $skip_flags ],
+
+        [ '/home/mjdir/subdirA/subdirB1', $my_flags ],
+        [ '/home/mjdir/subdirA/subdirB2/', $skip_flags ],
+        [ '/home/mjdir/subdirA/subdirB3', $my_flags ],
+        [ '/home/mjdir/subdirA/subdirB3/', $skip_flags ],
+    ];
+
+    $test_case->{expected} = [
+        {
+            'mode' => 16877,
+            'path' => '/'
+        },
+        {
+            'mode' => 16877,
+            'path' => '/home'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/home/file2'
+        },
+        {
+            'mode' => 16877,
+            'path' => '/home/mjdir'
+        },
+        {
+            'mode' => 16877,
+            'path' => '/home/mjdir/subdirA/subdirB1'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/home/mjdir/subdirA/subdirB1/file4'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/home/mjdir/subdirA/subdirB1/file5'
+        },
+        {
+            'mode' => 16877,
+            'path' => '/home/mjdir/subdirA/subdirB3'
+        }
     ];
     push @all_test_cases, $test_case;
 }

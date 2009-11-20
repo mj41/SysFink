@@ -8,17 +8,4 @@ rpmpkg		dvd+rw-tools
 
 dirpkg		cvis
 
-exclude		/dev/* /home/* /proc/* /sys/* /var/log/*
-exclude		/var/lock/*
-exclude		/var/cache/*
-backup		/var/run/test
 path		[-M5]/var/run/test
-exclude		/var/run/*
-exclude		/etc/rc.d/rc?.d/*
-
-path		[+M5SLB]/etc/selinux/*
-path		[+M5SLXI-B]/etc/selinux/*
-
-backup		/etc/interfaces/
-
-

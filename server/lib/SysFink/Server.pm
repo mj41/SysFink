@@ -499,7 +499,7 @@ sub get_sc_idata_rs {
 
 =head2 has_same_data
 
-Run scan command.
+Return 1 if given hashs has same attributes' values.
 
 =cut
 
@@ -630,14 +630,14 @@ sub scan_cmd {
             } else {
                 # Data changed -> do update.
                 $path_to_num{ $path }->[0] = 1; # 1 .. found in db and changed
-                if ( $ver >= 4 ) {
+                if ( $ver >= 5 ) {
                     print "Item data changed:\n";
                     $self->dump( 'new item data', $new_item_data );
                     $self->dump( 'prev item data', \%row );
                 }
 
                 my $sc_mitem_id = $row{'sc_mitem_id'};
-                print "Updating status to new values sc_mitem_id $sc_mitem_id.\n" if $ver >= 6;
+                print "Updating status to new values sc_mitem_id $sc_mitem_id.\n" if $ver >= 4;
                 my $insert_idata_base = {
                     sc_mitem_id => $sc_mitem_id,
                     scan_id => $scan_id,
@@ -648,7 +648,7 @@ sub scan_cmd {
                 $insert_idata = $self->get_base_idata( $insert_idata_base, $new_item_data );
             }
 
-        # Not found on during scan on client machine -> delete.
+        # Not found during scan on client machine -> delete.
         } else {
             my $sc_mitem_id = $row{'sc_mitem_id'};
             print "Updating status to delete sc_mitem_id $sc_mitem_id.\n" if $ver >= 4;
@@ -676,14 +676,14 @@ sub scan_cmd {
         my $path = $item->{path};
         # insert
         if ( $path_to_num{ $path }->[0] == 2 ) {
-            print "Inserting path $path (sc_mitem_id=" if $ver >= 6;
+            print "Inserting path $path (sc_mitem_id=" if $ver >= 4;
 
             my $sc_mitme_row = $sc_mitem_rs->find_or_create({
                 machine_id => $machine_id,
                 path => $path,
             });
             my $sc_mitem_id = $sc_mitme_row->sc_mitem_id;
-            print $sc_mitem_id if $ver >= 6;
+            print $sc_mitem_id if $ver >= 4;
 
             my $insert_idata_base = {
                 sc_mitem_id => $sc_mitem_id,
@@ -694,8 +694,8 @@ sub scan_cmd {
             my $insert_idata = $self->get_base_idata( $insert_idata_base, $item );
             my $sc_idata_row = $sc_idata_rs->create( $insert_idata );
             my $new_sc_idata_id = $sc_idata_row->sc_idata_id;
-            print ", sc_idata_id=" . $new_sc_idata_id if $ver >= 6;
-            print ").\n"  if $ver >= 6;
+            print ", sc_idata_id=" . $new_sc_idata_id if $ver >= 4;
+            print ").\n"  if $ver >= 4;
         }
     }
 

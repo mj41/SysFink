@@ -106,7 +106,7 @@ sub get_files_rh_for_dir {
 }
 
 
-=head2 get_default_keyword_flags
+=head2 get_default_root_flags
 
 Return hash of default flags (flags for '/' path).
 
@@ -221,15 +221,12 @@ Canonize path.
 sub canon_path {
     my ( $self, $path ) = @_;
 
+    return '' unless $path;
+
     # Remove many slashes in sequence.
     $path =~ s{ \/{2,} }{\/}gx;
     # Remove dot directories.
     $path =~ s{ \/\.\/ }{\/}gx;
-
-    # Remove last '\*'.
-    $path =~ s{\/\*$}{};
-    # Remove last '\'.
-    $path =~ s{\/$}{};
 
     return $path;
 }

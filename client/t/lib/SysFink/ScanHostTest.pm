@@ -3,6 +3,7 @@ package SysFink::ScanHostTest;
 use strict;
 use base 'SysFink::ScanHost';
 
+
 sub new {
     my $class = shift;
     my $test_conf = shift;
@@ -33,7 +34,8 @@ sub new {
 
         push @{$self->{_test_conf_paths}}, $full_path;
     }
-
+    #use Data::Dumper; print Dumper( $self ); exit;
+    
     return $self;
 }
 

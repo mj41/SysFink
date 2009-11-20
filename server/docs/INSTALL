@@ -74,7 +74,7 @@ cp conf/web_db.yml.example conf/web_db.yml
 cat > conf-machines/my-first-machine
 hostname    my-first-machine.my-domain.com
 dist_type   linux-perl-md5
-exclude     /dev/* /home/* /proc/* /sys/* /var/*
+exclude     /dev/ /home/ /proc/ /sys/ /var/ /mnt/
 Ctrl+D
 
 # Import server SSH key/certificate for user 'root' to my-first-machine.my-domain.com

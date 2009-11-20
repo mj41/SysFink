@@ -112,7 +112,7 @@ sub get_default_keyword_flags {
 
 =head2 flags_str_to_hash
 
-Convert flash string to hash. Do it in characters order so canonize it.
+Convert flag string to hash. Do it in characters order so canonize it.
 
 $flags_str - input string with flags in format +x-x...
 
@@ -123,6 +123,17 @@ sub flags_str_to_hash {
 
     my %flags;
     my $sign = undef;
+
+    # Replace special chars before string to hash conversion.
+    $flags_str =~ s{\-\*}{-UGM5LSHDB}g;
+    $flags_str =~ s{\+\*}{+UGM5LSHDB}g;
+    if ( $flags_str =~ m{\#} ) {
+        my $default_keyword_flags = $this->get_default_keyword_flags();
+        my $default_include_flags = $default_keyword_flags->{include};
+        $flags_str =~ s{\#}{$default_include_flags}g;
+    }
+
+    my $pos = 1;
     my @flag_chars = split( //, $flags_str );
     foreach my $flag ( @flag_chars ) {
         $flag = uc( $flag );
@@ -135,7 +146,9 @@ sub flags_str_to_hash {
 
         } else {
             # ToDo - error
+            print "Unknown character '$flag' on position $pos inside '$flags_str'.";
         }
+        $pos++;
     }
 
     return %flags;

@@ -12,17 +12,8 @@ rpmpkg      samba
 rpmpkg      samba-swat
 rpmpkg      cdrecord
 
-exclude     /dev/* /home/* /proc/* /sys/* /var/log/*
-exclude     /var/run/*
-exclude     /var/lock/*
-backup      /var/run/test
-path        [-M5]/var/run/test
-exclude     /var/run/*
-exclude     /var/spool/*
-
-path        [+M5SLB]/etc/selinux/*
-path        [+M5SLXI-B]/etc/selinux/*
-
-backup      /etc/interfaces/
-
+path        [-*]
+path        [+*]/
+path        [-*]/dev/ 
+path        [-*]/proc/ /sys/ /var/
 
