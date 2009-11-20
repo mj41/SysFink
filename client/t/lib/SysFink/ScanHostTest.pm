@@ -17,6 +17,7 @@ sub new {
     $self->{_test_conf_stat_modifs} = {};
     $self->{_test_all_results} = [];
 
+    # ToDo - add or check if parent dirs exists
     foreach my $num ( 0..$#$test_conf ) {
         my $item = $test_conf->[ $num ];
 

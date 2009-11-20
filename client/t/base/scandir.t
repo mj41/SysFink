@@ -497,6 +497,8 @@ my @all_test_cases = ();
         '/part5/subdirB/okfileA',
         '/part5/subdirB/okfileXX',
         '/part5/subdirB/bad-file',
+        '/part5/subdirB/bad-subsubdir/',
+        '/part5/subdirB/bad-subsubdir/okfile',
 
         # part 6
         '/part6/',
@@ -514,6 +516,9 @@ my @all_test_cases = ();
         '/part6/ok-subdir/b1-ok',
         '/part6/ok-subdir/bad-y',
         '/part6/ok-subdir/b2-ok',
+        '/part6/ok-subdir/ok-subsubdir/',
+        '/part6/ok-subdir/ok-subsubdir/c3-ok',
+        '/part6/ok-subdir/ok-subsubdir/bad-z',
     ];
 
     my $my_flags = { %$default_flags };
@@ -610,7 +615,11 @@ my @all_test_cases = ();
         {
             'mode' => 33188,
             'path' => '/part6/ok-subdir/b2-ok'
-        }
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part6/ok-subdir/ok-subsubdir/c3-ok'
+        },
 
     ];
     push @all_test_cases, $test_case;
