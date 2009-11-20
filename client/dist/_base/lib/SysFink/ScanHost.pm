@@ -240,8 +240,10 @@ sub my_lstat {
     # Root path '' is '/' for lstat.
     my $lstat_full_path = $full_path;
     $lstat_full_path = '/' unless $full_path;
-
-    return lstat( $lstat_full_path );
+    
+    my @lstat = lstat( $lstat_full_path );
+    return ( 0 ) unless scalar @lstat;
+    return ( 1, @lstat );
 }
 
 
@@ -269,7 +271,13 @@ sub add_item_and_send_if_needed {
     # 11 blksize - preferred block size for file system I/O
     # 12 blocks - actual number of blocks allocated
 
-    my ( $dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, $atime, $mtime, $ctime, $blksize, $blocks ) = $self->my_lstat( $full_path );
+    my ( $path_exists, $dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, $atime, $mtime, $ctime, $blksize, $blocks ) = $self->my_lstat( $full_path );
+    
+    unless ( $path_exists ) {
+        print "Can't lstat '$full_path'. Path probably doesn't exists.\n" if $self->{debug_out} >= 6;
+        return ( 0, undef );
+    }
+    
     print $debug_prefix."  mode '$mode', nlink '$nlink', uid '$uid', gid '$gid', size '$size'\n" if $self->{debug_out} >= 3;
     #print $debug_prefix."  atime '$atime', mtime '$mtime', ctime '$ctime'\n" if $self->{debug_out} if $self->{debug_out} >= 3;
     #print $debug_prefix."  dev '$dev', ino '$ino', rdev '$rdev', size '$size', blksize '$blksize', blocks '$blocks'\n" if $self->{debug_out} if $self->{debug_out} >= 3;
@@ -422,6 +430,8 @@ sub scan_recurse {
             $plus_found, # $add_it
             $debug_prefix
         );
+        next PATH_CONF unless $ret_code;
+
         if ( $is_dir ) {
             # ToDo - why not '$flags' only instead of '{ %$flags }' ?
             push @$sub_dirs, [ $full_path, { %$flags } ];
@@ -502,9 +512,9 @@ sub scan {
         print " ---> conf path: '$full_path'\n" if $self->{debug_out} >= 5;
         
         # Skip already scanned items. E.g. will skip '/a/b' here for config 
-        # include '/a/*', include '/a/b/*', because '/a/b' is found during '/a' scanning.
-        # But do not skip '/a/b/c/*' here for config include '/a/*', exclude '/a/b/*', 
-        # include '/a/b/c/*'.
+        # include '/a', include '/a/b', because '/a/b' is found during '/a' scanning.
+        # But do not skip '/a/b/c' here for config include '/a', exclude '/a/b', 
+        # include '/a/b/c'.
         next PATH_CONF if exists $self->{paths_with_processed_flags}->{ $full_path };
 
         # Get path flags. Use parent's flags as default.
@@ -522,8 +532,9 @@ sub scan {
             $plus_found, # $add_it
             ''           # $debug_prefix
         );
+        next PATH_CONF unless $s_ret_code;
 
-        # Start recursive scannig for this directory.
+        # Start recursive scanning for this directory.
         if ( $is_dir ) {
             my $content_full_path = $full_path . '/';
             my ( $content_flags, $content_plus_found ) = $self->get_flags( $content_full_path, $flags );

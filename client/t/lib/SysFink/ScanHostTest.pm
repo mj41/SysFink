@@ -12,6 +12,7 @@ sub new {
 
     # Prepare $test_conf to more useful structures.
     $self->{_test_conf_paths} = [];
+    $self->{_test_conf_paths_hash} = {};
     $self->{_test_conf_dirs} = {};
     $self->{_test_conf_stat_modifs} = {};
     $self->{_test_all_results} = [];
@@ -26,10 +27,13 @@ sub new {
         } else {
             $full_path = $item;
         }
-
+        
         # The last char is backslash.
         if ( my ( $base_name ) = $full_path =~ m{^ (.*) \/ $}x ) {
             $self->{_test_conf_dirs}->{ $base_name } = 1;
+            $self->{_test_conf_items}->{ $base_name } = 1;
+        } else {
+            $self->{_test_conf_items}->{ $full_path } = 1;
         }
 
         push @{$self->{_test_conf_paths}}, $full_path;
@@ -57,6 +61,10 @@ sub get_dir_items {
 sub my_lstat {
     my ( $self, $full_path ) = @_;
 
+	# Check if path exists.
+    return ( 0 ) unless exists $self->{_test_conf_items}->{ $full_path };
+        
+        
     #  0 dev - device number of filesystem
     #  1 ino - inode number
     #  2 mode - file mode (type and permissions)
@@ -107,6 +115,7 @@ sub my_lstat {
     }
 
     return (
+        1, # path exists
         $stat{dev}, $stat{ino}, $stat{mode}, $stat{nlink},
         $stat{uid}, $stat{gid}, $stat{rdev}, $stat{size},
         $stat{atime}, $stat{mtime}, $stat{ctime},

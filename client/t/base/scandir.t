@@ -185,6 +185,7 @@ my @all_test_cases = ();
     push @all_test_cases, $test_case;
 }
 
+
 # --- test 4 -----------------------------------------------------------------
 {
     my $test_case = {};
@@ -196,8 +197,8 @@ my @all_test_cases = ();
         '/home/',
         '/home/file1',
         '/home/mjdir/',
-        '/home/mjdir/sfile2no',
-        '/home/mjdir/sfile3yes',
+        '/home/mjdir/subfile2no',
+        '/home/mjdir/subfile3yes',
         '/home/mjdir/subdir/',
         '/home/mjdir/subdir/subfile4yes',
         '/home/mjdir/asdir1/',
@@ -339,6 +340,42 @@ my @all_test_cases = ();
             'path' => '/home/mjdir/subdirA/subdirB3'
         }
     ];
+    push @all_test_cases, $test_case;
+}
+
+
+# --- test 6 -----------------------------------------------------------------
+{
+    my $test_case = {};
+    $test_case->{tescase_name} = 'two simple items';
+
+    $test_case->{test_obj_conf} = [
+        '/',
+        '/etc/',
+        '/myfile',
+    ];
+
+    $test_case->{paths_to_scan} = [
+        [ '', $default_flags, ],
+        [ '/unknow-name-xyz', $default_flags, ],
+    ];
+
+    $test_case->{expected} = [
+        {
+            'mode' => 16877,
+            'path' => '/'
+        },
+        {
+            'mode' => 16877,
+            'path' => '/etc'
+        },
+        {
+            'hash' => 'HASH:/myfile',
+            'mode' => 33188,
+            'path' => '/myfile'
+        },
+    ];
+
     push @all_test_cases, $test_case;
 }
 
