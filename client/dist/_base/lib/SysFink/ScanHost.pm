@@ -62,6 +62,35 @@ sub get_canon_dir {
 }
 
 
+=head2 join_flags
+
+Join flags.
+
+=cut
+
+sub join_flags {
+    my ( $self, $base_flags, $flags_to_add ) = @_;
+
+    my $flags = { %$base_flags };
+
+    # Add flags.
+    foreach my $flag_name ( keys %$flags_to_add ) {
+        $flags->{ $flag_name } = $flags_to_add->{ $flag_name };
+    }
+
+    my $plus_found = 0;
+    # Check if there is some positive flag.
+    foreach my $value ( values %$flags ) {
+        if ( $value eq '+' ) {
+            $plus_found = 1;
+            last;
+        }
+    }
+
+    return ( $flags, $plus_found );
+}
+
+
 =head2 get_flags
 
 Canonize given path.
@@ -81,7 +110,7 @@ sub get_flags {
     # Config exists. Join it with base_flags.
     } else {
         $flags = { %$base_flags };
-        my $path_flags = $self->{paths}->{ $full_path };
+        my $path_flags = $self->{paths}->{ $full_path }->{flags};
         foreach my $flag_name ( keys %$path_flags ) {
             $flags->{ $flag_name } = $path_flags->{ $flag_name };
         }
@@ -125,9 +154,9 @@ sub get_parent_path_flags {
             return $self->{paths_with_processed_flags}->{ $parent_path };
         }
 
-        if ( exists $self->{paths}->{ $parent_path } ) {
-            print " >>> error $self->{paths}->{$parent_path}\n";
-            return \%{ $self->{paths}->{$parent_path} };
+        if ( exists $self->{paths}->{ $parent_path }->{flags} ) {
+            print " >>> error $self->{paths}->{$parent_path}->{flags}\n";
+            return \%{ $self->{paths}->{ $parent_path }->{flags} };
         }
 
         $path = $parent_path;
@@ -363,6 +392,35 @@ sub add_item_and_send_if_needed {
 }
 
 
+=head2 processs_path_regexes
+
+Try each regex on given path.
+
+=cut
+
+sub process_path_regexes {
+    my ( $self, $regexes_conf, $full_path, $base_flags, $base_plus_found ) = @_;
+    
+    my $add_dir = 0;
+    my $flags = { %$base_flags };
+    my $plus_found = $base_plus_found;
+    
+    foreach my $regex_conf ( @$regexes_conf ) {
+        my ( $regex, $regex_flags, $is_recursive ) = @$regex_conf;
+        print "  *** trying '$regex' $is_recursive\n" if $self->{debug_out} >= 10;
+
+        # Recursive regex should be checked recursive.
+        $add_dir = 1 if $is_recursive;
+
+        if ( $full_path =~ /^$regex$/ ) {
+            print " **** found with '$regex'\n" if $self->{debug_out} >= 9;
+            ( $flags, $plus_found ) = $self->join_flags( $flags, $regex_flags );
+        }
+    }
+    return ( $add_dir, $flags, $plus_found );
+}
+
+
 =head2 scan_recurse
 
 Start recursive scanning from given path.
@@ -370,7 +428,7 @@ Start recursive scanning from given path.
 =cut
 
 sub scan_recurse {
-    my ( $self, $recursion_depth, $dir_name, $dir_flags ) = @_;
+    my ( $self, $recursion_depth, $dir_name, $dir_flags, $dir_regexes ) = @_;
 
     # Prepare debug prefix string.
     my $debug_prefix;
@@ -419,9 +477,17 @@ sub scan_recurse {
         # Get path flags. Use parent's flags as default.
         my ( $flags, $plus_found ) = $self->get_flags( $full_path, $dir_flags );
         print $debug_prefix."  flags '" . $self->flags_hash_to_str( %$flags ) . "' (plus_found=$plus_found)\n" if $self->{debug_out} >= 3;
+        
+        my $add_item = 0;
+        my $add_dir = 0;
+        $add_dir = 1 if $plus_found;
 
-        # Skip this file/directory if nothing to check selected.
-        next ITEM unless $plus_found;
+        if ( (defined $dir_regexes) && @$dir_regexes ) {
+            my ( $tmp_add_dir, $tmp_plus_found );
+            ( $tmp_add_dir, $flags, $tmp_plus_found ) = $self->process_path_regexes( $dir_regexes, $full_path, $flags, $plus_found );
+            $add_dir = 1 if $tmp_add_dir;
+            $plus_found = 1 if $tmp_plus_found;
+        }
 
         # Get item (directory, file, symlink, ...) info. Send results if buffer is full.
         my ( $ret_code, $is_dir ) = $self->add_item_and_send_if_needed(
@@ -432,7 +498,7 @@ sub scan_recurse {
         );
         next PATH_CONF unless $ret_code;
 
-        if ( $is_dir ) {
+        if ( $is_dir && $add_dir ) {
             # ToDo - why not '$flags' only instead of '{ %$flags }' ?
             push @$sub_dirs, [ $full_path, { %$flags } ];
         }
@@ -447,9 +513,39 @@ sub scan_recurse {
         my $content_full_path = $sub_dir_path . '/';
         my ( $content_flags, $content_plus_found ) = $self->get_flags( $content_full_path, $sub_dir_flags );
         print " >>> '$content_full_path' content flags '" . $self->flags_hash_to_str( %$content_flags ) . "' (plus_found=$content_plus_found)\n" if $self->{debug_out} >= 3;
-        next SUB_DIR unless $content_plus_found;
+
+        my $scan_content = $content_plus_found;
+
+        my $content_regexes = [];
+        # Add recursive regexes.
+        foreach my $regex_conf ( @$dir_regexes ) {
+            if ( $regex_conf->[3] ) {
+                $scan_content = 1;
+                push @$content_regexes, $regex_conf;
+            }
+        }
         
-        $self->scan_recurse( $recursion_depth+1, $sub_dir_path, $sub_dir_flags );
+        if ( exists $self->{paths}->{ $content_full_path }->{regexes} ) {
+            $scan_content = 1;
+            # Add all path regexes.
+            $content_regexes = [
+                @$content_regexes,
+                @{ $self->{paths}->{ $content_full_path }->{regexes} }
+            ];
+            # Resort by order.
+            $content_regexes = [ sort { $a->[2] <=> $b->[2] } @$content_regexes ];
+        }
+        
+        print "  >>> '$content_full_path' scan content $scan_content\n" if $self->{debug_out} >= 3;
+
+        next SUB_DIR unless $scan_content;
+        
+        $self->scan_recurse(
+            $recursion_depth+1,
+            $sub_dir_path,
+            $sub_dir_flags,
+            $content_regexes
+        );
     }
 
     return 1;
@@ -508,19 +604,21 @@ sub scan {
     my ( $self ) = @_;
 
     my $ret_code;
-    PATH_CONF: foreach my $full_path ( sort keys %{ $self->{paths} } ) {
-        print " ---> conf path: '$full_path'\n" if $self->{debug_out} >= 5;
+    PATH_CONF: foreach my $conf_full_path ( sort keys %{ $self->{paths} } ) {
+        my $full_path = $conf_full_path;
+        $full_path =~ s{\/$}{};
+        print "\n===> conf path: '$conf_full_path'\n" if $self->{debug_out} >= 5;
         
         # Skip already scanned items. E.g. will skip '/a/b' here for config 
         # include '/a', include '/a/b', because '/a/b' is found during '/a' scanning.
         # But do not skip '/a/b/c' here for config include '/a', exclude '/a/b', 
         # include '/a/b/c'.
-        next PATH_CONF if exists $self->{paths_with_processed_flags}->{ $full_path };
+        next PATH_CONF if exists $self->{paths_with_processed_flags}->{ $conf_full_path };
 
         # Get path flags. Use parent's flags as default.
-        my $parent_flags = $self->get_parent_path_flags( $full_path );
-        my ( $flags, $plus_found ) = $self->get_flags( $full_path, $parent_flags );
-        print " >>> '$full_path' flags '" . $self->flags_hash_to_str( %$flags ) . "' (plus_found=$plus_found)\n" if $self->{debug_out} >= 3;
+        my $parent_flags = $self->get_parent_path_flags( $conf_full_path );
+        my ( $flags, $plus_found ) = $self->get_flags( $conf_full_path, $parent_flags );
+        print " >>> '$conf_full_path' flags '" . $self->flags_hash_to_str( %$flags ) . "' (plus_found=$plus_found)\n" if $self->{debug_out} >= 3;
 
         my $is_dir = 1;
         # Add item to results.
@@ -536,11 +634,27 @@ sub scan {
 
         # Start recursive scanning for this directory.
         if ( $is_dir ) {
+
             my $content_full_path = $full_path . '/';
             my ( $content_flags, $content_plus_found ) = $self->get_flags( $content_full_path, $flags );
-            print " >>> '$content_full_path' content flags '" . $self->flags_hash_to_str( %$content_flags ) . "' (plus_found=$content_plus_found)\n" if $self->{debug_out} >= 3;
-            next PATH_CONF unless $content_plus_found;
-            $ret_code = $self->scan_recurse( 0, $full_path, $content_flags );
+            print "  >>> '$content_full_path' content flags '" . $self->flags_hash_to_str( %$content_flags ) . "' (plus_found=$content_plus_found)\n" if $self->{debug_out} >= 3;
+            
+            my $scan_content = 0;
+            if ( $content_plus_found ) {
+                $scan_content = 1;
+            } elsif ( exists $self->{paths}->{ $content_full_path }->{regexes} ) {
+                $scan_content = 1;
+            }
+            print "  >>> '$content_full_path' scan_content $scan_content\n" if $self->{debug_out} >= 3;
+
+            next PATH_CONF unless $scan_content;
+
+            $ret_code = $self->scan_recurse(
+                0,
+                $full_path,
+                $content_flags,
+                $self->{paths}->{ $content_full_path }->{regexes}
+            );
         }
 
         last unless $ret_code;
@@ -549,6 +663,45 @@ sub scan {
     $self->send_state( 1 ) if scalar(@{$self->{loaded_items}}) > 0;
 
     return $ret_code;
+}
+
+
+=head2 process_regexp
+
+Translate config reg_expr to perl regular expression.
+
+=cut
+
+sub process_regexp {
+    my ( $self, $in_reg_expr ) = @_;
+
+    my $is_recursive = 0;
+    if ( $in_reg_expr =~ m{\*\*}x ) {
+        $is_recursive = 1;
+    } elsif ( $in_reg_expr =~ m{ [\*\?] .* \/ .* [\*\?] }x ) {
+        $is_recursive = 1;
+    }
+    
+    my $reg_expr = $in_reg_expr;
+
+    # escape
+    $reg_expr =~ s{ ([  \- \) \( \] \[ \. \$ \^ \{ \} \\ \/ \: \; \, \# \! \> \< ]) }{\\$1}gx;
+
+    # ?
+    $reg_expr =~ s{ \? }{\[\^\\/\]\?}gx;
+
+    # *
+    #$reg_expr =~ s{ (?!\*) \* (?!\*)  }{\[\^\\\/\]\*}gx;
+    # * - old way
+    $reg_expr =~ s{   ([^\*])  \* ([^\*])     }{$1\[\^\\\/\]\*$2}gx;
+    $reg_expr =~ s{   ([^\*])  \*           $ }{$1\[^\\\/\]\*}gx;
+    $reg_expr =~ s{ ^          \*  ([^\*])    }{\[\^\\\/\]\*$1}gx;
+
+    # **
+    $reg_expr =~ s{ \*{2,} }{\.\*}gx;
+    
+    print "Reg expr transform: '$in_reg_expr' => '$reg_expr'\n" if $self->{debug_out} >= 8;
+    return ( $is_recursive, $reg_expr );
 }
 
 
@@ -572,14 +725,45 @@ sub run_scan_host {
 
     # Prepare paths.
     $self->{paths} = {};
-    $self->{paths_ordered} = [];
-    foreach my $path_conf ( @{ $args->{paths} } ) {
-        my $full_path = $path_conf->[ 0 ];
-        $self->{paths}->{ $full_path } = $path_conf->[ 1 ];
-        push @{ $self->{paths_ordered} }, $full_path;
-    }
+    foreach my $path_num ( 0..$#{ $args->{paths} } ) {
+        my $path_conf = $args->{paths}->[ $path_num ];
+        my $full_path_expr = $path_conf->[ 0 ];
 
+        my $full_path = $full_path_expr;
+        my $reg_expr = undef;
+        my $recursive_reg_expr = 0;
+
+        if ( my ($tmp_full_path, $tmp_reg_epxr ) = $full_path_expr =~ m{^ (.*?) \/ ( [^\/]* [\*\?] .* ) $}x ) {
+            if ( $tmp_reg_epxr ) {
+                $full_path = $tmp_full_path . '/';
+                ( $recursive_reg_expr, $reg_expr ) = $self->process_regexp( $full_path_expr );
+            }
+        }
+
+        if ( not defined $reg_expr ) {
+            $self->{paths}->{ $full_path }->{flags} = $path_conf->[ 1 ];
+
+        } elsif ( ! $recursive_reg_expr ) {
+            $self->{paths}->{ $full_path }->{regexes} = [] unless exists $self->{paths}->{ $full_path }->{regexes};
+            push @{ $self->{paths}->{ $full_path }->{regexes} }, [ 
+                $reg_expr,         # 0 - regex
+                $path_conf->[ 1 ], # 1 - flags
+                $path_num,         # 2 - order number
+                0                  # 3 - is_recursive
+            ];
+
+        } else {
+            $self->{paths}->{ $full_path }->{regexes} = [] unless exists $self->{paths}->{ $full_path }->{regexes};
+            push @{ $self->{paths}->{ $full_path }->{regexes} }, [ 
+                $reg_expr,         # 0 - regex
+                $path_conf->[ 1 ], # 1 - flags
+                $path_num,         # 2 - order number
+                1                  # 3 - is_recursive
+            ];
+        }
+    }
     $self->{paths_with_processed_flags} = {};
+    #use Data::Dumper; print Dumper( $self->{paths} );
 
     unless ( exists $self->{paths}->{''} ) {
         $self->add_error("Base path not found.");

@@ -380,6 +380,243 @@ my @all_test_cases = ();
 }
 
 
+# --- test 7 -----------------------------------------------------------------
+{
+    my $test_case = {};
+    $test_case->{tescase_name} = 'dirs and regexes';
+
+    my $my_flags = { %$default_flags };
+    $my_flags->{5} = '-';
+
+    $test_case->{test_obj_conf} = [
+        '/',
+
+        '/aall/',
+        '/aall/file-yes',
+
+        '/afoo/',
+        '/afoo/file-no-X',
+        '/afoo/fileA',
+        '/afoo/fileBB',
+
+        '/bar/',
+        '/bar/no-file',
+
+        '/bazz/',
+        '/bazz/fileX',
+        '/bazz/fileYY',
+        '/bazz/file-no',
+    ];
+
+    $test_case->{paths_to_scan} = [
+        [ '', $skip_flags, ],
+
+        [ '/aall',        $my_flags, ],
+
+        [ '/afoo/file?',  $my_flags, ],
+        [ '/afoo/file??', $my_flags, ],
+
+        [ '/bazz',        $skip_flags, ],
+        [ '/bazz/file?',  $my_flags, ],
+        [ '/bazz/file??', $my_flags, ],
+    ];
+
+    $test_case->{expected} = [
+        {
+            'mode' => 16877,
+            'path' => '/aall'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/aall/file-yes'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/afoo/fileA'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/afoo/fileBB'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/bazz/fileX'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/bazz/fileYY'
+        }
+    ];
+
+    push @all_test_cases, $test_case;
+}
+
+
+# --- test 8 -----------------------------------------------------------------
+{
+    my $test_case = {};
+    $test_case->{tescase_name} = "more regexes";
+
+    $test_case->{test_obj_conf} = [
+        '/',
+
+        '/part1/',
+        '/part1/okfile',
+        '/part1/okfileA',
+        '/part1/okfileXX',
+        '/part1/bad-file',
+
+        '/part2/',
+        '/part2/okfile',
+        '/part2/okfileA',
+        '/part2/okfileBB',
+        '/part2/okfileXXX',
+        '/part3/bad-file',
+
+        '/part3/',
+        '/part3/okfile',
+        '/part3/okfileA',
+        '/part3/okfileBB',
+        '/part3/okfileCCC',
+        '/part3/bad-file',
+
+        '/part4/',
+        '/part4/okfile',
+        '/part4/okfile-xA',
+        '/part4/okfile-yBBB',
+        '/part4/bad-file',
+        
+        '/part5/',
+        '/part5/subdirA/',
+        '/part5/subdirA/okfile',
+        '/part5/subdirA/okfileA',
+        '/part5/subdirA/okfileXX',
+        '/part5/subdirA/bad-file',
+        '/part5/subdirB/',
+        '/part5/subdirB/okfile',
+        '/part5/subdirB/okfileA',
+        '/part5/subdirB/okfileXX',
+        '/part5/subdirB/bad-file',
+
+        # part 6
+        '/part6/',
+        '/part6/bad-file-ok',
+        '/part6/ok-a1-ok',
+        '/part6/ok-a2-ok',
+        '/part6/ok-bad',
+
+        '/part6/bad-subdir/',
+        '/part6/bad-subdir/bad',
+        '/part6/bad-subdir/bad-ok',
+        '/part6/bad-subdir/ok-bad-ok',
+
+        '/part6/ok-subdir/',
+        '/part6/ok-subdir/b1-ok',
+        '/part6/ok-subdir/bad-y',
+        '/part6/ok-subdir/b2-ok',
+    ];
+
+    my $my_flags = { %$default_flags };
+    $my_flags->{5} = '-';
+    $test_case->{paths_to_scan} = [
+        [ '', $skip_flags ],
+        [ '/part1/okfile?',   $my_flags ],
+        [ '/part2/okfile??',  $my_flags ],
+        [ '/part3/okfile*',   $my_flags ],
+        [ '/part4/okfile-x?', $my_flags ],
+        [ '/part4/okfile-y*', $my_flags ],
+        [ '/part5/*/okfile?', $my_flags ],
+        [ '/part6/ok-**-ok',  $my_flags ],
+    ];
+
+    $test_case->{expected} = [
+        {
+            'mode' => 33188,
+            'path' => '/part1/okfile'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part1/okfileA'
+        },
+
+        {
+            'mode' => 33188,
+            'path' => '/part2/okfile'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part2/okfileA'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part2/okfileBB'
+        },
+
+        {
+            'mode' => 33188,
+            'path' => '/part3/okfile'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part3/okfileA'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part3/okfileBB'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part3/okfileCCC'
+        },
+
+        {
+            'mode' => 33188,
+            'path' => '/part4/okfile-xA'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part4/okfile-yBBB'
+        },
+
+        {
+            'mode' => 33188,
+            'path' => '/part5/subdirA/okfile'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part5/subdirA/okfileA'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part5/subdirB/okfile'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part5/subdirB/okfileA'
+        },
+
+        {
+            'mode' => 33188,
+            'path' => '/part6/ok-a1-ok'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part6/ok-a2-ok'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part6/ok-subdir/b1-ok'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/part6/ok-subdir/b2-ok'
+        }
+
+    ];
+    push @all_test_cases, $test_case;
+}
+
+
 # ----------------------------------------------------------------------------
 
 my @test_nums = ( 0..$#all_test_cases );
