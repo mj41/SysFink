@@ -86,6 +86,8 @@ sub do_delete_old {
 my $conf = load_conf_multi( $conf_fp, 'db' );
 my $schema = get_connected_schema( $conf->{db} );
 
+$schema->storage->txn_begin;
+
 if ( $delete_old ) {
     print "deleting old values\n" if $ver >= 2;
     do_delete_old( $schema );
@@ -173,6 +175,8 @@ foreach my $machine_name ( keys %$mconf ) {
         }
     }
 }
+
+$schema->storage->txn_commit;
 
 
 =head1 NAME
