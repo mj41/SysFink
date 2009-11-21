@@ -516,6 +516,9 @@ my @all_test_cases = ();
         '/part6/ok-subdir/b1-ok',
         '/part6/ok-subdir/bad-y',
         '/part6/ok-subdir/b2-ok',
+
+        '/part6/ok-subdir/ok-subsubdir-ok/',
+
         '/part6/ok-subdir/ok-subsubdir/',
         '/part6/ok-subdir/ok-subsubdir/c3-ok',
         '/part6/ok-subdir/ok-subsubdir/bad-z',
@@ -617,11 +620,150 @@ my @all_test_cases = ();
             'path' => '/part6/ok-subdir/b2-ok'
         },
         {
+            'mode' => 16877,
+            'path' => '/part6/ok-subdir/ok-subsubdir-ok'
+        },
+        {
             'mode' => 33188,
             'path' => '/part6/ok-subdir/ok-subsubdir/c3-ok'
         },
 
     ];
+    push @all_test_cases, $test_case;
+}
+
+
+# --- test 9 -----------------------------------------------------------------
+{
+    my $test_case = {};
+    $test_case->{tescase_name} = "recursive, regex and flags' inheritance";
+
+    $test_case->{test_obj_conf} = [
+        '/',
+
+        '/dirA/',
+        '/dirA/file-base',
+        '/dirA/file-re1',
+        '/dirA/file-re1B',
+        '/dirA/file-re2',
+        '/dirA/file-yy',
+
+        '/dirA/dir-no/',
+        '/dirA/dir-no/file-re1',
+        '/dirA/dir-no/file-re1B',
+        '/dirA/dir-no/file-yy',
+
+        '/dirB/',
+        '/dirB/file-base',
+        '/dirB/file-re1',
+        '/dirB/file-re1B',
+        '/dirB/file-re2',
+
+        '/dirB/dir-no/',
+        '/dirB/dir-no/file-re1',
+        '/dirB/dir-no/file-re1B',
+        '/dirB/dir-no/file-yy',
+    ];
+
+    my $my_flags = { %$default_flags };
+    $my_flags->{5} = '-';
+    $test_case->{paths_to_scan} = [
+        [ '', $my_flags, ],
+        [ '/**re1**',  { 'U' => '+' }, ],
+        [ '/**re2**',  { 'G' => '+' }, ],
+
+        [ '/dirA/',        { 'U' => '+' }, ],
+        [ '/dirA/dir-no',  $skip_flags, ],
+
+        [ '/**re1B**',     { 'U' => '-' }, ],
+
+        [ '/dirB/',         { 'G' => '-' }, ],
+        [ '/dirB/dir-no/',  $skip_flags, ],
+    ];
+
+    $test_case->{expected} = [
+        {
+            'mode' => 16877,
+            'path' => '/'
+        },
+        {
+            'mode' => 16877,
+            'path' => '/dirA'
+        },
+        {
+            'mode' => 16877,
+            'path' => '/dirB'
+        },
+        {
+            'uid' => 1,
+            'mode' => 33188,
+            'path' => '/dirA/file-base',
+            'user_name' => 'bin'
+        },
+        {
+            'uid' => 1,
+            'mode' => 33188,
+            'path' => '/dirA/file-re1',
+            'user_name' => 'bin'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/dirA/file-re1B'
+        },
+        {
+            'group_name' => 'bin',
+            'uid' => 1,
+            'mtime' => 1251747432,
+            'mode' => 33188,
+            'path' => '/dirA/file-re2',
+            'gid' => 1,
+            'user_name' => 'bin'
+        },
+        {
+            'uid' => 1,
+            'mode' => 33188,
+            'path' => '/dirA/file-yy',
+            'user_name' => 'bin'
+        },
+        {
+            'uid' => 1,
+            'mode' => 33188,
+            'path' => '/dirA/dir-no/file-re1',
+            'user_name' => 'bin'
+        },
+        {
+            'mode' => 16877,
+            'path' => '/dirB/dir-no'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/dirB/file-base'
+        },
+        {
+            'uid' => 1,
+            'mode' => 33188,
+            'path' => '/dirB/file-re1',
+            'user_name' => 'bin'
+        },
+        {
+            'mode' => 33188,
+            'path' => '/dirB/file-re1B'
+        },
+        {
+            'group_name' => 'bin',
+            'mtime' => 1251747432,
+            'mode' => 33188,
+            'path' => '/dirB/file-re2',
+            'gid' => 1
+        },
+        {
+            'uid' => 1,
+            'mode' => 33188,
+            'path' => '/dirB/dir-no/file-re1',
+            'user_name' => 'bin'
+        }
+    ];
+
     push @all_test_cases, $test_case;
 }
 

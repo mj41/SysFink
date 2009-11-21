@@ -399,7 +399,7 @@ Try each regex on given path.
 =cut
 
 sub process_path_regexes {
-    my ( $self, $regexes_conf, $full_path, $base_flags, $base_plus_found ) = @_;
+    my ( $self, $debug_prefix, $regexes_conf, $full_path, $base_flags, $base_plus_found ) = @_;
     
     my $add_dir = 0;
     my $flags = { %$base_flags };
@@ -407,13 +407,13 @@ sub process_path_regexes {
     
     foreach my $regex_conf ( @$regexes_conf ) {
         my ( $regex, $regex_flags, $is_recursive ) = @$regex_conf;
-        print "  *** trying '$regex' $is_recursive\n" if $self->{debug_out} >= 10;
+        print $debug_prefix."  trying '$regex' $is_recursive\n" if $self->{debug_out} >= 10;
 
         # Recursive regex should be checked recursive.
         $add_dir = 1 if $is_recursive;
 
         if ( $full_path =~ /^$regex$/ ) {
-            print " **** found with '$regex'\n" if $self->{debug_out} >= 9;
+            print $debug_prefix."  matched with '$regex', '" . $self->flags_hash_to_str( %$regex_flags ) . "'\n" if $self->{debug_out} >= 9;
             ( $flags, $plus_found ) = $self->join_flags( $flags, $regex_flags );
         }
     }
@@ -435,11 +435,11 @@ sub scan_recurse {
     $debug_prefix = '  ' x $recursion_depth if $self->{debug_out};
 
     # Print some debug output.
-    if ( $self->{debug_out} > 1 ) {
+    if ( $self->{debug_out} > 4 ) {
         print "\n";
-        print "in '$dir_name' ($recursion_depth):\n";
+        print "in '$dir_name' ($recursion_depth), base flags '" . $self->flags_hash_to_str( %$dir_flags ) . "':\n";
 
-    } elsif ( $self->{debug_out} == 1 ) {
+    } elsif ( $self->{debug_out} == 4 ) {
         print "$dir_name\n";
     }
 
@@ -476,17 +476,16 @@ sub scan_recurse {
 
         # Get path flags. Use parent's flags as default.
         my ( $flags, $plus_found ) = $self->get_flags( $full_path, $dir_flags );
-        print $debug_prefix."  flags '" . $self->flags_hash_to_str( %$flags ) . "' (plus_found=$plus_found)\n" if $self->{debug_out} >= 3;
+        print $debug_prefix."  flags '" . $self->flags_hash_to_str( %$flags ) . "' (plus_found=$plus_found)\n" if $self->{debug_out} >= 5;
         
-        my $add_item = 0;
         my $add_dir = 0;
         $add_dir = 1 if $plus_found;
 
         if ( (defined $dir_regexes) && @$dir_regexes ) {
-            my ( $tmp_add_dir, $tmp_plus_found );
-            ( $tmp_add_dir, $flags, $tmp_plus_found ) = $self->process_path_regexes( $dir_regexes, $full_path, $flags, $plus_found );
+            my ( $tmp_add_dir );
+            ( $tmp_add_dir, $flags, $plus_found ) = $self->process_path_regexes( $debug_prefix, $dir_regexes, $full_path, $flags, $plus_found );
+            print $debug_prefix."  regex process results add_dir=$tmp_add_dir, flags='" . $self->flags_hash_to_str( %$flags ) . "', plus_found=$plus_found\n" if $self->{debug_out} >= 5;
             $add_dir = 1 if $tmp_add_dir;
-            $plus_found = 1 if $tmp_plus_found;
         }
 
         # Get item (directory, file, symlink, ...) info. Send results if buffer is full.
@@ -512,7 +511,7 @@ sub scan_recurse {
         
         my $content_full_path = $sub_dir_path . '/';
         my ( $content_flags, $content_plus_found ) = $self->get_flags( $content_full_path, $sub_dir_flags );
-        print " >>> '$content_full_path' content flags '" . $self->flags_hash_to_str( %$content_flags ) . "' (plus_found=$content_plus_found)\n" if $self->{debug_out} >= 3;
+        print $debug_prefix."  '$sub_dir_path' dir content flags '" . $self->flags_hash_to_str( %$content_flags ) . "' (plus_found=$content_plus_found)\n" if $self->{debug_out} >= 3;
 
         my $scan_content = $content_plus_found;
 
@@ -536,14 +535,14 @@ sub scan_recurse {
             $content_regexes = [ sort { $a->[2] <=> $b->[2] } @$content_regexes ];
         }
         
-        print "  >>> '$content_full_path' scan content $scan_content\n" if $self->{debug_out} >= 3;
+        print $debug_prefix."  scan '$sub_dir_path' dir content $scan_content\n" if $self->{debug_out} >= 3;
 
         next SUB_DIR unless $scan_content;
         
         $self->scan_recurse(
             $recursion_depth+1,
             $sub_dir_path,
-            $sub_dir_flags,
+            $content_flags,
             $content_regexes
         );
     }
