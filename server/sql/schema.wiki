@@ -67,13 +67,13 @@ CREATE TABLE mconf_sec_kv (
 <source lang=sql>
 CREATE TABLE scan (
     scan_id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    mconf_id        INT UNSIGNED NOT NULL,
+    mconf_sec_id    INT UNSIGNED NOT NULL,
     start_time      DATETIME NOT NULL,
     stop_time       DATETIME DEFAULT NULL,
     pid             INT UNSIGNED NOT NULL COMMENT 'OS process id of scanning process.',
     items           INT UNSIGNED DEFAULT NULL COMMENT 'Number of items found during the scan.',
-    INDEX i_mconf_id (mconf_id),
-    CONSTRAINT fk_scan_mconf_id FOREIGN KEY (mconf_id) REFERENCES mconf (mconf_id)
+    INDEX i_mconf_sec_id (mconf_sec_id),
+    CONSTRAINT fk_scan_mconf_sec_id FOREIGN KEY (mconf_sec_id) REFERENCES mconf_sec (mconf_sec_id)
 ) TYPE=InnoDB COMMENT='Machine scan. Tag:Scan.';
 </source>
 

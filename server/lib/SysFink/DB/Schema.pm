@@ -16,12 +16,12 @@ __PACKAGE__->add_columns(
       'is_nullable' => 0,
       'size' => '11'
     },
-    'mconf_id' => {
+    'mconf_sec_id' => {
       'data_type' => 'int',
       'is_auto_increment' => 0,
       'default_value' => undef,
       'is_foreign_key' => 1,
-      'name' => 'mconf_id',
+      'name' => 'mconf_sec_id',
       'is_nullable' => 0,
       'size' => '11'
     },
@@ -530,7 +530,7 @@ __PACKAGE__->set_primary_key('machine_id');
 
 package SysFink::DB::Schema::scan;
 
-__PACKAGE__->belongs_to('mconf_id','SysFink::DB::Schema::mconf','mconf_id');
+__PACKAGE__->belongs_to('mconf_sec_id','SysFink::DB::Schema::mconf_sec','mconf_sec_id');
 
 __PACKAGE__->has_many('get_sc_idata', 'SysFink::DB::Schema::sc_idata', 'scan_id');
 
@@ -539,7 +539,6 @@ package SysFink::DB::Schema::mconf;
 __PACKAGE__->belongs_to('machine_id','SysFink::DB::Schema::machine','machine_id');
 
 __PACKAGE__->has_many('get_mconf_sec', 'SysFink::DB::Schema::mconf_sec', 'mconf_id');
-__PACKAGE__->has_many('get_scan', 'SysFink::DB::Schema::scan', 'mconf_id');
 
 package SysFink::DB::Schema::sc_idata;
 
@@ -556,6 +555,7 @@ package SysFink::DB::Schema::mconf_sec;
 __PACKAGE__->belongs_to('mconf_id','SysFink::DB::Schema::mconf','mconf_id');
 
 __PACKAGE__->has_many('get_mconf_sec_kv', 'SysFink::DB::Schema::mconf_sec_kv', 'mconf_sec_id');
+__PACKAGE__->has_many('get_scan', 'SysFink::DB::Schema::scan', 'mconf_sec_id');
 
 package SysFink::DB::Schema::sc_mitem;
 

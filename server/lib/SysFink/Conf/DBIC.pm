@@ -51,51 +51,41 @@ sub get_machine_id {
 }
 
 
-=head2 get_machine_active_mconf_id
+=head2 get_machine_active_mconf_sec_info
 
-Return active mconf_id for machine_id.
+Return active mconf_id for machine_id and sec_name.
 
 =cut
 
-sub get_machine_active_mconf_id {
-    my ( $self, $machine_id ) = @_;
+sub get_machine_active_mconf_sec_info {
+    my ( $self, $machine_id, $sec_name ) = @_;
 
-    my $mconf_row = $self->{schema}->resultset('mconf')->find({
+    my $row = $self->{schema}->resultset('mconf_sec')->find({
         'machine_id.machine_id' => $machine_id,
-        'me.active' => 1,
+        'mconf_id.active' => 1,
+        'me.name' => $sec_name,
     },{
-        'join' => [ 'machine_id' ],
+        'join' => { 'mconf_id' => 'machine_id' },
+        'select' => [ 'me.mconf_sec_id', 'me.mconf_id', ],
+        'as' => [ 'mconf_sec_id', 'mconf_id', ],
     });
 
-    return undef unless defined $mconf_row;
-    return $mconf_row->id;
+    return undef unless defined $row;
+    return [ $row->get_column('mconf_sec_id'), $row->get_column('mconf_id') ];
 }
 
 
-=head2 load_general_conf
+=head2 load_conf_data_from_rs
 
-Load and canonize configuration for given machine_id.
+Load and normalize configuration from given record set.
 
 =cut
 
-sub load_general_conf {
-    my ( $self, $machine_id, $mconf_id ) = @_;
-
-    my $mconf_rs = $self->{schema}->resultset('mconf_sec_kv')->search(
-        {
-            'mconf_sec_id.mconf_id' => $mconf_id,
-            'mconf_sec_id.name' => 'general',
-        },
-        {
-            'join' => [ 'mconf_sec_id' ],
-            'select' => [ 'key', 'value', 'num' ],
-            'order_by' => [ 'key', 'num' ],
-        },
-    );
-
+sub load_conf_data_from_rs {
+    my ( $self, $mconf_sec_kv_rs ) = @_;
 
     my $data = {};
-    while (my $row_obj = $mconf_rs->next) {
+    while ( my $row_obj = $mconf_sec_kv_rs->next ) {
         my %row = ( $row_obj->get_columns() );
         my $key = $row{key};
         my $new_value = $row{value};
@@ -134,7 +124,57 @@ sub load_general_conf {
         }
         $data->{paths} = $new_paths;
     }
+    return $data;
+}
 
+
+=head2 load_general_conf
+
+Load and canonize configuration for given machine_id and 'general' configuration 
+of mconf_id.
+
+=cut
+
+sub load_general_conf {
+    my ( $self, $machine_id, $mconf_id ) = @_;
+
+    my $mconf_sec_kv_rs = $self->{schema}->resultset('mconf_sec_kv')->search(
+        {
+            'mconf_sec_id.mconf_id' => $mconf_id,
+            'mconf_sec_id.name' => 'general',
+        },
+        {
+            'join' => [ 'mconf_sec_id' ],
+            'select' => [ 'key', 'value', 'num' ],
+            'order_by' => [ 'key', 'num' ],
+        },
+    );
+
+    my $data = $self->load_conf_data_from_rs( $mconf_sec_kv_rs );
+    return $data;
+}
+
+
+=head2 load_sec_conf
+
+Load and canonize configuration for given machine_id and mconf_sec_id.
+
+=cut
+
+sub load_sec_conf {
+    my ( $self, $machine_id, $mconf_sec_id ) = @_;
+
+    my $mconf_sec_kv_rs = $self->{schema}->resultset('mconf_sec_kv')->search(
+        {
+            'me.mconf_sec_id' => $mconf_sec_id,
+        },
+        {
+            'select' => [ 'key', 'value', 'num' ],
+            'order_by' => [ 'key', 'num' ],
+        },
+    );
+
+    my $data = $self->load_conf_data_from_rs( $mconf_sec_kv_rs );
     return $data;
 }
 

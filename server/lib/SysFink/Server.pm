@@ -343,12 +343,13 @@ sub connect_db {
 
 =head2 prepare_host_conf_from_db
 
-Load host related configuration from database.
+Load host related configuration from database for given configuratin's section name.
 
 =cut
 
 sub prepare_host_conf_from_db {
-    my ( $self ) = @_;
+    my ( $self, $sec_name ) = @_;
+    $sec_name = 'general' unless $sec_name;
 
     my $conf_obj = SysFink::Conf::DBIC->new({
         schema => $self->{schema},
@@ -359,12 +360,24 @@ sub prepare_host_conf_from_db {
 
     my $machine_id = $conf_obj->get_machine_id( { 'name' => $host } );
     return $self->err("Can't find machine_id for host '$host' in DB.") unless $machine_id;
+    
+    my $mconf_sec_data = $conf_obj->get_machine_active_mconf_sec_info( $machine_id, $sec_name );
+    return $self->err("Can't find mconf_sec_id for machine_id '$machine_id' and section name '$sec_name' in DB.") unless $mconf_sec_data;
+    my ( $mconf_sec_id, $mconf_id ) = @$mconf_sec_data;
 
-    my $mconf_id = $conf_obj->get_machine_active_mconf_id( $machine_id );
-    return $self->err("Can't find mconf_id for machine_id '$machine_id' in DB.") unless $mconf_id;
+    # Load 'general' configuration's section.
+    my $section_conf = $conf_obj->load_general_conf( $machine_id, $mconf_id );
+    return $self->err("Can't load general configuration for machine_id '$machine_id' and mconf_id '$mconf_id' in DB.") unless $section_conf;
 
-    my $general_conf = $conf_obj->load_general_conf( $machine_id, $mconf_id );
-    return $self->err("Can't load configuration for machine_id ''$machine_id and mconf_id '$mconf_id' in DB.") unless $general_conf;
+    # Load configuration's section selected by user. Use keys/values from this section to replace
+    # these loaded from 'general' section.
+    if ( $sec_name ne 'general' ) {
+        my $tmp_section_conf = $conf_obj->load_sec_conf( $machine_id, $mconf_sec_id );
+        return $self->err("Can't load section configuration for machine_id ''$machine_id and mconf_sec_id '$mconf_sec_id' in DB.") unless $tmp_section_conf;
+        foreach my $key ( keys %$tmp_section_conf ) {
+            $section_conf->{ $key } = $tmp_section_conf->{ $key };
+        }
+    }
 
     # All options given on command line are rewrited by values loaded from DB.
     my $mandatory_keys = {
@@ -374,24 +387,25 @@ sub prepare_host_conf_from_db {
 
     # Check mandatory.
     foreach my $key ( keys %$mandatory_keys ) {
-        unless ( $general_conf->{ $key } ) {
+        unless ( $section_conf->{ $key } ) {
             return $self->err("Can't find mandatory configuration key '$key' for host '$host' DB.");
         }
     }
 
     $self->{host_conf}->{machine_id} = $machine_id;
     $self->{host_conf}->{mconf_id} = $mconf_id;
+    $self->{host_conf}->{mconf_sec_id} = $mconf_sec_id;
 
     # Set mandatory.
     foreach my $key ( keys %$mandatory_keys ) {
         my $host_conf_key = $mandatory_keys->{ $key };
-        $self->{host_conf}->{ $host_conf_key } = $general_conf->{ $key };
+        $self->{host_conf}->{ $host_conf_key } = $section_conf->{ $key };
     }
 
     # Optional.
     my $max_items_in_one_response = 1_000;
-    if ( defined $general_conf->{max_items_in_one_response} ) {
-        $max_items_in_one_response = $general_conf->{max_items_in_one_response}
+    if ( defined $section_conf->{max_items_in_one_response} ) {
+        $max_items_in_one_response = $section_conf->{max_items_in_one_response}
     }
     $self->{host_conf}->{max_items_in_one_response} = $max_items_in_one_response;
 
@@ -564,11 +578,11 @@ sub scan_cmd {
     my $scan_conf = $self->get_scan_conf( 0 );
 
     my $machine_id = $self->{host_conf}->{machine_id};
-    my $mconf_id = $self->{host_conf}->{mconf_id};
+    my $mconf_sec_id = $self->{host_conf}->{mconf_sec_id};
 
     # Insert scan row.
     my $scan_row = $schema->resultset('scan')->create({
-        mconf_id => $mconf_id,
+        mconf_sec_id => $mconf_sec_id,
         start_time => DateTime->now,
         stop_time => undef,
         pid => $$,
