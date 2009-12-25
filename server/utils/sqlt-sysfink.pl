@@ -8,14 +8,19 @@ use lib "$RealBin/../lib";
 use lib "$RealBin/../libext";
 
 use SQL::Translator;
+use SQL::Translator::Utils::GenDoc qw/produce_db_doc/;
 
 use Data::Dumper;
 
 my $to = $ARGV[0] || 'dbix';
 my $input_file = $ARGV[1] || './temp/schema-raw-create.sql';
-my $debug = $ARGV[2] || 0;
+my $ver = $ARGV[2] || 3;
 
-print "to: $to, input '$input_file', debug: $debug\n" if $debug;
+my $producer_prefix = 'SysFink::DB::Schema';
+my $producer_base_class_name = 'SysFink::DB::DBIxClassBase';
+my $table_name_url_prefix = 'http://dev.taptinder.org/wiki/DB_Schema#';
+
+print "to: $to, input '$input_file', ver $ver\n" if $ver >= 3;
 
 croak "Input file '$input_file' not found." unless -f $input_file;
 
@@ -27,8 +32,8 @@ if ( $to eq 'dbix' || $to eq 'ALL' ) {
         parser    => 'MySQL',
         producer  => 'DBIx::Class::FileMJ',
         producer_args => {
-            prefix => 'SysFink::DB::Schema',
-            base_class_name => 'SysFink::DB::DBIxClassBase',
+            prefix => $producer_prefix,
+            base_class_name => $producer_base_class_name,
         },
     ) or die SQL::Translator->error;
 
@@ -38,6 +43,13 @@ if ( $to eq 'dbix' || $to eq 'ALL' ) {
     open ( $fh, '>', $out_fn ) || die $!;
     print $fh $content;
     close $fh;
+
+} elsif ( $to eq 'dbdoc' || $to eq 'ALL' ) {
+    produce_db_doc(
+        $ver,
+        $input_file,
+        $table_name_url_prefix
+    );
 
 } elsif ( $to eq 'sqlite' || $to eq 'ALL' ) {
 

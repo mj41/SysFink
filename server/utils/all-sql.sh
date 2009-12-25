@@ -43,5 +43,5 @@ fi
 
 if [ "$1" = "2" ]; then
     echo -n "updating temp/schema.png - "
-    perl utils/sqlt-sysfink.pl graph temp/schema-raw-create-comments.sql 0 && echo done
+    perl utils/sqlt-sysfink.pl dbdoc temp/schema-raw-create-comments.sql 0 && echo done
 fi
