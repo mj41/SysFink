@@ -3,10 +3,14 @@ package SysFink::Server::SSHRPCClient;
 use strict;
 use warnings;
 
+use base 'SysFink::Base';
+
+
 use Net::OpenSSH;
 use File::Spec::Functions;
 
 use SSH::RPC::PP::Client;
+
 
 =head1 NAME
 
@@ -30,10 +34,8 @@ Constructor.
 =cut
 
 sub new {
-    my ( $class ) = @_;
-
-    my $self  = {};
-    bless $self, $class;
+    my $class = shift;
+    my $self = $class->SUPER::new( @_ );
 
     return undef unless $self->set_default_values();
     return $self;
@@ -49,8 +51,6 @@ Validate and sets options.
 sub set_default_values {
     my ( $self ) = @_;
 
-    $self->{ver} = 1;
-    $self->{err} = undef;
     $self->{ssh} = undef;
 
     $self->{user} = 'root';
@@ -108,30 +108,6 @@ sub set_options {
 
     return 1;
 }
-
-
-=head2 err
-
-Get/set error message and return 0.
-
-=cut
-
-sub err {
-    my ( $self, $err) = @_;
-
-    # Get.
-    return $self->{err} unless defined $err;
-
-    # Set.
-    $self->{err} = $err;
-    print "SSHRPCClient - Setting error to: '$err'\n" if $self->{ver} >= 5;
-
-    # return 0 is ok here.
-    # You can use  e.g.
-    #   return $self->err('Err msg') if $some_error;
-    return 0;
-}
-
 
 
 =head2 disconnect

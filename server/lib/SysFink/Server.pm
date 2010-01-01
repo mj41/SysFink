@@ -3,8 +3,9 @@ package SysFink::Server;
 use strict;
 use warnings;
 
+use base 'SysFink::Base';
+
 use FindBin;
-use Data::Dumper;
 use File::Spec::Functions;
 
 use SysFink::Server::SSHRPCClient;
@@ -38,12 +39,9 @@ Constructor.
 =cut
 
 sub new {
-    my ( $class ) = @_;
+    my $class = shift;
+    my $self = $class->SUPER::new( @_ );
 
-    my $self  = {};
-
-    $self->{ver} = 1;
-    $self->{err} = undef;
     $self->{RealBin} = $FindBin::RealBin;
 
     $self->{rpc} = undef;
@@ -51,52 +49,7 @@ sub new {
 
     $self->{conf_path} = catdir( $self->{RealBin}, 'conf' );
 
-    bless $self, $class;
     return $self;
-}
-
-
-=head2 err
-
-Get/set error message and return 0.
-
-=cut
-
-sub err {
-    my ( $self, $err) = @_;
-
-    # Get.
-    return $self->{err} unless defined $err;
-
-    # Set.
-    print "Server - Setting error to: '$err'\n" if $self->{ver} >= 5;
-    $self->{err} = $err;
-
-    # return 0 is ok here.
-    # You can use  e.g.
-    #   return $self->err('Err msg') if $some_error;
-    return 0;
-}
-
-
-=head2 dump
-
-Print given message and dump other parameters.
-
-=cut
-
-sub dump {
-    my $self = shift;
-    my $msg = shift;
-
-    print $msg . " ";
-    {
-        local $Data::Dumper::Indent = 1;
-        local $Data::Dumper::Purity = 1;
-        local $Data::Dumper::Terse = 1;
-        print Data::Dumper->Dump( [ @_ ], [] );
-    }
-    return 1;
 }
 
 
@@ -603,6 +556,9 @@ sub scan_cmd {
     my $result_obj = $self->{rpc}->do_rpc( 'scan_host', $scan_conf, 1 );
     return 0 unless defined $result_obj;
 
+    my $print_progress = ( $self->{ver} >= 4 );
+
+    my $response_num = 1;
     my $response = $result_obj->getResponse();
     my $loaded_items = $response->{loaded_items};
 
@@ -610,10 +566,15 @@ sub scan_cmd {
     while ( $result_obj->isSuccess && !$result_obj->isLast ) {
         $result_obj = $self->{rpc}->get_next_response( 1 );
         $response = $result_obj->getResponse();
+        $response_num++;
         $loaded_items = [
             @$loaded_items,
             @{$response->{loaded_items}}
         ];
+        if ( $print_progress ) {
+            my $last_path = $loaded_items->[ -1 ]->{path};
+            $self->print_progress( "%s: path '%s', items %s", $response_num, $last_path, $#$loaded_items+1 );
+        }
     }
     # $self->dump( 'Loaded items', $loaded_items ); exit; # debug
 
