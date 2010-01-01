@@ -20,23 +20,26 @@ sub main {
 
     my $options = {
         ver => 2,
-        user => undef,
+        cmd => undef,
         host => undef,
-        host_dist_type => undef,
         use_db => 0,
+        section => undef,
+
+        user => undef,
+        host_dist_type => undef,
    };
 
     my $options_ok = GetOptions(
         'help|h|?' => \$help,
-        'ver|v=i' => \$options->{'ver'},
 
+        'ver|v=i' => \$options->{'ver'},
         'cmd=s' => \$options->{'cmd'},
+        'host=s' => \$options->{'host'},
+        'use_db' => \$options->{'use_db'},
+        'section=s' => \$options->{'section'},
 
         'user=s' => \$options->{'user'},
-        'host=s' => \$options->{'host'},
         'host_dist_type=s' => \$options->{'host_dist_type'},
-
-        'use_db' => \$options->{'use_db'},
     );
 
     if ( $help || !$options_ok ) {
@@ -117,11 +120,14 @@ perl sysfink.pl [options]
         Return nothing (on success) or error message.
         Also required: --host, --user.
 
-    --user .. User name for SSH connect.
 
     --host .. Full hostname of client for SSH connect.
 
     --use_db .. Try to load some parameters from DB (e.g. host_dist_type).
+    
+    --section .. Configuration section name to use.
+
+    --user .. User name for SSH connect.
 
     --host_dist_type .. Distribution type e.g. irix-bin-64b, linux-perl-md5, ...
 

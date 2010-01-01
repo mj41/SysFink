@@ -95,7 +95,10 @@ Print the progress line. Parameters are the same as for sprintf.
 sub print_progress {
     my ( $self, $msg_format, @paramss ) = @_;
 
-    my $msg = sprintf( $msg_format, @paramss );
+    my $msg = '';
+    if ( defined $msg_format ) {
+        $msg  = sprintf( $msg_format, @paramss );
+    }
     if ( length($msg) >= 80 ) {
         $msg = substr( $msg, 0, 77 ) . '...';
     }

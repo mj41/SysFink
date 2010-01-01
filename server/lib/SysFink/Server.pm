@@ -205,6 +205,7 @@ sub prepare_base_host_conf {
     $host_conf->{rpc_ver} = $opt->{rpc_ver} if defined $opt->{rpc_ver};
     $host_conf->{client_src_dir} = $opt->{client_src_dir} if defined $opt->{client_src_dir};
     $host_conf->{host_dist_type} = $opt->{host_dist_type} if defined $opt->{host_dist_type};
+    $host_conf->{conf_section_name} = $opt->{section} if defined $opt->{section};
 
     $self->{host_conf} = $host_conf;
     return 1;
@@ -300,8 +301,7 @@ Load host related configuration from database for given configuratin's section n
 =cut
 
 sub prepare_host_conf_from_db {
-    my ( $self, $sec_name ) = @_;
-    $sec_name = 'general' unless $sec_name;
+    my ( $self ) = @_;
 
     my $conf_obj = SysFink::Conf::DBIC->new({
         schema => $self->{schema},
@@ -310,11 +310,14 @@ sub prepare_host_conf_from_db {
 
     my $host = $self->{host_conf}->{host};
 
+    my $conf_section_name = 'general'; # default is 'general'
+    $conf_section_name = $self->{host_conf}->{conf_section_name} if defined $self->{host_conf}->{conf_section_name};
+
     my $machine_id = $conf_obj->get_machine_id( { 'name' => $host } );
     return $self->err("Can't find machine_id for host '$host' in DB.") unless $machine_id;
     
-    my $mconf_sec_data = $conf_obj->get_machine_active_mconf_sec_info( $machine_id, $sec_name );
-    return $self->err("Can't find mconf_sec_id for machine_id '$machine_id' and section name '$sec_name' in DB.") unless $mconf_sec_data;
+    my $mconf_sec_data = $conf_obj->get_machine_active_mconf_sec_info( $machine_id, $conf_section_name );
+    return $self->err("Can't find mconf_sec_id for machine_id '$machine_id' and section name '$conf_section_name' in DB.") unless $mconf_sec_data;
     my ( $mconf_sec_id, $mconf_id ) = @$mconf_sec_data;
 
     # Load 'general' configuration's section.
@@ -323,7 +326,7 @@ sub prepare_host_conf_from_db {
 
     # Load configuration's section selected by user. Use keys/values from this section to replace
     # these loaded from 'general' section.
-    if ( $sec_name ne 'general' ) {
+    if ( $conf_section_name ne 'general' ) {
         my $tmp_section_conf = $conf_obj->load_sec_conf( $machine_id, $mconf_sec_id );
         return $self->err("Can't load section configuration for machine_id ''$machine_id and mconf_sec_id '$mconf_sec_id' in DB.") unless $tmp_section_conf;
         foreach my $key ( keys %$tmp_section_conf ) {
@@ -576,6 +579,7 @@ sub scan_cmd {
             $self->print_progress( "%s: path '%s', items %s", $response_num, $last_path, $#$loaded_items+1 );
         }
     }
+    $self->print_progress() if $print_progress;
     # $self->dump( 'Loaded items', $loaded_items ); exit; # debug
 
     my %path_to_num = ();
