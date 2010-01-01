@@ -15,6 +15,11 @@ use lib 'dist/_base/lib';
 use SysFink::ScanHostTest;
 use SysFink::FileHashTest;
 
+# server libs
+use lib '../server/lib';
+use SysFink::Conf;
+
+
 my $debug_out = $ARGV[0] || 0;
 my $test_num_to_run = $ARGV[1] || undef;
 
@@ -783,8 +788,11 @@ foreach my $num ( @test_nums ) {
     my $hash_obj = SysFink::FileHashTest->new();
     my $scan_obj = SysFink::ScanHostTest->new( $test_case->{test_obj_conf}, $hash_obj );
 
+    my $conf_obj = SysFink::Conf->new();
+    my $prepared_paths = [ sort { $a->[0] cmp $b->[0] } @{ $test_case->{paths_to_scan} } ];
+    $prepared_paths = $conf_obj->prepare_path_regexes( $prepared_paths );
     my $scan_conf = {
-        'paths' => [ sort { $a->[0] cmp $b->[0] } @{ $test_case->{paths_to_scan} } ],
+        'paths' => $prepared_paths,
         'debug_out' => $debug_out,
         'max_items_in_one_response' => $max_items_in_one_response,
     };

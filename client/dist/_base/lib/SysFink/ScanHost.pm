@@ -665,44 +665,6 @@ sub scan {
 }
 
 
-=head2 process_regexp
-
-Translate config reg_expr to perl regular expression.
-
-=cut
-
-sub process_regexp {
-    my ( $self, $in_reg_expr ) = @_;
-
-    my $is_recursive = 0;
-    if ( $in_reg_expr =~ m{\*\*}x ) {
-        $is_recursive = 1;
-    } elsif ( $in_reg_expr =~ m{ [\*\?] .* \/ .* [\*\?] }x ) {
-        $is_recursive = 1;
-    }
-    
-    my $reg_expr = $in_reg_expr;
-
-    # escape
-    $reg_expr =~ s{ ([  \- \) \( \] \[ \. \$ \^ \{ \} \\ \/ \: \; \, \# \! \> \< ]) }{\\$1}gx;
-
-    # ?
-    $reg_expr =~ s{ \? }{\[\^\\/\]\?}gx;
-
-    # *
-    #$reg_expr =~ s{ (?!\*) \* (?!\*)  }{\[\^\\\/\]\*}gx;
-    # * - old way
-    $reg_expr =~ s{   ([^\*])  \* ([^\*])     }{$1\[\^\\\/\]\*$2}gx;
-    $reg_expr =~ s{   ([^\*])  \*           $ }{$1\[^\\\/\]\*}gx;
-    $reg_expr =~ s{ ^          \*  ([^\*])    }{\[\^\\\/\]\*$1}gx;
-
-    # **
-    $reg_expr =~ s{ \*{2,} }{\.\*}gx;
-    
-    print "Reg expr transform: '$in_reg_expr' => '$reg_expr'\n" if $self->{debug_out} >= 8;
-    return ( $is_recursive, $reg_expr );
-}
-
 
 =head2 run_scan_host
 
@@ -722,47 +684,8 @@ sub run_scan_host {
     $self->{debug_recursion_limit} = $args->{debug_recursion_limit} if defined $args->{debug_recursion_limit};
 
 
-    # Prepare paths.
-    $self->{paths} = {};
-    foreach my $path_num ( 0..$#{ $args->{paths} } ) {
-        my $path_conf = $args->{paths}->[ $path_num ];
-        my $full_path_expr = $path_conf->[ 0 ];
-
-        my $full_path = $full_path_expr;
-        my $reg_expr = undef;
-        my $recursive_reg_expr = 0;
-
-        if ( my ($tmp_full_path, $tmp_reg_epxr ) = $full_path_expr =~ m{^ (.*?) \/ ( [^\/]* [\*\?] .* ) $}x ) {
-            if ( $tmp_reg_epxr ) {
-                $full_path = $tmp_full_path . '/';
-                ( $recursive_reg_expr, $reg_expr ) = $self->process_regexp( $full_path_expr );
-            }
-        }
-
-        if ( not defined $reg_expr ) {
-            $self->{paths}->{ $full_path }->{flags} = $path_conf->[ 1 ];
-
-        } elsif ( ! $recursive_reg_expr ) {
-            $self->{paths}->{ $full_path }->{regexes} = [] unless exists $self->{paths}->{ $full_path }->{regexes};
-            push @{ $self->{paths}->{ $full_path }->{regexes} }, [ 
-                $reg_expr,         # 0 - regex
-                $path_conf->[ 1 ], # 1 - flags
-                $path_num,         # 2 - order number
-                0                  # 3 - is_recursive
-            ];
-
-        } else {
-            $self->{paths}->{ $full_path }->{regexes} = [] unless exists $self->{paths}->{ $full_path }->{regexes};
-            push @{ $self->{paths}->{ $full_path }->{regexes} }, [ 
-                $reg_expr,         # 0 - regex
-                $path_conf->[ 1 ], # 1 - flags
-                $path_num,         # 2 - order number
-                1                  # 3 - is_recursive
-            ];
-        }
-    }
+    $self->{paths} = $args->{paths};
     $self->{paths_with_processed_flags} = {};
-    #use Data::Dumper; print Dumper( $self->{paths} );
 
     unless ( exists $self->{paths}->{''} ) {
         $self->add_error("Base path not found.");

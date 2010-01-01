@@ -334,6 +334,10 @@ sub prepare_host_conf_from_db {
         }
     }
 
+    if ( exists $section_conf->{paths} ) {
+        $section_conf->{paths} = $conf_obj->prepare_path_regexes( $section_conf->{paths} );
+    }
+
     # All options given on command line are rewrited by values loaded from DB.
     my $mandatory_keys = {
         paths => 'paths',
