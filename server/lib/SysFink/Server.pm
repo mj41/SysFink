@@ -178,7 +178,7 @@ sub run {
 
     my $cmd_conf = $all_cmd_confs->{ $cmd };
 
-    # Load db config and connect do DB.
+    # Load db config and connect to DB.
     if ( $cmd_conf->{connect_to_db} || $opt->{use_db} ) {
         return 0 unless $self->connect_db();
     }
@@ -235,7 +235,7 @@ sub rpc_err  {
 
 =head2 prepare_base_host_conf
 
-Init base host_conf from fiven options.
+Init base host_conf from given options.
 
 =cut
 
@@ -245,11 +245,10 @@ sub prepare_base_host_conf {
     my $host_conf = {
         ver => $self->{ver},
         RealBin => $self->{RealBin},
-
-        user => $opt->{user},
         host => $opt->{host},
     };
 
+    $host_conf->{user} = $opt->{user} if defined $opt->{user};
     $host_conf->{rpc_ver} = $opt->{rpc_ver} if defined $opt->{rpc_ver};
     $host_conf->{client_src_dir} = $opt->{client_src_dir} if defined $opt->{client_src_dir};
     $host_conf->{host_dist_type} = $opt->{host_dist_type} if defined $opt->{host_dist_type};
@@ -383,12 +382,15 @@ sub prepare_host_conf_from_db {
     my $mandatory_keys = {
         paths => 'paths',
         dist_type => 'host_dist_type',
+        user => 'user',
     };
 
-    # Check mandatory.
+    # Check mandatory if not definned on command line.
     foreach my $key ( keys %$mandatory_keys ) {
-        unless ( $section_conf->{ $key } ) {
-            return $self->err("Can't find mandatory configuration key '$key' for host '$host' DB.");
+        unless ( exists $self->{host_conf}->{ $key } ) {
+            unless ( $section_conf->{ $key } ) {
+                return $self->err("Can't find mandatory configuration key '$key' for host '$host' in DB.");
+            }
         }
     }
 
@@ -398,8 +400,10 @@ sub prepare_host_conf_from_db {
 
     # Set mandatory.
     foreach my $key ( keys %$mandatory_keys ) {
-        my $host_conf_key = $mandatory_keys->{ $key };
-        $self->{host_conf}->{ $host_conf_key } = $section_conf->{ $key };
+        unless ( exists $self->{host_conf}->{ $key } ) {
+            my $host_conf_key = $mandatory_keys->{ $key };
+            $self->{host_conf}->{ $host_conf_key } = $section_conf->{ $key };
+        }
     }
 
     # Optional.

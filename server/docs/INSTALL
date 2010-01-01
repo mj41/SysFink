@@ -3,8 +3,18 @@
 # Upgade perl
 yum upgrade perl
 
-# Install DBD::SQLite
+yum install perl-JSON
+
+# -- Install CPAN Modules from DAG -----------------
+
 yum install perl-DBD-SQLite
+
+yum install perl-DateTime
+
+yum install perl-Devel-StackTrace
+yum install perl-Data-Dumper
+yum install perl-SQL-Translator
+yum install perl-DBIx-Class
 
 
 # -- CPAN Module install to ~/sysfink-cpan -----------------
@@ -74,6 +84,7 @@ cp conf/web_db.yml.example conf/web_db.yml
 cat > conf-machines/my-first-machine
 hostname    my-first-machine.my-domain.com
 dist_type   linux-perl-md5
+user        root
 exclude     /dev/ /home/ /proc/ /sys/ /var/ /mnt/
 Ctrl+D
 
