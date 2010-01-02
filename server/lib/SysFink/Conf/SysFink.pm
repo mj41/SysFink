@@ -3,6 +3,7 @@ package SysFink::Conf::SysFink;
 use strict;
 use warnings;
 
+use lib '../client/lib';
 use base 'SysFink::Conf';
 
 use File::Spec::Functions;
@@ -426,7 +427,7 @@ Process one config file.
 sub process_config_file {
     my ( $self, $host_name, $fpath ) = @_;
 
-    print "Loading config for '$host_name' ('$fpath').\n" if $self->{debug};
+    print "Loading config for '$host_name' ('$fpath').\n" if $self->{ver} >= 5;
 
     $self->{conf_meta}->{$host_name} = {
         'fpath' => $fpath

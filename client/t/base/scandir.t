@@ -6,18 +6,16 @@ use Carp qw(carp croak verbose);
 use FindBin qw($RealBin);
 use File::Spec::Functions;
 
-use lib 't/lib';
-
 use lib 'lib';
 use lib 'libext';
 use lib 'dist/_base/lib';
 
+use lib 'lib';
+use SysFink::Conf;
+
+use lib 't/lib';
 use SysFink::ScanHostTest;
 use SysFink::FileHashTest;
-
-# server libs
-use lib '../server/lib';
-use SysFink::Conf;
 
 
 my $debug_out = $ARGV[0] || 0;

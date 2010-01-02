@@ -3,6 +3,7 @@ package SysFink::Conf::DBIC;
 use strict;
 use warnings;
 
+use lib '../client/lib';
 use base 'SysFink::Conf';
 
 

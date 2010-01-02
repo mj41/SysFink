@@ -2,6 +2,7 @@ package SysFink::Conf;
 
 use strict;
 use warnings;
+
 use File::Spec::Functions;
 
 =head1 NAME
@@ -18,6 +19,7 @@ ToDo. See L<SysFink>.
 
 =head1 METHODS
 
+
 =head2 new
 
 Constructor. Parameters: conf_dir_path.
@@ -27,20 +29,14 @@ Constructor. Parameters: conf_dir_path.
 sub new {
     my ( $class, $params ) = @_;
 
-    my $self  = {};
-    $self->{debug} = $params->{debug};
+    my $self  = {
+        ver => 3,
+    };
+    $self->{ver} = $params->{ver} if defined $params->{ver};
 
     bless $self, $class;
     return $self;
 }
-
-
-sub debug {
-    my $self = shift;
-    if (@_) { $self->{debug} = shift }
-    return $self->{debug};
-}
-
 
 
 =head2 get_flag_desc
@@ -189,7 +185,7 @@ sub process_regexp {
     # **
     $reg_expr =~ s{ \*{2,} }{\.\*}gx;
     
-    print "Reg expr transform: '$in_reg_expr' => '$reg_expr'\n" if $self->{debug};
+    print "Reg expr transform: '$in_reg_expr' => '$reg_expr'\n" if $self->{ver} >= 5;
     return ( $is_recursive, $reg_expr );
 }
 
