@@ -1,6 +1,8 @@
 package SysFink::ScanHostTest;
 
 use strict;
+use warnings;
+
 use base 'SysFink::ScanHost';
 
 

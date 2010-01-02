@@ -93,7 +93,7 @@ sub join_flags {
 
 =head2 get_flags
 
-Canonize given path.
+Get flags for given path or base_flags if not found.
 
 =cut
 
