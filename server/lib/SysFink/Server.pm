@@ -336,11 +336,13 @@ sub prepare_host_conf_from_db {
 
     if ( exists $section_conf->{paths} ) {
         $section_conf->{paths} = $conf_obj->prepare_path_regexes( $section_conf->{paths} );
+        $section_conf->{path_filter_conf} = $conf_obj->get_path_filter_conf( $section_conf->{paths} );
     }
 
     # All options given on command line are rewrited by values loaded from DB.
     my $mandatory_keys = {
         paths => 'paths',
+        path_filter_conf => 'path_filter_conf',
         dist_type => 'host_dist_type',
         user => 'user',
     };
@@ -394,7 +396,6 @@ sub get_scan_conf {
 
     return $scan_conf;
 }
-
 
 
 =head2 scan_test_cmd
@@ -527,6 +528,57 @@ sub get_base_idata {
 }
 
 
+=head2 flags_or_regex_succeed
+
+Try to 
+
+=cut
+
+sub flags_or_regex_succeed {
+    my ( $self, $full_path ) = @_;
+
+    my $path = $full_path;
+    $path = '' if $path eq '/'; # special for root path
+
+    # Try to find parent path ( or parent of parent path or ... ).
+    if ( not exists $self->{host_conf}->{path_filter_conf}->{ $path } ) {
+        my $last_run = ( $full_path ne '' );
+        while ( ( my ( $parent_path ) = $path =~ m{ ^ (.+) \/ [^\/]+ $ }x  ) || $last_run ) {
+
+            unless ( $parent_path ) {
+                $last_run = 0;
+                $parent_path = '';
+            }
+            # print "$full_path ($flags_completed) - parent_path: '$parent_path'\n";
+
+            if ( exists $self->{host_conf}->{path_filter_conf}->{ $parent_path . '/' } ) {
+                $path = $parent_path . '/';
+                last;
+            }
+
+            if ( exists $self->{host_conf}->{path_filter_conf}->{ $parent_path } ) {
+                $path = $parent_path;
+                last;
+            }
+
+            $path = $parent_path;
+        }
+    }
+
+    my $path_conf = $self->{host_conf}->{path_filter_conf}->{ $path };
+
+    # Check if there is some positive flag.
+    foreach my $value ( values %{ $path_conf->{flags} } ) {
+        if ( $value eq '+' ) {
+            return 1;
+        }
+    }
+
+
+    return 0;
+}
+
+
 =head2 scan_cmd
 
 Run scan command.
@@ -600,10 +652,15 @@ sub scan_cmd {
     my $sc_mitem_rs = $schema->resultset('sc_mitem');
     my $sc_idata_rs = $schema->resultset('sc_idata');
 
-    while ( my $row_obj = $prev_sc_idata_rs->next ) {
+    NEXT_DB_ITEM: while ( my $row_obj = $prev_sc_idata_rs->next ) {
         my %row = ( $row_obj->get_columns() );
         my $path = $row{path};
+        
         #$self->dump( 'Prev idata row', \%row ) if $ver >= 6;
+        unless ( $self->flags_or_regex_succeed( $path ) ) {
+            print "Skipping '$path' (from DB) - no valid for this configuration.\n" if $self->{ver} >= 4;
+            next NEXT_DB_ITEM;
+        }
 
         my $insert_idata = undef;
 

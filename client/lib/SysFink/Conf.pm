@@ -244,6 +244,100 @@ sub prepare_path_regexes {
 }
 
 
+=head2 get_path_conf_recursive
+
+Get flags for given path. If any flag doesn't exist than try to find it in parent paths. 
+
+=cut
+
+sub get_path_conf_recursive {
+    my ( $self, $prep_paths, $full_path, $max_flag_keys_num ) = @_;
+    
+    my $conf = {
+        flags => \%{ $prep_paths->{ $full_path }->{flags} },
+    };
+    if ( exists $prep_paths->{ $full_path }->{regexes} ) {
+        $conf->{regexes} = [];
+        foreach my $num ( 0..$#{ $prep_paths->{ $full_path }->{regexes} } ) {
+            $conf->{regexes}->[ $num ] = \@{ $prep_paths->{ $full_path }->{regexes}->[ $num ] };
+        }
+    }
+    
+    my $flags_completed = ( (scalar keys %{ $prep_paths->{ $full_path }->{flags} }) >= $max_flag_keys_num );
+
+    # Try to find parent path ( or parent of parent path or ... ).
+    my $path = $full_path;
+    my $last_run = ( $full_path ne '' );
+    while ( ( my ( $parent_path ) = $path =~ m{ ^ (.+) \/ [^\/]+ $ }x  ) || $last_run ) {
+
+        unless ( $parent_path ) {
+            $last_run = 0;
+            $parent_path = '';
+        }
+        # print "$full_path ($flags_completed) - parent_path: '$parent_path'\n";
+        
+        # with '/' as last character
+        if ( !$flags_completed && ( $full_path ne '/' ) && (exists $prep_paths->{ $parent_path . '/' }->{flags}) ) {
+            foreach my $flag_char ( keys %{ $prep_paths->{ $parent_path . '/' }->{flags} } ) {
+                unless ( exists $conf->{flags}->{ $flag_char } ) {
+                    $conf->{flags}->{ $flag_char } = $prep_paths->{ $parent_path . '/' }->{flags}->{ $flag_char };
+                }
+            }
+            $flags_completed = ( (scalar keys %{ $prep_paths->{ $full_path }->{flags} }) >= $max_flag_keys_num );
+        }
+        
+        # without '/' as last character
+        if ( !$flags_completed && (exists $prep_paths->{ $parent_path }->{flags}) ) {
+            foreach my $flag_char ( keys %{ $prep_paths->{ $parent_path }->{flags} } ) {
+                unless ( exists $conf->{flags}->{ $flag_char } ) {
+                    $conf->{flags}->{ $flag_char } = $prep_paths->{ $parent_path }->{flags}->{ $flag_char };
+                }
+            }
+            $flags_completed = ( (scalar keys %{ $prep_paths->{ $full_path }->{flags} }) >= $max_flag_keys_num );
+        }
+
+        if ( exists $prep_paths->{ $parent_path . '/' }->{regexes} ) {
+            $conf->{regexes} = [] unless exists $conf->{regexes};
+            foreach my $num ( 0..$#{ $prep_paths->{ $parent_path . '/' }->{regexes} } ) {
+                next unless $prep_paths->{ $parent_path . '/' }->{regexes}->[ $num ]->[ 3 ]; # 3 - is_recursive
+                push @{$conf->{regexes}}, \@{ $prep_paths->{ $parent_path . '/' }->{regexes}->[ $num ] };
+            }
+        }
+
+        if ( exists $prep_paths->{ $parent_path }->{regexes} ) {
+            $conf->{regexes} = [] unless exists $conf->{regexes};
+            foreach my $num ( 0..$#{ $prep_paths->{ $parent_path }->{regexes} } ) {
+                next unless $prep_paths->{ $parent_path }->{regexes}->[ $num ]->[ 3 ]; # 3 - is_recursive
+                push @{$conf->{regexes}}, \@{ $prep_paths->{ $parent_path }->{regexes}->[ $num ] };
+            }
+        }
+
+        $path = $parent_path;
+    }
+
+    return $conf;
+}
+
+
+=head2 path_filter_flags_conf
+
+Prepare path filter configuration.
+
+=cut
+
+sub get_path_filter_conf {
+    my ( $self, $prep_paths ) = @_;
+
+    my $max_flag_keys_num = scalar keys %{ $prep_paths->{''}->{flags} };
+    my $path_filter_conf = {};
+    
+    foreach my $path ( keys %$prep_paths ) {
+        $path_filter_conf->{ $path } = $self->get_path_conf_recursive( $prep_paths, $path, $max_flag_keys_num );
+    }
+    return $path_filter_conf;
+}
+
+
 =head1 SEE ALSO
 
 L<SysFink>
