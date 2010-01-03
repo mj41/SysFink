@@ -19,7 +19,7 @@ use lib '../client/t/lib';
 use SysFink::ScanData;
 
 
-my $debug_out = $ARGV[0] || 0;
+my $ver = $ARGV[0] || 0;
 my $test_num_to_run = $ARGV[1] || undef;
 
 my @all_test_cases = SysFink::ScanData::get_test_test_cases();
@@ -34,14 +34,14 @@ foreach my $num ( @test_nums ) {
     my $test_case = $all_test_cases[ $num ];
 
     my $conf_obj = SysFink::Conf->new();
-    my $prepared_paths = [ sort { $a->[0] cmp $b->[0] } @{ $test_case->{paths_to_scan} } ];
-    $prepared_paths = $conf_obj->prepare_path_regexes( $prepared_paths );
+    my $prepared_paths = $conf_obj->prepare_path_regexes( $test_case->{paths_to_scan} );
     # print Dumper( $prepared_paths ); # debug
 
     my $path_filter_conf = $conf_obj->get_path_filter_conf( $prepared_paths );
     #print Dumper( $path_filter_conf ); # debug
 
     my $server = SysFink::Server->new();
+    $server->{ver} = $ver;
     $server->{host_conf}->{path_filter_conf} = $path_filter_conf;
     
     my $paths_expected = [];
@@ -76,7 +76,7 @@ foreach my $num ( @test_nums ) {
     my $test_name = $test_case->{tescase_name};
     my $ok = is_deeply( $paths_found, $paths_expected, $test_name );
 
-    if ( $debug_out ) {
+    if ( $ver ) {
         if ( !$ok ) {
             print Dumper( { paths_found=>$paths_found, paths_expected=>$paths_expected, } );
         } elsif ( defined $test_num_to_run ) {

@@ -200,7 +200,7 @@ sub prepare_path_regexes {
     my ( $self, $in_paths ) = @_;
     
     my $paths = {};
-    
+
     # Prepare paths.
     foreach my $path_num ( 0..$#$in_paths ) {
         my $path_conf = $in_paths->[ $path_num ];
@@ -313,6 +313,12 @@ sub get_path_conf_recursive {
         }
 
         $path = $parent_path;
+    }
+
+    # sort regexes by position in configuration
+    if ( exists $conf->{regexes} ) {
+        @{ $conf->{regexes} } = sort { $a->[2] <=> $b->[2] } @{ $conf->{regexes} };
+        
     }
 
     return $conf;

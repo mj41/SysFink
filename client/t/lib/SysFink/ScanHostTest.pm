@@ -64,7 +64,7 @@ sub get_dir_items {
 sub my_lstat {
     my ( $self, $full_path ) = @_;
 
-	# Check if path exists.
+    # Check if path exists.
     return ( 0 ) unless exists $self->{_test_conf_items}->{ $full_path };
         
         

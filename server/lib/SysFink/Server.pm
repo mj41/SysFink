@@ -392,7 +392,7 @@ sub get_scan_conf {
         'paths' => $self->{host_conf}->{paths},
         'max_items_in_one_response' => $self->{host_conf}->{max_items_in_one_response},
     };
-    $scan_conf->{debug_out} = 1 if $debug_run;
+    $scan_conf->{ver} = 1 if $debug_run;
 
     return $scan_conf;
 }
@@ -528,6 +528,83 @@ sub get_base_idata {
 }
 
 
+=head2 flags_hash_to_str
+
+Sort hash keys and join its to canonized flags string.
+
+=cut
+
+# Copied from ScanHost::flags_hash_to_str method.
+sub flags_hash_to_str {
+    my ( $self, %flags ) = @_;
+
+    my $flags_str = '';
+    foreach my $key ( sort keys %flags ) {
+        $flags_str .= sprintf( "%1s%1s", $flags{$key}, $key );
+    }
+
+    return $flags_str;
+}
+
+
+=head2 join_flags
+
+Join flags.
+
+=cut
+
+# Based on ScanHost::join_flags method.
+sub join_flags {
+    my ( $self, $base_flags, $flags_to_add ) = @_;
+
+    my $flags = { %$base_flags };
+
+    # Add flags.
+    foreach my $flag_name ( keys %$flags_to_add ) {
+        $flags->{ $flag_name } = $flags_to_add->{ $flag_name };
+    }
+
+    my $plus_found = 0;
+    # Check if there is some positive flag.
+    foreach my $value ( values %$flags ) {
+        if ( $value eq '+' ) {
+            $plus_found = 1;
+            last;
+        }
+    }
+
+    return ( $flags, $plus_found );
+}
+
+
+=head2 processs_path_regexes
+
+Try each regex on given path and join flags for those which match.
+
+=cut
+
+# Based on ScanHost::processs_path_regexes method.
+sub process_path_regexes {
+    my ( $self, $regexes_conf, $full_path, $base_flags, $base_plus_found ) = @_;
+    
+    my $debug_prefix = '  ';
+
+    my $flags = { %$base_flags };
+    my $plus_found = $base_plus_found;
+    
+    foreach my $regex_conf ( @$regexes_conf ) {
+        my ( $regex, $regex_flags, $is_recursive ) = @$regex_conf;
+        print $debug_prefix."  trying '$regex' $is_recursive\n" if $self->{ver} >= 10;
+
+        if ( $full_path =~ /^$regex$/ ) {
+            print $debug_prefix."  matched with '$regex', '" . $self->flags_hash_to_str( %$regex_flags ) . "'\n" if $self->{ver} >= 9;
+            ( $flags, $plus_found ) = $self->join_flags( $flags, $regex_flags );
+        }
+    }
+    return $plus_found;
+}
+
+
 =head2 flags_or_regex_succeed
 
 Try to 
@@ -567,15 +644,27 @@ sub flags_or_regex_succeed {
 
     my $path_conf = $self->{host_conf}->{path_filter_conf}->{ $path };
 
+    my $plus_found = 0;
+
     # Check if there is some positive flag.
     foreach my $value ( values %{ $path_conf->{flags} } ) {
         if ( $value eq '+' ) {
-            return 1;
+            $plus_found = 1;
+            last;
         }
     }
 
+    return $plus_found unless exists $self->{host_conf}->{path_filter_conf}->{$path}->{regexes};
 
-    return 0;
+    my $regexes_conf = $self->{host_conf}->{path_filter_conf}->{$path}->{regexes};
+    $plus_found = $self->process_path_regexes( 
+        $regexes_conf,
+        $full_path,
+        $path_conf->{flags},
+        $plus_found
+    );
+  
+    return $plus_found;
 }
 
 

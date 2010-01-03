@@ -394,13 +394,13 @@ sub add_item_and_send_if_needed {
 
 =head2 processs_path_regexes
 
-Try each regex on given path.
+Try each regex on given path and join flags for those which match.
 
 =cut
 
 sub process_path_regexes {
     my ( $self, $debug_prefix, $regexes_conf, $full_path, $base_flags, $base_plus_found ) = @_;
-    
+
     my $add_dir = 0;
     my $flags = { %$base_flags };
     my $plus_found = $base_plus_found;

@@ -36,8 +36,7 @@ foreach my $num ( @test_nums ) {
     my $scan_obj = SysFink::ScanHostTest->new( $test_case->{test_obj_conf}, $hash_obj );
 
     my $conf_obj = SysFink::Conf->new();
-    my $prepared_paths = [ sort { $a->[0] cmp $b->[0] } @{ $test_case->{paths_to_scan} } ];
-    $prepared_paths = $conf_obj->prepare_path_regexes( $prepared_paths );
+    my $prepared_paths = $conf_obj->prepare_path_regexes( $test_case->{paths_to_scan} );
     my $scan_conf = {
         'paths' => $prepared_paths,
         'debug_out' => $debug_out,

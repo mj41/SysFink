@@ -650,19 +650,33 @@ sub get_test_test_cases {
             '/dirB/dir-no/file-re1',
             '/dirB/dir-no/file-re1B',
             '/dirB/dir-no/file-yy',
+
+            '/x-reMA/',
+            '/x-reMA/re1/',
+            '/x-reMA/re1/re2/',
+            '/x-reMA/re1/re2/reMB-x',
+            '/x-reMA/re1/re2/reMB-x',
+            '/x-reMA/re1/re2/reMB/',
+            '/x-reMA/re1/re2/reMB/reMPP-x',
         ];
 
         my $my_flags = { %$default_flags };
         $my_flags->{5} = '-';
         $test_case->{paths_to_scan} = [
             [ '', $my_flags, ],
-            [ '/**re1**',  { 'U' => '+' }, ],
-            [ '/**re2**',  { 'G' => '+' }, ],
 
-            [ '/dirA/',        { 'U' => '+' }, ],
-            [ '/dirA/dir-no',  $skip_flags, ],
+            [ '/**reMA**',      $skip_flags, ],
 
-            [ '/**re1B**',     { 'U' => '-' }, ],
+            [ '/**re1**',       { 'U' => '+' }, ],
+            [ '/**re2**',       { 'G' => '+' }, ],
+
+            [ '/**reMB**',      { 'G' => '-', 'U' => '-', }, ],
+            [ '/**reMPP**',     { 'G' => '+', }, ],
+
+            [ '/dirA/',         { 'U' => '+' }, ],
+            [ '/dirA/dir-no',   $skip_flags, ],
+
+            [ '/**re1B**',      { 'U' => '-' }, ],
 
             [ '/dirB/',         { 'G' => '-' }, ],
             [ '/dirB/dir-no/',  $skip_flags, ],
@@ -748,7 +762,29 @@ sub get_test_test_cases {
                 'mode' => 33188,
                 'path' => '/dirB/dir-no/file-re1',
                 'user_name' => 'bin'
-            }
+            },
+            {
+                'uid' => 1,                     # re1 +U
+                'mode' => 16877,
+                'path' => '/x-reMA/re1',
+                'user_name' => 'bin'            # re1 +U
+            },
+            {
+                'group_name' => 'bin',          # re2 +G
+                'uid' => 1,                     # re1 +U
+                'mtime' => 1251747432,
+                'mode' => 16877,
+                'path' => '/x-reMA/re1/re2',
+                'gid' => 1,                     # re2 +G
+                'user_name' => 'bin'            # re1 +U
+            },
+            {
+                'group_name' => 'bin',          # reMPP +G
+                'mtime' => 1251747432,
+                'mode' => 33188,
+                'path' => '/x-reMA/re1/re2/reMB/reMPP-x',
+                'gid' => 1                      # reMPP +G
+            }        
         ];
 
         push @all_test_cases, $test_case;
