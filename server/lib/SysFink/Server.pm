@@ -449,7 +449,7 @@ Return ResultSet to actual idata for given machine_id.
 sub get_sc_idata_rs {
     my ( $self, $machine_id ) = @_;
 
-    my $select_items = [ 'me.sc_idata_id', 'me.sc_mitem_id', 'sc_mitem_id.path', ];
+    my $select_items = [ 'me.sc_idata_id', 'me.sc_mitem_id', 'path_id.path', ];
     my $select_as_items = [ 'sc_idata_id', 'sc_mitem_id', 'path', ];
 
     my $attrs = $self->get_item_attrs();
@@ -465,10 +465,10 @@ sub get_sc_idata_rs {
             'sc_mitem_id.machine_id' => $machine_id,
         },
         {
-            'join' => [ 'sc_mitem_id' ],
+            'join' => { 'sc_mitem_id' => 'path_id' },
             'select' => $select_items,
             'as' => $select_as_items,
-            'order_by' => [ 'sc_mitem_id.path', ],
+            'order_by' => [ 'path_id.path', ],
         },
     );
 
@@ -738,6 +738,7 @@ sub scan_cmd {
 
     my $prev_sc_idata_rs = $self->get_sc_idata_rs( $machine_id );
 
+    my $path_rs = $schema->resultset('path');
     my $sc_mitem_rs = $schema->resultset('sc_mitem');
     my $sc_idata_rs = $schema->resultset('sc_idata');
 
@@ -809,11 +810,17 @@ sub scan_cmd {
         my $path = $item->{path};
         # insert
         if ( $path_to_num{ $path }->[0] == 2 ) {
-            print "Inserting path $path (sc_mitem_id=" if $ver >= 4;
+            print "Inserting path $path (path_id=" if $ver >= 4;
+
+            my $path_row = $path_rs->find_or_create({
+                path => $path,
+            });
+            my $path_id = $path_row->path_id;
+            print $path_id.', sc_mitem_id=' if $ver >= 4;
 
             my $sc_mitme_row = $sc_mitem_rs->find_or_create({
                 machine_id => $machine_id,
-                path => $path,
+                path_id => $path_id,
             });
             my $sc_mitem_id = $sc_mitme_row->sc_mitem_id;
             print $sc_mitem_id if $ver >= 4;

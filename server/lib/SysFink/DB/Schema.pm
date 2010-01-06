@@ -1,5 +1,175 @@
 
 
+package SysFink::DB::Schema::path;
+use base 'SysFink::DB::DBIxClassBase';
+
+__PACKAGE__->table('path');
+
+
+__PACKAGE__->add_columns(
+    'path_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 1,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'path_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'path' => {
+      'data_type' => 'VARCHAR',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'path',
+      'is_nullable' => 0,
+      'size' => '255'
+    },
+);
+__PACKAGE__->set_primary_key('path_id');
+
+
+package SysFink::DB::Schema::sc_mitem;
+use base 'SysFink::DB::DBIxClassBase';
+
+__PACKAGE__->table('sc_mitem');
+
+
+__PACKAGE__->add_columns(
+    'sc_mitem_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 1,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'sc_mitem_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'machine_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 1,
+      'name' => 'machine_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'path_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 1,
+      'name' => 'path_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+);
+__PACKAGE__->set_primary_key('sc_mitem_id');
+
+
+package SysFink::DB::Schema::mconf_sec_kv;
+use base 'SysFink::DB::DBIxClassBase';
+
+__PACKAGE__->table('mconf_sec_kv');
+
+
+__PACKAGE__->add_columns(
+    'mconf_sec_kv_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 1,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'mconf_sec_kv_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'mconf_sec_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 1,
+      'name' => 'mconf_sec_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'num' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => 'NULL',
+      'is_foreign_key' => 0,
+      'name' => 'num',
+      'is_nullable' => 1,
+      'size' => '11'
+    },
+    'key' => {
+      'data_type' => 'VARCHAR',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'key',
+      'is_nullable' => 0,
+      'size' => '50'
+    },
+    'value' => {
+      'data_type' => 'VARCHAR',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'value',
+      'is_nullable' => 0,
+      'size' => '255'
+    },
+);
+__PACKAGE__->set_primary_key('mconf_sec_kv_id');
+
+
+package SysFink::DB::Schema::mconf;
+use base 'SysFink::DB::DBIxClassBase';
+
+__PACKAGE__->table('mconf');
+
+
+__PACKAGE__->add_columns(
+    'mconf_sec_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 1,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'mconf_sec_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'machine_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 1,
+      'name' => 'machine_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'active' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'active',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'create_time' => {
+      'data_type' => 'DATETIME',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'create_time',
+      'is_nullable' => 0,
+      'size' => 0
+    },
+);
+__PACKAGE__->set_primary_key('mconf_sec_id');
+
+
 package SysFink::DB::Schema::scan;
 use base 'SysFink::DB::DBIxClassBase';
 
@@ -63,53 +233,6 @@ __PACKAGE__->add_columns(
     },
 );
 __PACKAGE__->set_primary_key('scan_id');
-
-
-package SysFink::DB::Schema::mconf;
-use base 'SysFink::DB::DBIxClassBase';
-
-__PACKAGE__->table('mconf');
-
-
-__PACKAGE__->add_columns(
-    'mconf_sec_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 1,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'mconf_sec_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'machine_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 1,
-      'name' => 'machine_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'active' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'active',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'create_time' => {
-      'data_type' => 'DATETIME',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'create_time',
-      'is_nullable' => 0,
-      'size' => 0
-    },
-);
-__PACKAGE__->set_primary_key('mconf_sec_id');
 
 
 package SysFink::DB::Schema::user;
@@ -186,6 +309,44 @@ __PACKAGE__->add_columns(
 __PACKAGE__->set_primary_key('user_id');
 
 
+package SysFink::DB::Schema::mconf_sec;
+use base 'SysFink::DB::DBIxClassBase';
+
+__PACKAGE__->table('mconf_sec');
+
+
+__PACKAGE__->add_columns(
+    'mconf_sec_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 1,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'mconf_sec_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'mconf_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 1,
+      'name' => 'mconf_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'name' => {
+      'data_type' => 'VARCHAR',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'name',
+      'is_nullable' => 0,
+      'size' => '50'
+    },
+);
+__PACKAGE__->set_primary_key('mconf_sec_id');
+
+
 package SysFink::DB::Schema::sc_idata;
 use base 'SysFink::DB::DBIxClassBase';
 
@@ -230,13 +391,13 @@ __PACKAGE__->add_columns(
       'size' => '11'
     },
     'found' => {
-      'data_type' => 'int',
+      'data_type' => 'BOOL',
       'is_auto_increment' => 0,
       'default_value' => undef,
       'is_foreign_key' => 0,
       'name' => 'found',
       'is_nullable' => 0,
-      'size' => '11'
+      'size' => 0
     },
     'mtime' => {
       'data_type' => 'DATETIME',
@@ -341,138 +502,6 @@ __PACKAGE__->add_columns(
 __PACKAGE__->set_primary_key('sc_idata_id');
 
 
-package SysFink::DB::Schema::mconf_sec;
-use base 'SysFink::DB::DBIxClassBase';
-
-__PACKAGE__->table('mconf_sec');
-
-
-__PACKAGE__->add_columns(
-    'mconf_sec_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 1,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'mconf_sec_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'mconf_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 1,
-      'name' => 'mconf_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'name' => {
-      'data_type' => 'VARCHAR',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'name',
-      'is_nullable' => 0,
-      'size' => '50'
-    },
-);
-__PACKAGE__->set_primary_key('mconf_sec_id');
-
-
-package SysFink::DB::Schema::sc_mitem;
-use base 'SysFink::DB::DBIxClassBase';
-
-__PACKAGE__->table('sc_mitem');
-
-
-__PACKAGE__->add_columns(
-    'sc_mitem_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 1,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'sc_mitem_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'machine_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 1,
-      'name' => 'machine_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'path' => {
-      'data_type' => 'VARCHAR',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'path',
-      'is_nullable' => 0,
-      'size' => '255'
-    },
-);
-__PACKAGE__->set_primary_key('sc_mitem_id');
-
-
-package SysFink::DB::Schema::mconf_sec_kv;
-use base 'SysFink::DB::DBIxClassBase';
-
-__PACKAGE__->table('mconf_sec_kv');
-
-
-__PACKAGE__->add_columns(
-    'mconf_sec_kv_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 1,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'mconf_sec_kv_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'mconf_sec_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 1,
-      'name' => 'mconf_sec_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'num' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 0,
-      'default_value' => 'NULL',
-      'is_foreign_key' => 0,
-      'name' => 'num',
-      'is_nullable' => 1,
-      'size' => '11'
-    },
-    'key' => {
-      'data_type' => 'VARCHAR',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'key',
-      'is_nullable' => 0,
-      'size' => '50'
-    },
-    'value' => {
-      'data_type' => 'VARCHAR',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'value',
-      'is_nullable' => 0,
-      'size' => '255'
-    },
-);
-__PACKAGE__->set_primary_key('mconf_sec_kv_id');
-
-
 package SysFink::DB::Schema::machine;
 use base 'SysFink::DB::DBIxClassBase';
 
@@ -528,17 +557,41 @@ __PACKAGE__->add_columns(
 );
 __PACKAGE__->set_primary_key('machine_id');
 
-package SysFink::DB::Schema::scan;
+package SysFink::DB::Schema::path;
+
+__PACKAGE__->has_many('get_sc_mitem', 'SysFink::DB::Schema::sc_mitem', 'path_id');
+
+package SysFink::DB::Schema::sc_mitem;
+
+__PACKAGE__->belongs_to('machine_id','SysFink::DB::Schema::machine','machine_id');
+
+__PACKAGE__->belongs_to('path_id','SysFink::DB::Schema::path','path_id');
+
+__PACKAGE__->has_many('get_sc_idata', 'SysFink::DB::Schema::sc_idata', 'sc_mitem_id');
+
+package SysFink::DB::Schema::mconf_sec_kv;
 
 __PACKAGE__->belongs_to('mconf_sec_id','SysFink::DB::Schema::mconf_sec','mconf_sec_id');
 
-__PACKAGE__->has_many('get_sc_idata', 'SysFink::DB::Schema::sc_idata', 'scan_id');
 
 package SysFink::DB::Schema::mconf;
 
 __PACKAGE__->belongs_to('machine_id','SysFink::DB::Schema::machine','machine_id');
 
 __PACKAGE__->has_many('get_mconf_sec', 'SysFink::DB::Schema::mconf_sec', 'mconf_id');
+
+package SysFink::DB::Schema::scan;
+
+__PACKAGE__->belongs_to('mconf_sec_id','SysFink::DB::Schema::mconf_sec','mconf_sec_id');
+
+__PACKAGE__->has_many('get_sc_idata', 'SysFink::DB::Schema::sc_idata', 'scan_id');
+
+package SysFink::DB::Schema::mconf_sec;
+
+__PACKAGE__->belongs_to('mconf_id','SysFink::DB::Schema::mconf','mconf_id');
+
+__PACKAGE__->has_many('get_mconf_sec_kv', 'SysFink::DB::Schema::mconf_sec_kv', 'mconf_sec_id');
+__PACKAGE__->has_many('get_scan', 'SysFink::DB::Schema::scan', 'mconf_sec_id');
 
 package SysFink::DB::Schema::sc_idata;
 
@@ -549,24 +602,6 @@ __PACKAGE__->belongs_to('scan_id','SysFink::DB::Schema::scan','scan_id');
 __PACKAGE__->belongs_to('newer_id','SysFink::DB::Schema::sc_idata','newer_id',{join_type => 'left'});
 
 __PACKAGE__->has_many('get_sc_idata', 'SysFink::DB::Schema::sc_idata', 'newer_id');
-
-package SysFink::DB::Schema::mconf_sec;
-
-__PACKAGE__->belongs_to('mconf_id','SysFink::DB::Schema::mconf','mconf_id');
-
-__PACKAGE__->has_many('get_mconf_sec_kv', 'SysFink::DB::Schema::mconf_sec_kv', 'mconf_sec_id');
-__PACKAGE__->has_many('get_scan', 'SysFink::DB::Schema::scan', 'mconf_sec_id');
-
-package SysFink::DB::Schema::sc_mitem;
-
-__PACKAGE__->belongs_to('machine_id','SysFink::DB::Schema::machine','machine_id');
-
-__PACKAGE__->has_many('get_sc_idata', 'SysFink::DB::Schema::sc_idata', 'sc_mitem_id');
-
-package SysFink::DB::Schema::mconf_sec_kv;
-
-__PACKAGE__->belongs_to('mconf_sec_id','SysFink::DB::Schema::mconf_sec','mconf_sec_id');
-
 
 package SysFink::DB::Schema::machine;
 
@@ -580,19 +615,21 @@ use base 'DBIx::Class::Schema';
 use strict;
 use warnings;
 
-__PACKAGE__->register_class('scan', 'SysFink::DB::Schema::scan');
-
-__PACKAGE__->register_class('mconf', 'SysFink::DB::Schema::mconf');
-
-__PACKAGE__->register_class('user', 'SysFink::DB::Schema::user');
-
-__PACKAGE__->register_class('sc_idata', 'SysFink::DB::Schema::sc_idata');
-
-__PACKAGE__->register_class('mconf_sec', 'SysFink::DB::Schema::mconf_sec');
+__PACKAGE__->register_class('path', 'SysFink::DB::Schema::path');
 
 __PACKAGE__->register_class('sc_mitem', 'SysFink::DB::Schema::sc_mitem');
 
 __PACKAGE__->register_class('mconf_sec_kv', 'SysFink::DB::Schema::mconf_sec_kv');
+
+__PACKAGE__->register_class('mconf', 'SysFink::DB::Schema::mconf');
+
+__PACKAGE__->register_class('scan', 'SysFink::DB::Schema::scan');
+
+__PACKAGE__->register_class('user', 'SysFink::DB::Schema::user');
+
+__PACKAGE__->register_class('mconf_sec', 'SysFink::DB::Schema::mconf_sec');
+
+__PACKAGE__->register_class('sc_idata', 'SysFink::DB::Schema::sc_idata');
 
 __PACKAGE__->register_class('machine', 'SysFink::DB::Schema::machine');
 

@@ -37,6 +37,9 @@ CREATE TABLE mconf (
 ) TYPE=InnoDB COMMENT='Machine configuratio. Tag:Machine.';
 </source>
 
+Consistency:
+* Only one active for each machine_id.
+
 ==== Table mconf_sec ====
 <source lang=sql>
 CREATE TABLE mconf_sec (
@@ -48,6 +51,9 @@ CREATE TABLE mconf_sec (
     CONSTRAINT fk_mconf_sec_mconf_id FOREIGN KEY (mconf_id) REFERENCES mconf (mconf_id)
 ) TYPE=InnoDB COMMENT='Machine configuratio section. Tag:Machine.';
 </source>
+
+Consistency:
+* Each name is unique for each mconf_id.
 
 ==== Table mconf_sec_kv ====
 <source lang=sql>
@@ -61,6 +67,18 @@ CREATE TABLE mconf_sec_kv (
     INDEX i_mconf_sec_id_num (mconf_sec_id, num),
     CONSTRAINT fk_mconf_sec_kv_mconf_sec_id FOREIGN KEY (mconf_sec_id) REFERENCES mconf_sec (mconf_sec_id)
 ) TYPE=InnoDB COMMENT='Machine configuration section key and value pairs. Tag:Machine.';
+</source>
+
+Consistency:
+* num is sequent for each mconf_sec_id.
+
+=== Table path ===
+<source lang=sql>
+CREATE TABLE path (
+    path_id     INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    path        VARCHAR(255) NOT NULL,
+    INDEX i_path (path)
+) TYPE=InnoDB COMMENT='All (machine, packages) paths. Tag:Path.';
 </source>
 
 === Table scan (sc) ===
@@ -82,10 +100,10 @@ CREATE TABLE scan (
 CREATE TABLE sc_mitem (
     sc_mitem_id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     machine_id          INT UNSIGNED NOT NULL,
-    path                VARCHAR(255) NOT NULL,
+    path_id             INT UNSIGNED NOT NULL,
     INDEX i_machine_id (machine_id),
-    INDEX i_machine_id_path (machine_id, path),
-    CONSTRAINT fk_sc_mitem_machine_id FOREIGN KEY (machine_id) REFERENCES machine (machine_id)
+    CONSTRAINT fk_sc_mitem_machine_id FOREIGN KEY (machine_id) REFERENCES machine (machine_id),
+    CONSTRAINT fk_sc_mitem_path_id FOREIGN KEY (path_id) REFERENCES path (path_id)
 ) TYPE=InnoDB COMMENT='Machine paths (all history). Tag:Scan.';
 </source>
 
@@ -96,7 +114,7 @@ CREATE TABLE sc_idata (
     sc_mitem_id     INT UNSIGNED NOT NULL,
     scan_id         INT UNSIGNED NOT NULL,
     newer_id        INT UNSIGNED DEFAULT NULL,
-    found           INT UNSIGNED NOT NULL,
+    found           BOOL UNSIGNED NOT NULL,
     mtime           DATETIME DEFAULT NULL,
     mode            INT UNSIGNED DEFAULT NULL,
     size            INT UNSIGNED DEFAULT NULL,
@@ -116,6 +134,9 @@ CREATE TABLE sc_idata (
     CONSTRAINT fk_sc_idata_newer_id FOREIGN KEY (newer_id) REFERENCES sc_idata (sc_idata_id)
 ) TYPE=InnoDB COMMENT='Machine scan item data. Tag:Scan.';
 </source>
+
+Consistency:
+* Only 'found' or 'missiong' should have value equal 1.
 
 ==== Table user ====
 <source lang=sql>
