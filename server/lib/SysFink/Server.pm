@@ -730,7 +730,7 @@ sub scan_cmd {
     my %path_to_num = ();
     foreach my $num ( 0..$#$loaded_items ) {
         my $item = $loaded_items->[ $num ];
-        print "Loaded item $item->{path} ($num)\n" if $ver >= 6;
+        print "Loaded item $item->{path} ($num)\n" if $ver >= 7;
         # 2 .. found on host, initial status
         # if not changed to 0 (in db and the same) or 1 (in db and changed) then 2 means 'new' -> insert to db
         $path_to_num{ $item->{path} } = [ 2, $num ];
@@ -748,7 +748,7 @@ sub scan_cmd {
         
         #$self->dump( 'Prev idata row', \%row ) if $ver >= 6;
         unless ( $self->flags_or_regex_succeed( $path ) ) {
-            print "Skipping '$path' (from DB) - no valid for this configuration.\n" if $self->{ver} >= 4;
+            print "Skipping '$path' (from DB) - no valid for this configuration.\n" if $self->{ver} >= 5;
             next NEXT_DB_ITEM;
         }
 
@@ -760,6 +760,7 @@ sub scan_cmd {
             if ( $self->has_same_data($new_item_data,\%row) ) {
                 # Same data -> do nothing.
                 $path_to_num{ $path }->[0] = 0; # 0 .. found in db and not changed
+                print "Item '$path' not changed.\n" if $ver >= 6;
 
             } else {
                 # Data changed -> do update.
