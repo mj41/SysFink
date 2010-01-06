@@ -44,7 +44,7 @@ echo ""
 perl sysfink.pl --user=root --host=$HOST --cmd=test_three_parts_rpc --ver=$VER
 echo ""
 
-echo "Running 'perl ... --cmd=scan_test | tail -n 10':"
-perl sysfink.pl --user=root --host=$HOST --cmd=scan_test --section=fastscan --ver=$VER | tail -n 15
+echo "Running 'perl ... --cmd=scan_test | tail -n 15':"
+perl sysfink.pl --use_db --host=$HOST --cmd=scan_test --section=fastscan --ver=$VER | tail -n 15
 
 echo ""
