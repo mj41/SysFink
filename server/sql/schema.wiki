@@ -153,13 +153,13 @@ CREATE TABLE user (
 </source>
 
 
-=== Table rev_status_id ===
+=== Table aud_status_id ===
 <source lang=sql>
-CREATE TABLE rev_status (
-    rev_status_id       INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE aud_status (
+    aud_status_id       INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name                VARCHAR(10) DEFAULT NULL,
     legend              VARCHAR(1500) DEFAULT NULL
-) TYPE=InnoDB COMMENT='Possibilites for item audit status. Tag:Rev. Type:Table of keys.';
+) TYPE=InnoDB COMMENT='Possibilites for item audit status. Tag:Audit. Type:Table of keys.';
 </source>
 
 * name, legend
@@ -169,30 +169,30 @@ CREATE TABLE rev_status (
 ** error - Error. Somebody should fix it.
 ** alert - Security alert. Fix it soon.
 
-=== Table rev ===
+=== Table aud ===
 <source lang=sql>
-CREATE TABLE rev (
-    rev_id      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE aud (
+    aud_id      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     date        DATETIME NOT NULL,
     user_id     INT UNSIGNED NOT NULL,
     msg         VARCHAR(1000) DEFAULT NULL,
-    CONSTRAINT fk_rev_user_id FOREIGN KEY (user_id) REFERENCES user (user_id)
-) TYPE=InnoDB COMMENT='One revision info and summary message. Tag:Rev.';
+    CONSTRAINT fk_aud_user_id FOREIGN KEY (user_id) REFERENCES user (user_id)
+) TYPE=InnoDB COMMENT='One audit info and summary message. Tag:Audit.';
 </source>
 
-=== Table rev_idata ===
+=== Table aud_idata ===
 <source lang=sql>
-CREATE TABLE rev_idata (
-    rev_idata_id        INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    rev_id              INT UNSIGNED NOT NULL,
+CREATE TABLE aud_idata (
+    aud_idata_id        INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    aud_id              INT UNSIGNED NOT NULL,
     sc_idata_id         INT UNSIGNED NOT NULL,
-    rev_status_id       INT UNSIGNED NOT NULL,
-    newer_id            INT UNSIGNED DEFAULT NULL COMMENT 'Newer rev_idata_id whitch can supersede this one.',
-    CONSTRAINT fk_rev_idata_rev_id FOREIGN KEY (rev_id) REFERENCES rev (rev_id),
-    CONSTRAINT fk_rev_idata_sc_idata_id FOREIGN KEY (sc_idata_id) REFERENCES sc_idata (sc_idata_id),
-    CONSTRAINT fk_rev_idata_rev_status_id FOREIGN KEY (rev_status_id) REFERENCES rev_status (rev_status_id),
-    CONSTRAINT fk_rev_idata_newer_id FOREIGN KEY (newer_id) REFERENCES rev_idata (rev_idata_id)
-) TYPE=InnoDB COMMENT='Revision status of one file info (of one scan). Tag:Rev.';
+    aud_status_id       INT UNSIGNED NOT NULL,
+    newer_id            INT UNSIGNED DEFAULT NULL COMMENT 'Newer aud_idata_id whitch can supersede this one.',
+    CONSTRAINT fk_aud_idata_aud_id FOREIGN KEY (aud_id) REFERENCES aud (aud_id),
+    CONSTRAINT fk_aud_idata_sc_idata_id FOREIGN KEY (sc_idata_id) REFERENCES sc_idata (sc_idata_id),
+    CONSTRAINT fk_aud_idata_aud_status_id FOREIGN KEY (aud_status_id) REFERENCES aud_status (aud_status_id),
+    CONSTRAINT fk_aud_idata_newer_id FOREIGN KEY (newer_id) REFERENCES aud_idata (aud_idata_id)
+) TYPE=InnoDB COMMENT='Audit status of one file info (of one scan). Tag:Audit.';
 </source>
 
 === Footer ===

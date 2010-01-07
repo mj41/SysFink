@@ -19,5 +19,5 @@ ok( $conf->{db}, 'some configuration for database loaded');
 
 my $schema = get_connected_schema( $conf->{db} );
 
-my $rs = $schema->resultset('rev_status')->search( {}, {} );
-ok( $rs->count, 'rs->count on rev_status table should succeed' );
+my $rs = $schema->resultset('aud_status')->search( {}, {} );
+ok( $rs->count, 'rs->count on aud_status table should succeed' );

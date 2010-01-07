@@ -14,11 +14,11 @@ my $schema = get_connected_schema( $conf->{db} );
 $schema->storage->txn_begin;
 
 
-# table: rev_status
-$schema->resultset('rev_status')->delete_all();
+# table: aud_status
+$schema->resultset('aud_status')->delete_all();
 
-$schema->resultset('rev_status')->populate([
-    [ qw/ rev_status_id name legend / ],
+$schema->resultset('aud_status')->populate([
+    [ qw/ aud_status_id name legend / ],
     [ 1,  'ok (my)',  'Ok. I did it.',                  ],
     [ 2,  'ok',       'Ok. I didn\'t do it.',           ],
     [ 3,  'unknown',  'I don\'t know. ',                ],

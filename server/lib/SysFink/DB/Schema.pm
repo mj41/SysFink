@@ -1,5 +1,61 @@
 
 
+package SysFink::DB::Schema::aud_idata;
+use base 'SysFink::DB::DBIxClassBase';
+
+__PACKAGE__->table('aud_idata');
+
+
+__PACKAGE__->add_columns(
+    'aud_idata_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 1,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'aud_idata_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'aud_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 1,
+      'name' => 'aud_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'sc_idata_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 1,
+      'name' => 'sc_idata_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'aud_status_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 1,
+      'name' => 'aud_status_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'newer_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => 'NULL',
+      'is_foreign_key' => 1,
+      'name' => 'newer_id',
+      'is_nullable' => 1,
+      'size' => '11'
+    },
+);
+__PACKAGE__->set_primary_key('aud_idata_id');
+
+
 package SysFink::DB::Schema::path;
 use base 'SysFink::DB::DBIxClassBase';
 
@@ -123,100 +179,6 @@ __PACKAGE__->add_columns(
 __PACKAGE__->set_primary_key('mconf_sec_kv_id');
 
 
-package SysFink::DB::Schema::rev_status;
-use base 'SysFink::DB::DBIxClassBase';
-
-__PACKAGE__->table('rev_status');
-
-
-__PACKAGE__->add_columns(
-    'rev_status_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 1,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'rev_status_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'name' => {
-      'data_type' => 'VARCHAR',
-      'is_auto_increment' => 0,
-      'default_value' => 'NULL',
-      'is_foreign_key' => 0,
-      'name' => 'name',
-      'is_nullable' => 1,
-      'size' => '10'
-    },
-    'legend' => {
-      'data_type' => 'VARCHAR',
-      'is_auto_increment' => 0,
-      'default_value' => 'NULL',
-      'is_foreign_key' => 0,
-      'name' => 'legend',
-      'is_nullable' => 1,
-      'size' => '1500'
-    },
-);
-__PACKAGE__->set_primary_key('rev_status_id');
-
-
-package SysFink::DB::Schema::rev_idata;
-use base 'SysFink::DB::DBIxClassBase';
-
-__PACKAGE__->table('rev_idata');
-
-
-__PACKAGE__->add_columns(
-    'rev_idata_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 1,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'rev_idata_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'rev_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 1,
-      'name' => 'rev_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'sc_idata_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 1,
-      'name' => 'sc_idata_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'rev_status_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 1,
-      'name' => 'rev_status_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'newer_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 0,
-      'default_value' => 'NULL',
-      'is_foreign_key' => 1,
-      'name' => 'newer_id',
-      'is_nullable' => 1,
-      'size' => '11'
-    },
-);
-__PACKAGE__->set_primary_key('rev_idata_id');
-
-
 package SysFink::DB::Schema::mconf;
 use base 'SysFink::DB::DBIxClassBase';
 
@@ -329,51 +291,42 @@ __PACKAGE__->add_columns(
 __PACKAGE__->set_primary_key('scan_id');
 
 
-package SysFink::DB::Schema::rev;
+package SysFink::DB::Schema::aud_status;
 use base 'SysFink::DB::DBIxClassBase';
 
-__PACKAGE__->table('rev');
+__PACKAGE__->table('aud_status');
 
 
 __PACKAGE__->add_columns(
-    'rev_id' => {
+    'aud_status_id' => {
       'data_type' => 'int',
       'is_auto_increment' => 1,
       'default_value' => undef,
       'is_foreign_key' => 0,
-      'name' => 'rev_id',
+      'name' => 'aud_status_id',
       'is_nullable' => 0,
       'size' => '11'
     },
-    'date' => {
-      'data_type' => 'DATETIME',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 0,
-      'name' => 'date',
-      'is_nullable' => 0,
-      'size' => 0
-    },
-    'user_id' => {
-      'data_type' => 'int',
-      'is_auto_increment' => 0,
-      'default_value' => undef,
-      'is_foreign_key' => 1,
-      'name' => 'user_id',
-      'is_nullable' => 0,
-      'size' => '11'
-    },
-    'msg' => {
+    'name' => {
       'data_type' => 'VARCHAR',
       'is_auto_increment' => 0,
       'default_value' => 'NULL',
       'is_foreign_key' => 0,
-      'name' => 'msg',
+      'name' => 'name',
       'is_nullable' => 1,
-      'size' => '1000'
+      'size' => '10'
+    },
+    'legend' => {
+      'data_type' => 'VARCHAR',
+      'is_auto_increment' => 0,
+      'default_value' => 'NULL',
+      'is_foreign_key' => 0,
+      'name' => 'legend',
+      'is_nullable' => 1,
+      'size' => '1500'
     },
 );
-__PACKAGE__->set_primary_key('rev_id');
+__PACKAGE__->set_primary_key('aud_status_id');
 
 
 package SysFink::DB::Schema::user;
@@ -448,6 +401,53 @@ __PACKAGE__->add_columns(
     },
 );
 __PACKAGE__->set_primary_key('user_id');
+
+
+package SysFink::DB::Schema::aud;
+use base 'SysFink::DB::DBIxClassBase';
+
+__PACKAGE__->table('aud');
+
+
+__PACKAGE__->add_columns(
+    'aud_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 1,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'aud_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'date' => {
+      'data_type' => 'DATETIME',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 0,
+      'name' => 'date',
+      'is_nullable' => 0,
+      'size' => 0
+    },
+    'user_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => undef,
+      'is_foreign_key' => 1,
+      'name' => 'user_id',
+      'is_nullable' => 0,
+      'size' => '11'
+    },
+    'msg' => {
+      'data_type' => 'VARCHAR',
+      'is_auto_increment' => 0,
+      'default_value' => 'NULL',
+      'is_foreign_key' => 0,
+      'name' => 'msg',
+      'is_nullable' => 1,
+      'size' => '1000'
+    },
+);
+__PACKAGE__->set_primary_key('aud_id');
 
 
 package SysFink::DB::Schema::mconf_sec;
@@ -698,6 +698,18 @@ __PACKAGE__->add_columns(
 );
 __PACKAGE__->set_primary_key('machine_id');
 
+package SysFink::DB::Schema::aud_idata;
+
+__PACKAGE__->belongs_to('aud_id','SysFink::DB::Schema::aud','aud_id');
+
+__PACKAGE__->belongs_to('sc_idata_id','SysFink::DB::Schema::sc_idata','sc_idata_id');
+
+__PACKAGE__->belongs_to('aud_status_id','SysFink::DB::Schema::aud_status','aud_status_id');
+
+__PACKAGE__->belongs_to('newer_id','SysFink::DB::Schema::aud_idata','newer_id',{join_type => 'left'});
+
+__PACKAGE__->has_many('get_aud_idata', 'SysFink::DB::Schema::aud_idata', 'newer_id');
+
 package SysFink::DB::Schema::path;
 
 __PACKAGE__->has_many('get_sc_mitem', 'SysFink::DB::Schema::sc_mitem', 'path_id');
@@ -715,22 +727,6 @@ package SysFink::DB::Schema::mconf_sec_kv;
 __PACKAGE__->belongs_to('mconf_sec_id','SysFink::DB::Schema::mconf_sec','mconf_sec_id');
 
 
-package SysFink::DB::Schema::rev_status;
-
-__PACKAGE__->has_many('get_rev_idata', 'SysFink::DB::Schema::rev_idata', 'rev_status_id');
-
-package SysFink::DB::Schema::rev_idata;
-
-__PACKAGE__->belongs_to('rev_id','SysFink::DB::Schema::rev','rev_id');
-
-__PACKAGE__->belongs_to('sc_idata_id','SysFink::DB::Schema::sc_idata','sc_idata_id');
-
-__PACKAGE__->belongs_to('rev_status_id','SysFink::DB::Schema::rev_status','rev_status_id');
-
-__PACKAGE__->belongs_to('newer_id','SysFink::DB::Schema::rev_idata','newer_id',{join_type => 'left'});
-
-__PACKAGE__->has_many('get_rev_idata', 'SysFink::DB::Schema::rev_idata', 'newer_id');
-
 package SysFink::DB::Schema::mconf;
 
 __PACKAGE__->belongs_to('machine_id','SysFink::DB::Schema::machine','machine_id');
@@ -743,15 +739,19 @@ __PACKAGE__->belongs_to('mconf_sec_id','SysFink::DB::Schema::mconf_sec','mconf_s
 
 __PACKAGE__->has_many('get_sc_idata', 'SysFink::DB::Schema::sc_idata', 'scan_id');
 
+package SysFink::DB::Schema::aud_status;
+
+__PACKAGE__->has_many('get_aud_idata', 'SysFink::DB::Schema::aud_idata', 'aud_status_id');
+
 package SysFink::DB::Schema::user;
 
-__PACKAGE__->has_many('get_rev', 'SysFink::DB::Schema::rev', 'user_id');
+__PACKAGE__->has_many('get_aud', 'SysFink::DB::Schema::aud', 'user_id');
 
-package SysFink::DB::Schema::rev;
+package SysFink::DB::Schema::aud;
 
 __PACKAGE__->belongs_to('user_id','SysFink::DB::Schema::user','user_id');
 
-__PACKAGE__->has_many('get_rev_idata', 'SysFink::DB::Schema::rev_idata', 'rev_id');
+__PACKAGE__->has_many('get_aud_idata', 'SysFink::DB::Schema::aud_idata', 'aud_id');
 
 package SysFink::DB::Schema::mconf_sec;
 
@@ -769,7 +769,7 @@ __PACKAGE__->belongs_to('scan_id','SysFink::DB::Schema::scan','scan_id');
 __PACKAGE__->belongs_to('newer_id','SysFink::DB::Schema::sc_idata','newer_id',{join_type => 'left'});
 
 __PACKAGE__->has_many('get_sc_idata', 'SysFink::DB::Schema::sc_idata', 'newer_id');
-__PACKAGE__->has_many('get_rev_idata', 'SysFink::DB::Schema::rev_idata', 'sc_idata_id');
+__PACKAGE__->has_many('get_aud_idata', 'SysFink::DB::Schema::aud_idata', 'sc_idata_id');
 
 package SysFink::DB::Schema::machine;
 
@@ -783,23 +783,23 @@ use base 'DBIx::Class::Schema';
 use strict;
 use warnings;
 
+__PACKAGE__->register_class('aud_idata', 'SysFink::DB::Schema::aud_idata');
+
 __PACKAGE__->register_class('path', 'SysFink::DB::Schema::path');
 
 __PACKAGE__->register_class('sc_mitem', 'SysFink::DB::Schema::sc_mitem');
 
 __PACKAGE__->register_class('mconf_sec_kv', 'SysFink::DB::Schema::mconf_sec_kv');
 
-__PACKAGE__->register_class('rev_status', 'SysFink::DB::Schema::rev_status');
-
-__PACKAGE__->register_class('rev_idata', 'SysFink::DB::Schema::rev_idata');
-
 __PACKAGE__->register_class('mconf', 'SysFink::DB::Schema::mconf');
 
 __PACKAGE__->register_class('scan', 'SysFink::DB::Schema::scan');
 
-__PACKAGE__->register_class('rev', 'SysFink::DB::Schema::rev');
+__PACKAGE__->register_class('aud_status', 'SysFink::DB::Schema::aud_status');
 
 __PACKAGE__->register_class('user', 'SysFink::DB::Schema::user');
+
+__PACKAGE__->register_class('aud', 'SysFink::DB::Schema::aud');
 
 __PACKAGE__->register_class('mconf_sec', 'SysFink::DB::Schema::mconf_sec');
 
