@@ -17,7 +17,7 @@ begin transaction;
 CREATE TABLE machine (
     machine_id      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name            VARCHAR(50) NOT NULL,
-    `desc`          TEXT DEFAULT NULL COMMENT 'Description.',
+    legend          TEXT DEFAULT NULL COMMENT 'Description.',
     ip              VARCHAR(15) DEFAULT NUL,
     disabled        BOOLEAN NOT NULL DEFAULT 0,
     INDEX i_name (name)
@@ -150,6 +150,49 @@ CREATE TABLE user (
     created     DATETIME NOT NULL COMMENT 'Account creation time.',
     INDEX i_login (login)
 ) TYPE=InnoDB COMMENT='User info. Tag:User.';
+</source>
+
+
+=== Table rev_status_id ===
+<source lang=sql>
+CREATE TABLE rev_status (
+    rev_status_id       INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name                VARCHAR(10) DEFAULT NULL,
+    legend              VARCHAR(1500) DEFAULT NULL
+) TYPE=InnoDB COMMENT='Possibilites for item audit status. Tag:Rev. Type:Table of keys.';
+</source>
+
+* name, legend
+** my ok -- Ok. I did it.
+** ok - Ok. I didn't do it.
+** unknown - I don't know. 
+** error - Error. Somebody should fix it.
+** alert - Security alert. Fix it soon.
+
+=== Table rev ===
+<source lang=sql>
+CREATE TABLE rev (
+    rev_id      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    date        DATETIME NOT NULL,
+    user_id     INT UNSIGNED NOT NULL,
+    msg         VARCHAR(1000) DEFAULT NULL,
+    CONSTRAINT fk_rev_user_id FOREIGN KEY (user_id) REFERENCES user (user_id)
+) TYPE=InnoDB COMMENT='One revision info and summary message. Tag:Rev.';
+</source>
+
+=== Table rev_idata ===
+<source lang=sql>
+CREATE TABLE rev_idata (
+    rev_idata_id        INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    rev_id              INT UNSIGNED NOT NULL,
+    sc_idata_id         INT UNSIGNED NOT NULL,
+    rev_status_id       INT UNSIGNED NOT NULL,
+    newer_id            INT UNSIGNED DEFAULT NULL COMMENT 'Newer rev_idata_id whitch can supersede this one.',
+    CONSTRAINT fk_rev_idata_rev_id FOREIGN KEY (rev_id) REFERENCES rev (rev_id),
+    CONSTRAINT fk_rev_idata_sc_idata_id FOREIGN KEY (sc_idata_id) REFERENCES sc_idata (sc_idata_id),
+    CONSTRAINT fk_rev_idata_rev_status_id FOREIGN KEY (rev_status_id) REFERENCES rev_status (rev_status_id),
+    CONSTRAINT fk_rev_idata_newer_id FOREIGN KEY (newer_id) REFERENCES rev_idata (rev_idata_id)
+) TYPE=InnoDB COMMENT='Revision status of one file info (of one scan). Tag:Rev.';
 </source>
 
 === Footer ===

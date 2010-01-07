@@ -17,11 +17,17 @@ if [ "$1" = "0" ]; then
     ./utils/all-sql.sh $2
     echo ""
 
-	echo "Removing sysfink.db"
+    echo "Removing sysfink.db"
     rm sysfink.db
 
     echo "Executing temp/schema-raw-create-sqlite.sql (perl utils/db-run-sqlscript.pl):"
-    perl ./utils/db-run-sqlscript.pl temp/all-dev-sqlite.sql 1
+    perl ./utils/db-run-sqlscript.pl temp/schema-raw-create-sqlite.sql 1
+
+    echo "Executing sql/data-base.pl:"
+    perl ./sql/data-base.pl
+
+    echo "Executing sql/data-stable.pl:"
+    perl ./sql/data-dev.pl
 fi
 
 echo "Done."
