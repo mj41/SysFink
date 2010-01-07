@@ -102,18 +102,24 @@ sub run {
 
         # Commands which work with database.
         'scan_test' => {
-            'connect_to_db' => 1,
-            'load_host_conf_from_db' => 1,
             'ssh_connect' => 1,
+            'connect_to_db' => 1,
             'start_rpc_shell' => 1,
+            'load_host_conf_from_db' => 1,
             'type' => 'self',
         },
 
         'scan' => {
-            'connect_to_db' => 1,
-            'load_host_conf_from_db' => 1,
             'ssh_connect' => 1,
+            'connect_to_db' => 1,
             'start_rpc_shell' => 1,
+            'load_host_conf_from_db' => 1,
+            'type' => 'self',
+        },
+
+        'diff' => {
+            'connect_to_db' => 1,
+            'validate_host_name_if_given' => 1,
             'type' => 'self',
         },
 
@@ -136,13 +142,18 @@ sub run {
         return 0 unless $self->connect_db();
     }
 
-    # Load host config from connected DB.
-    return 0 unless $self->prepare_base_host_conf( $opt );
-    $self->dump( 'Host conf:', $self->{host_conf} ) if $self->{ver} >= 6;
+    # Check given host name in DB.
+    if ( $cmd_conf->{validate_host_name_if_given} && defined $opt->{host} ) {
+        return 0 unless $self->validate_host_name( $opt->{host} );
+    }
+    
+    # Load host config for given hostname from connected DB.
+    if ( $cmd_conf->{ssh_connect} ) {
+        return 0 unless $self->prepare_base_host_conf( $opt );
+    }
 
-    if ( $cmd_conf->{load_host_conf_from_db} || !$opt->{no_db} ) {
+    if ( $cmd_conf->{load_host_conf_from_db} && !$opt->{no_db} ) {
         return 0 unless $self->prepare_host_conf_from_db();
-        $self->dump( 'Host conf from DB:', $self->{host_conf} ) if $self->{ver} >= 6;
     }
 
     # Next commands needs prepared SSH part of object.
@@ -186,6 +197,45 @@ sub rpc_err  {
 }
 
 
+=head2 set_mandatory_param_err
+
+Set 'param is mandatory' error and return undef.
+
+=cut
+
+sub set_mandatory_param_err {
+    my ( $self, $param_name, $err_msg_end ) = @_;
+    my $err_msg = "Parameter --${param_name} is mandatory";
+    if ( $err_msg_end ) {
+        $err_msg .= $err_msg_end 
+    } else {
+        $err_msg .= '.';
+    }
+    return $self->err( $err_msg, 1 );
+}
+
+
+=head2 validate_host_name
+
+Validate if given hostname is ok.
+
+=cut
+
+sub validate_host_name {
+    my ( $self, $hostname ) = @_;
+
+    return 1 unless defined $hostname;
+
+    my $host_row = $self->{schema}->resultset('machine')->find({ 
+        'name' => $hostname,
+    });
+    return $self->err("Couldn't find hostname '$hostname' inside DB.") unless defined $host_row;
+    return $self->err("Given host '$hostname' is disabled.") if $host_row->disabled;
+    print "Hostname '$hostname' validated ok.\n" if $self->{ver} >= 6;
+    return 1;
+}
+
+
 =head2 prepare_base_host_conf
 
 Init base host_conf from given options.
@@ -208,6 +258,7 @@ sub prepare_base_host_conf {
     $host_conf->{conf_section_name} = $opt->{section} if defined $opt->{section};
 
     $self->{host_conf} = $host_conf;
+    $self->dump( 'Host conf:', $self->{host_conf} ) if $self->{ver} >= 6;
     return 1;
 }
 
@@ -303,12 +354,13 @@ Load host related configuration from database for given configuratin's section n
 sub prepare_host_conf_from_db {
     my ( $self ) = @_;
 
+    my $host = $self->{host_conf}->{host};
+    return $self->set_mandatory_param_err('host') unless $host;
+
     my $conf_obj = SysFink::Conf::DBIC->new({
         schema => $self->{schema},
     });
     return $self->err("Can't load config object.") unless $conf_obj;
-
-    my $host = $self->{host_conf}->{host};
 
     my $conf_section_name = 'general'; # default is 'general'
     $conf_section_name = $self->{host_conf}->{conf_section_name} if defined $self->{host_conf}->{conf_section_name};
@@ -375,6 +427,7 @@ sub prepare_host_conf_from_db {
     }
     $self->{host_conf}->{max_items_in_one_response} = $max_items_in_one_response;
 
+    $self->dump( 'Host conf from DB:', $self->{host_conf} ) if $self->{ver} >= 6;
     return 1;
 }
 
@@ -852,6 +905,35 @@ sub scan_cmd {
 
     #print "sleeping ...\n"; sleep(10*60); # debug size of used memory
     print "Command 'scan' succeeded.\n" if $self->{ver} >= 3;
+    return 1;
+}
+
+
+=head2 diff_cmd
+
+Run diff command.
+
+=cut
+
+sub diff_cmd {
+    my ( $self, $opt ) = @_;
+
+    my $ver = $self->{ver};
+    my $schema  = $self->{schema};
+
+    # Check params.
+    my $host = $self->{host};
+    if ( $opt->{section} ) {
+        return $self->set_mandatory_param_err('host', ' when --section given.') unless $host;
+    }
+
+    # Load hosts with not audited diffs or check if given host/section has not audited diffs.
+    my $host_ids = [];
+    
+    # Show diff for each host found.
+    
+    
+    print "Command 'diff' succeeded.\n" if $self->{ver} >= 3;
     return 1;
 }
 

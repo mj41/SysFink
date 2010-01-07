@@ -48,16 +48,18 @@ Get/set error message and return 0.
 =cut
 
 sub err {
-    my ( $self, $err ) = @_;
+    my ( $self, $err, $caller_back ) = @_;
 
     # Get.
     return $self->{err} unless defined $err;
 
+    $caller_back = 0 unless defined $caller_back;
+    
     # Set.
     my $package_name = ( ref $self );
     if ( $self->{ver} >= 5 ) {
-        my $caller_line = (caller 0)[2];
-        my $caller_sub = (caller 1)[3];
+        my $caller_line = (caller 0+$caller_back)[2];
+        my $caller_sub = (caller 1+$caller_back)[3];
         print  "$caller_sub on line $caller_line - Setting error to: '$err'\n";
     }
     $self->{err} = $err;
