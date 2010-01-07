@@ -1,0 +1,8 @@
+hostname    first-test-machine-name.my-domain.com
+dist_type   linux-perl-md5
+ssh_user    root
+exclude     /dev/ /home/ /proc/ /sys/ /var/ /mnt/
+
+[fastscan]
+exclude     /
+include     /etc

@@ -22,10 +22,10 @@ sub main {
         ver => 2,
         cmd => undef,
         host => undef,
-        use_db => 0,
         section => undef,
 
-        user => undef,
+        no_db => 0,
+        ssh_user => undef,
         host_dist_type => undef,
    };
 
@@ -35,10 +35,10 @@ sub main {
         'ver|v=i' => \$options->{'ver'},
         'cmd=s' => \$options->{'cmd'},
         'host=s' => \$options->{'host'},
-        'use_db' => \$options->{'use_db'},
         'section=s' => \$options->{'section'},
 
-        'user=s' => \$options->{'user'},
+        'no_db' => \$options->{'no_db'},
+        'ssh_user=s' => \$options->{'ssh_user'},
         'host_dist_type=s' => \$options->{'host_dist_type'},
     );
 
@@ -70,66 +70,75 @@ sysfink.pl - Run SysFink server commands.
 perl sysfink.pl [options]
 
  Options:
-    --help
-    --ver=$NUM .. Verbosity level 0..5. Default 2.
+    --help ... Prints this help informations.
+    
+    --ver=$NUM ... Verbosity level 0..10 Default 2.
 
-    --cmd
+    --cmd=? ... See availible commands below:
 
     --cmd=test_hostname
         For testing purpose. Run 'hostname' command on client and compare it to --host.
         Return nothing (on success) or error message.
-        Also required: --host, --user.
+        Also required --host.
+        Also require --ssh_user if --no_db given.
 
     --cmd=check_client_dir
         Run 'ls -l' command on client and validate output.
         Return nothing (on success) or error message.
-        Also required: --host, --user.
+        Also required --host.
+        Also require --ssh_user if --no_db given.
 
     --cmd=remove_client_dir
         Remove SysFink directory on client. Call 'check_client_dir' to ensure that anything else will be removed.
         Return nothing (on success) or error message.
-        Also required: --host, --user.
+        Also required --host.
+        Also require --ssh_user if --no_db given.
 
     --cmd=renew_client_dir
         Remove old and put new client source code (scripts and libraries) on client machine. Call 'remove_client_dir'
         (and 'check_client_dir') and then put new code.
         Return nothing (on success) or error message.
-        Also required: --host, --user.
-        Also require --host_dist_type if not --use_db given.
+        Also required --host.
+        Also require --ssh_user and --host_dist_type if --no_db given.
 
     --cmd=test_noop_rpc
         Try to run 'noop' test command on client shell over RPC. You should run 'renew_client_dir' cmd to transfer
         RPC source code to client first.
         Return nothing (on success) or error message.
-        Also required: --host, --user.
+        Also required --host.
+        Also require --ssh_user if --no_db given.
 
     --cmd=test_three_parts_rpc
         Try to run 'tree_parts' test command on client shell over RPC. You should run 'renew_client_dir' cmd to transfer
         RPC source code to client first.
         Return nothing (on success) or error message.
-        Also required: --host, --user.
+        Also required --host.
+        Also require --ssh_user if --no_db given.
 
     --cmd=scan_test
         Run scan_test command on given host. Load config from database, run scan comand in debug mode (online debug
         output) and do not change anything inside DB.
         Return nothing (on success) or error message.
-        Also required: --host, --user.
+        Also required --host.
+        Also require --ssh_user if --no_db given.
 
     --cmd=scan
         Run scan on given host. Load config from database and save results there.
         Return nothing (on success) or error message.
-        Also required: --host, --user.
+        Also required --host.
+        Also require --ssh_user if --no_db given.
 
+    --host ... Full hostname of client for SSH connect.
 
-    --host .. Full hostname of client for SSH connect.
+    --section ... Configuration section name to use.
 
-    --use_db .. Try to load some parameters from DB (e.g. host_dist_type).
+    --no_db 
+        Do not connect to DB. Parameters like ssh_user or host_dist_type are required
+        for some commands.
     
-    --section .. Configuration section name to use.
+    --ssh_user ... User name for SSH connect.
 
-    --user .. User name for SSH connect.
-
-    --host_dist_type .. Distribution type e.g. irix-bin-64b, linux-perl-md5, ...
+    --host_dist_type ... Distribution type e.g. irix-bin-64b, linux-perl-md5, ...
 
 =head1 DESCRIPTION
 

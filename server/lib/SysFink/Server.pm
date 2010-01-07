@@ -120,7 +120,7 @@ sub run {
     }; # $all_cmd_confs end
 
     # Options used somewhere below:
-    # * use_db
+    # * no_db
 
     my $cmd = lc( $opt->{cmd} );
 
@@ -132,7 +132,7 @@ sub run {
     my $cmd_conf = $all_cmd_confs->{ $cmd };
 
     # Load db config and connect to DB.
-    if ( $cmd_conf->{connect_to_db} || $opt->{use_db} ) {
+    if ( $cmd_conf->{connect_to_db} || !$opt->{no_db} ) {
         return 0 unless $self->connect_db();
     }
 
@@ -140,7 +140,7 @@ sub run {
     return 0 unless $self->prepare_base_host_conf( $opt );
     $self->dump( 'Host conf:', $self->{host_conf} ) if $self->{ver} >= 6;
 
-    if ( $cmd_conf->{load_host_conf_from_db} || $opt->{use_db} ) {
+    if ( $cmd_conf->{load_host_conf_from_db} || !$opt->{no_db} ) {
         return 0 unless $self->prepare_host_conf_from_db();
         $self->dump( 'Host conf from DB:', $self->{host_conf} ) if $self->{ver} >= 6;
     }
@@ -201,7 +201,7 @@ sub prepare_base_host_conf {
         host => $opt->{host},
     };
 
-    $host_conf->{user} = $opt->{user} if defined $opt->{user};
+    $host_conf->{user} = $opt->{ssh_user} if defined $opt->{ssh_user};
     $host_conf->{rpc_ver} = $opt->{rpc_ver} if defined $opt->{rpc_ver};
     $host_conf->{client_src_dir} = $opt->{client_src_dir} if defined $opt->{client_src_dir};
     $host_conf->{host_dist_type} = $opt->{host_dist_type} if defined $opt->{host_dist_type};
@@ -344,7 +344,7 @@ sub prepare_host_conf_from_db {
         paths => 'paths',
         path_filter_conf => 'path_filter_conf',
         dist_type => 'host_dist_type',
-        user => 'user',
+        ssh_user => 'user',
     };
 
     # Check mandatory if not definned on command line.
