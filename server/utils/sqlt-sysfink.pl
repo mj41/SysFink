@@ -14,13 +14,14 @@ use Data::Dumper;
 
 my $to = $ARGV[0] || 'dbix';
 my $input_file = $ARGV[1] || './temp/schema-raw-create.sql';
-my $ver = $ARGV[2] || 3;
+my $ver = $ARGV[2];
+$ver = 3 unless defined $ver;
 
 my $producer_prefix = 'SysFink::DB::Schema';
 my $producer_base_class_name = 'SysFink::DB::DBIxClassBase';
 my $table_name_url_prefix = 'http://dev.taptinder.org/wiki/DB_Schema#';
 
-print "to: $to, input '$input_file', ver $ver\n" if $ver >= 3;
+print "Runnig translator to '$to' for input file '$input_file' (ver $ver).\n" if $ver >= 3;
 
 croak "Input file '$input_file' not found." unless -f $input_file;
 
