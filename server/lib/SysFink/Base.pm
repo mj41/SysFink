@@ -29,11 +29,13 @@ Constructor.
 =cut
 
 sub new {
-    my ( $class ) = @_;
+    my ( $class, $params ) = @_;
 
     my $self  = {};
 
-    $self->{ver} = 1;
+    $self->{ver} = 3;
+    $self->{ver} = $params->{ver} if defined $params->{ver};
+    
     $self->{err} = undef;
 
     bless $self, $class;

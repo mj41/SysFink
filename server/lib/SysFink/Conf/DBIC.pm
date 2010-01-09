@@ -29,10 +29,9 @@ Constructor. Parameters: DBIx::Class schema object.
 
 sub new {
     my ( $class, $params ) = @_;
+    my $self = $class->SUPER::new( $params );
 
-    my $self = $class->SUPER::new( $params, @_ );
     $self->{schema} = $params->{schema};
-
     return $self;
 }
 
@@ -83,49 +82,108 @@ Load and normalize configuration from given record set.
 =cut
 
 sub load_conf_data_from_rs {
-    my ( $self, $mconf_sec_kv_rs ) = @_;
+    my ( $self, $mconf_sec_kv_rs, $only_one_section, $unwrap_paths ) = @_;
 
-    my $data = {};
+    my $all_data = {};
+    my $mdata = {};
+    my $last_machine_name = '';
+    my $last_section_name = '';
+    my $machines_found = 0;
+    my $sections_found = 0;
     while ( my $row_obj = $mconf_sec_kv_rs->next ) {
         my %row = ( $row_obj->get_columns() );
+        
+        if ( $row{section_name} ne $last_section_name || $row{machine_name} ne $last_machine_name ) {
+            if ( $row{machine_name} ne $last_machine_name ) {
+                $all_data->{ $row{machine_name} } = {};
+                $machines_found++;
+            }
+            $all_data->{ $row{machine_name} }->{ $row{section_name} } = {};
+            $mdata = $all_data->{ $row{machine_name} }->{ $row{section_name} };
+            $sections_found++;
+            $last_machine_name = $row{machine_name};
+            $last_section_name = $row{section_name};
+        }
+
         my $key = $row{key};
         my $new_value = $row{value};
-        if ( exists $data->{$key} ) {
-            if ( ref $data->{$key} eq 'ARRAY' ) {
-                my $prev_val = $data->{$key};
-                push @{$data->{$key}}, $new_value;
+        
+        if ( exists $mdata->{$key} ) {
+            if ( ref $mdata->{$key} eq 'ARRAY' ) {
+                my $prev_val = $mdata->{$key};
+                push @{$mdata->{$key}}, $new_value;
             } else {
-                my $prev_val = $data->{$key};
-                $data->{$key} = [ $prev_val, $new_value ];
+                my $prev_val = $mdata->{$key};
+                $mdata->{$key} = [ $prev_val, $new_value ];
             }
         } else {
-            $data->{$key} = $new_value;
+            $mdata->{$key} = $new_value;
         }
     }
 
-    # Prepare paths. Should be sorted already.
-    if ( exists $data->{paths} && $data->{paths} ) {
-        # Only one value. Change to array ref.
-        if ( not ref $data->{paths} ) {
-            $data->{paths} = [ $data->{paths} ];
-        }
+    return $all_data unless $unwrap_paths;
+    
+    foreach my $machine_name ( keys %$all_data ) {
+        foreach my $section_name ( keys %{ $all_data->{ $machine_name } } ) {
+            my $mdata = $all_data->{ $machine_name }->{ $section_name };
 
-        my $new_paths = [];
-        foreach my $num ( 0..$#{$data->{paths}} ) {
-            my $flags_and_path = $data->{paths}->[ $num ];
+            # Prepare paths. Should be sorted already.
+            if ( exists $mdata->{paths} && $mdata->{paths} ) {
+                # Only one value. Change to array ref.
+                if ( not ref $mdata->{paths} ) {
+                    $mdata->{paths} = [ $mdata->{paths} ];
+                }
 
-            # Try to split path and flags.
-            if ( my ( $path, $flags_str ) = $flags_and_path =~ m{^ (.*) \[ (.+?) \] $}x ) {
-                my %flags = $self->flags_str_to_hash( $flags_str );
-                push @$new_paths, [ $path, \%flags, ];
+                my $new_paths = [];
+                foreach my $num ( 0..$#{$mdata->{paths}} ) {
+                    my $flags_and_path = $mdata->{paths}->[ $num ];
 
-            } else {
-                # ToDo - error
+                    # Try to split path and flags.
+                    if ( my ( $path, $flags_str ) = $flags_and_path =~ m{^ (.*) \[ (.+?) \] $}x ) {
+                        my %flags = $self->flags_str_to_hash( $flags_str );
+                        push @$new_paths, [ $path, \%flags, ];
+
+                    } else {
+                        # ToDo - error
+                    }
+                }
+                $mdata->{paths} = $new_paths;
             }
         }
-        $data->{paths} = $new_paths;
     }
-    return $data;
+
+
+    if ( $only_one_section ) {
+        if ( $sections_found != 1 || $machines_found != 1 ) {
+            return $self->err("Should found one section on one machine, but found $sections_found on $machines_found.");
+        }
+        return $all_data->{ $last_machine_name }-> { $last_section_name };
+    }
+
+    return $all_data;
+}
+
+
+=head2 get_mconf_sec_kv_rs
+
+Return RecorSet prepared fo load_conf_data_from_rs method.
+
+=cut
+
+sub get_mconf_sec_kv_rs {
+    my ( $self, $search_conf ) = @_;
+
+    my $mconf_sec_kv_rs = $self->{schema}->resultset('mconf_sec_kv')->search(
+        $search_conf,
+        {
+            'join' => { 'mconf_sec_id' => { 'mconf_id' => 'machine_id' } },
+            'select' => [ 'machine_id.name', 'mconf_sec_id.name', 'key', 'value', 'num' ],
+            'as' => [ 'machine_name', 'section_name', 'key', 'value', 'num' ],
+            'order_by' => [ 'machine_id.machine_id', 'mconf_sec_id.mconf_sec_id', 'key', 'num' ],
+        }
+    );
+
+    return $mconf_sec_kv_rs;
 }
 
 
@@ -139,19 +197,16 @@ of mconf_id.
 sub load_general_conf {
     my ( $self, $machine_id, $mconf_id ) = @_;
 
-    my $mconf_sec_kv_rs = $self->{schema}->resultset('mconf_sec_kv')->search(
-        {
-            'mconf_sec_id.mconf_id' => $mconf_id,
-            'mconf_sec_id.name' => 'general',
-        },
-        {
-            'join' => [ 'mconf_sec_id' ],
-            'select' => [ 'key', 'value', 'num' ],
-            'order_by' => [ 'key', 'num' ],
-        },
-    );
+    my $mconf_sec_kv_rs = $self->get_mconf_sec_kv_rs({
+        'mconf_sec_id.mconf_id' => $mconf_id,
+        'mconf_sec_id.name' => 'general',
+    });
 
-    my $data = $self->load_conf_data_from_rs( $mconf_sec_kv_rs );
+    my $data = $self->load_conf_data_from_rs(
+        $mconf_sec_kv_rs,
+        1, # $only_one_section
+        1  # $unwrap_paths
+    );
     return $data;
 }
 
@@ -165,19 +220,47 @@ Load and canonize configuration for given machine_id and mconf_sec_id.
 sub load_sec_conf {
     my ( $self, $machine_id, $mconf_sec_id ) = @_;
 
-    my $mconf_sec_kv_rs = $self->{schema}->resultset('mconf_sec_kv')->search(
-        {
-            'me.mconf_sec_id' => $mconf_sec_id,
-        },
-        {
-            'select' => [ 'key', 'value', 'num' ],
-            'order_by' => [ 'key', 'num' ],
-        },
-    );
+    my $mconf_sec_kv_rs = $self->get_mconf_sec_kv_rs({
+        'me.mconf_sec_id' => $mconf_sec_id,
+    });
 
-    my $data = $self->load_conf_data_from_rs( $mconf_sec_kv_rs );
+    my $data = $self->load_conf_data_from_rs(
+        $mconf_sec_kv_rs,
+        1, # $only_one_section
+        1  # $unwrap_paths
+    );
     return $data;
 }
+
+
+
+=head2 load_active_conf
+
+Load active configuration for given machine_id or for all machines. Do not unwrap paths
+if $not_unwrap_paths is set.
+
+=cut
+
+sub load_active_conf {
+    my ( $self, $machine_id, $not_unwrap_paths ) = @_;
+    $not_unwrap_paths = 0 unless defined $not_unwrap_paths;
+
+    my $search_conf = {
+        'machine_id.active' => 1,
+        'mconf_id.active' => 1,
+    };
+    $search_conf->{'machine_id.machine_id'} = $machine_id if defined $machine_id;
+
+    my $mconf_sec_kv_rs = $self->get_mconf_sec_kv_rs( $search_conf );
+
+    my $data = $self->load_conf_data_from_rs(
+        $mconf_sec_kv_rs,
+        0, # $only_one_section
+        ! $not_unwrap_paths
+    );
+    return $data;
+}
+
 
 
 =head1 SEE ALSO

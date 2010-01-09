@@ -9,17 +9,19 @@ use Data::Dumper;
 use Getopt::Long;
 use Pod::Usage;
 use DateTime;
+use Data::Compare;
 
 use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../libext";
 
 use SysFink::Conf::SysFink;
+use SysFink::Conf::DBIC;
 use SysFink::Utils::Conf qw(load_conf_multi);
 use SysFink::Utils::DB qw(get_connected_schema);
 
 
 my $help = 0;
-my $ver = 2;
+my $ver = 3;
 
 my $conf_fp = undef;
 my $machine_conf_fp = undef;
@@ -40,59 +42,15 @@ $conf_fp = catdir( $RealBin, '..', 'conf' ) unless defined $conf_fp;
 croak "Machine conf dir '$machine_conf_fp' not found." unless -d $machine_conf_fp;
 croak "Conf dir '$conf_fp' not found." unless -d $conf_fp;
 
-
-sub get_rs_for_my_attrs {
-    my ( $schema, $search_cond, $conf ) = @_;
-
-    my ( $table_name, $joins ) = @$conf;
-    print "deleting from table: $table_name\n" if $ver >= 3;
-    my $search_attrs = { alias => $table_name.'_id' };
-    $search_attrs->{prefetch} = $joins if defined $joins;
-    my $rs = $schema->resultset($table_name)->search( $search_cond, $search_attrs );
-    return $rs;
-}
-
-
-sub do_delete_old {
-    my ( $schema, $search_cond ) = @_;
-    $search_cond = {} unless defined $search_cond;
-
-    my $all_confs = [
-        [
-            'mconf_sec_kv',
-            { 'mconf_sec_id' => { 'mconf_id' => 'machine_id' } },
-        ],
-        [
-            'mconf_sec',
-            { 'mconf_sec_id' => 'mconf_id' },
-        ],
-        [
-            'mconf',
-            'machine_id',
-        ],
-        [
-            'machine',
-        ],
-    ];
-
-    # Delete direct data.
-    foreach my $conf_num ( 0..$#$all_confs ) {
-        my $rs = get_rs_for_my_attrs( $schema, $search_cond, $all_confs->[ $conf_num ] );
-        $rs->delete_all;
-    }
-    return 1;
-}
-
-
 my $conf = load_conf_multi( $conf_fp, 'db' );
 my $schema = get_connected_schema( $conf->{db} );
 
 $schema->storage->txn_begin;
 
-if ( $delete_old ) {
-    print "deleting old values\n" if $ver >= 2;
-    do_delete_old( $schema );
-}
+
+my $db_conf_obj = SysFink::Conf::DBIC->new({ schema => $schema });
+my $old_confs = $db_conf_obj->load_active_conf( undef, 1 );
+#print Dumper( $old_confs );
 
 
 my $mconf_obj = SysFink::Conf::SysFink->new({ conf_dir_path => $machine_conf_fp });
@@ -115,14 +73,13 @@ my $mconf_change_values = {
     'user_id' => undef,
 };
 my $mconf_change_row = $schema->resultset('mconf_change')->create( $mconf_change_values );
-my $mconf_change_id = $mconf_change_row->id;
 
 
-print "inserting new values\n" if $ver >= 2;
-foreach my $machine_name ( keys %$mconf ) {
+# Insert and modify.
+NEW_MACHINE_CONF: foreach my $machine_name ( keys %$mconf ) {
 
-    print "machine: $machine_name\n" if $ver >= 3;
-    my $machine_sections = $mconf->{$machine_name};
+    print "machine: $machine_name\n" if $ver >= 4;
+    my $machine_conf = $mconf->{$machine_name};
 
     # Get machine_id by machine name.
     my $machine_row = $schema->resultset('machine')->find_or_create({
@@ -130,6 +87,21 @@ foreach my $machine_name ( keys %$mconf ) {
         'active' => 1,
     });
     my $machine_id = $machine_row->id;
+    
+    $ch_count->{found}++;
+    if ( exists $old_confs->{ $machine_name } ) {
+        my $compare_obj = new Data::Compare( $old_confs->{ $machine_name }, $machine_conf );
+        if ( $compare_obj->Cmp ) {
+            print "Machine '$machine_name' configuration not changed.\n" if $ver >= 3;
+            # are same
+            next NEW_MACHINE_CONF;
+        } else {
+            print "Machine '$machine_name' configuration changed.\n" if $ver >= 3;
+        }
+    } else {
+        $ch_count->{added}++;
+        print "Machine '$machine_name' added.\n" if $ver >= 3;
+    }
 
     # Inactivate all machine configs (mconf).
     my $mconf_to_inactivate_rs = $schema->resultset('mconf')->search({
@@ -145,15 +117,15 @@ foreach my $machine_name ( keys %$mconf ) {
 
     my $mconf_row = $schema->resultset('mconf')->create({
         'machine_id' => $machine_id,
-        'mconf_change_id' => $mconf_change_id,
+        'mconf_change_id' => $mconf_change_row->id,
         'active' => 1,
     });
 
     my $order_number = {};
-    foreach my $section_name ( keys %$machine_sections ) {
+    foreach my $section_name ( keys %$machine_conf ) {
 
-        print "  section: $section_name\n" if $ver >= 3;
-        my $section_kv = $machine_sections->{$section_name};
+        print "  section: $section_name\n" if $ver >= 4;
+        my $section_kv = $machine_conf->{$section_name};
 
         my $mconf_sec_row = $schema->resultset('mconf_sec')->create({
             'mconf_id' => $mconf_row->id,
@@ -165,7 +137,7 @@ foreach my $machine_name ( keys %$mconf ) {
             $order_number->{$section_name}->{$key} = 0 unless exists $order_number->{$section_name}->{$key};
 
             my $value = $section_kv->{$key};
-            print "    key-value: $key\n" if $ver >= 3;
+            print "    key-value: $key\n" if $ver >= 4;
 
             if ( ref $value eq 'ARRAY' ) {
                 foreach my $value_index ( 0..$#$value ) {
@@ -195,6 +167,31 @@ foreach my $machine_name ( keys %$mconf ) {
     }
 }
 
+
+# Delete removed machines.
+foreach my $machine_name ( keys %$old_confs ) {
+    next if exists $mconf->{ $machine_name };
+    
+    print "Machine '$machine_name' was removed.\n" if $ver >= 3;
+    $ch_count->{removed}++;
+    
+    my $machine_row = $schema->resultset('machine')->find({
+        'name' => $machine_name,
+        'active' => 1,
+    });
+    $machine_row->update({ 'active' => 0 });
+
+    my $mconf_row = $schema->resultset('mconf')->find({
+        'machine_id' => $machine_row->machine_id,
+        'active' => 1,
+    });
+    $mconf_row->update({ 'active' => 0 });
+}
+
+
+$mconf_change_row->update(       $ch_count );
+
+
 $schema->storage->txn_commit;
 
 
@@ -208,7 +205,7 @@ perl tests-to-db.pl [options]
 
  Options:
    --help
-   --ver=$NUM .. Verbosity level 0..5. Default 2.
+   --ver=$NUM .. Verbosity level 0..10. Default 3.
    --delete_old .. Empty all machine config tables before inserting new machine config.
    --conf_path .. Configuration path. Default './conf'.
    --machine_conf_path .. Machine configuration path. Default './conf-machines'.

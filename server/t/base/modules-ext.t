@@ -17,6 +17,7 @@ BEGIN {
     use_ok 'Net::OpenSSH';
     use_ok 'Data::Dumper';
     use_ok 'DateTime';
+    use_ok 'Data::Compare';
 
     # DB
     use_ok 'DBIx::Class';
