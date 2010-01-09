@@ -84,9 +84,9 @@ NEW_MACHINE_CONF: foreach my $machine_name ( keys %$mconf ) {
     # Get machine_id by machine name.
     my $machine_row = $schema->resultset('machine')->find_or_create({
         'name' => $machine_name,
-        'active' => 1,
     });
     my $machine_id = $machine_row->id;
+    $machine_row->update({ active => 1, }) unless $machine_row->active;
     
     $ch_count->{found}++;
     if ( exists $old_confs->{ $machine_name } ) {
