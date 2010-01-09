@@ -6,9 +6,8 @@ use Data::Dumper;
 
 use Test::More;
 
-use lib 'dist/_base/lib';
-
 use lib 'lib';
+use lib 'libext';
 use SysFink::Conf;
 
 use lib 't/lib';

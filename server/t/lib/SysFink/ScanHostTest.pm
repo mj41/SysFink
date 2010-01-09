@@ -3,6 +3,7 @@ package SysFink::ScanHostTest;
 use strict;
 use warnings;
 
+use lib '../client/dist/_base/lib';
 use base 'SysFink::ScanHost';
 
 
@@ -30,7 +31,7 @@ sub new {
         } else {
             $full_path = $item;
         }
-        
+
         # The last char is backslash.
         if ( my ( $base_name ) = $full_path =~ m{^ (.*) \/ $}x ) {
             $self->{_test_conf_dirs}->{ $base_name } = 1;
@@ -42,7 +43,7 @@ sub new {
         push @{$self->{_test_conf_paths}}, $full_path;
     }
     #use Data::Dumper; print Dumper( $self ); exit;
-    
+
     return $self;
 }
 
@@ -66,8 +67,8 @@ sub my_lstat {
 
     # Check if path exists.
     return ( 0 ) unless exists $self->{_test_conf_items}->{ $full_path };
-        
-        
+
+
     #  0 dev - device number of filesystem
     #  1 ino - inode number
     #  2 mode - file mode (type and permissions)

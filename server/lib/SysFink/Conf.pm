@@ -3,6 +3,8 @@ package SysFink::Conf;
 use strict;
 use warnings;
 
+use base 'SysFink::Base';
+
 use File::Spec::Functions;
 
 =head1 NAME
@@ -18,25 +20,6 @@ ToDo. See L<SysFink>.
 ToDo. See L<SysFink>.
 
 =head1 METHODS
-
-
-=head2 new
-
-Constructor. Parameters: conf_dir_path.
-
-=cut
-
-sub new {
-    my ( $class, $params ) = @_;
-
-    my $self  = {
-        ver => 3,
-    };
-    $self->{ver} = $params->{ver} if defined $params->{ver};
-
-    bless $self, $class;
-    return $self;
-}
 
 
 =head2 get_flag_desc

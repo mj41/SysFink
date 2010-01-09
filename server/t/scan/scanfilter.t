@@ -9,13 +9,9 @@ use Test::More;
 use lib 'lib';
 use lib 'libext';
 use SysFink::Server;
-
-use lib '../client/dist/_base/lib';
-
-use lib '../client/lib';
 use SysFink::Conf;
 
-use lib '../client/t/lib';
+use lib 't/lib';
 use SysFink::ScanData;
 
 
@@ -43,7 +39,7 @@ foreach my $num ( @test_nums ) {
     my $server = SysFink::Server->new();
     $server->{ver} = $ver;
     $server->{host_conf}->{path_filter_conf} = $path_filter_conf;
-    
+
     my $paths_expected = [];
     foreach my $val ( @{ $test_case->{expected} } ) {
         my $path = $val->{path};
@@ -72,7 +68,7 @@ foreach my $num ( @test_nums ) {
         # print "path: $path $found\n"; # debug
         push( @$paths_found, $path ) if $found;
     }
-    
+
     my $test_name = $test_case->{tescase_name};
     my $ok = is_deeply( $paths_found, $paths_expected, $test_name );
 
