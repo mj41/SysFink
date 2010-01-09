@@ -12,6 +12,27 @@ begin transaction;
 
 === Tables ===
 
+==== Table user ====
+<source lang=sql>
+CREATE TABLE user (
+    user_id     INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT 'Primary key',
+    login       VARCHAR(20) NOT NULL,
+    passwd      VARCHAR(20) NOT NULL,
+    who         VARCHAR(20) DEFAULT NULL,
+    first_name  VARCHAR(255) NOT NULL DEFAULT '',
+    last_name   VARCHAR(255) NOT NULL DEFAULT '',
+    active      BOOLEAN NOT NULL DEFAULT 1 COMMENT 'Zero means historical data.',
+    created     DATETIME NOT NULL COMMENT 'Account creation time.',
+    INDEX i_login (login),
+    UNIQUE KEY unique_login_active (login, active),
+) TYPE=InnoDB COMMENT='User info. Tag:User.';
+</source>
+
+Consistency and constraints:
+* Unique ( who, active ) for each not null 'who's.
+* Nobody has 'who' same as anyone else 'login'.
+* Only one person has password for each 'who' account on sysfink server.
+
 ==== Table machine (m) ====
 <source lang=sql>
 CREATE TABLE machine (
@@ -19,8 +40,22 @@ CREATE TABLE machine (
     name            VARCHAR(50) NOT NULL,
     `desc`          TEXT DEFAULT NULL COMMENT 'Description.',
     ip              VARCHAR(15) DEFAULT NUL,
-    disabled        BOOLEAN NOT NULL DEFAULT 0,
+    active          BOOLEAN NOT NULL DEFAULT 1,
     INDEX i_name (name)
+) TYPE=InnoDB COMMENT='Machine (computer or virtual machine) info. Tag:Machine.';
+</source>
+
+==== Table mconf_change ====
+<source lang=sql>
+CREATE TABLE mconf_change (
+    mconf_change_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    date            DATETIME NOT NULL,
+    user_id         INT UNSIGNED DEFAULT NULL,
+    found           INT UNSIGNED NOT NULL DEFAULT 0,
+    added           INT UNSIGNED NOT NULL DEFAULT 0,
+    changed         INT UNSIGNED NOT NULL DEFAULT 0,
+    removed         INT UNSIGNED NOT NULL DEFAULT 0,
+    CONSTRAINT fk_mconf_change_user_id FOREIGN KEY (user_id) REFERENCES user (user_id)
 ) TYPE=InnoDB COMMENT='Machine (computer or virtual machine) info. Tag:Machine.';
 </source>
 
@@ -29,16 +64,17 @@ CREATE TABLE machine (
 CREATE TABLE mconf (
     mconf_sec_id    INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     machine_id      INT UNSIGNED NOT NULL,
+    mconf_change_id INT UNSIGNED NOT NULL,
     active          INT UNSIGNED NOT NULL,
-    create_time     DATETIME NOT NULL,
     INDEX i_machine (machine_id),
     INDEX i_machine_id_active (machine_id, active),
+    CONSTRAINT fk_mconf_mconf_change_id FOREIGN KEY (mconf_change_id) REFERENCES mconf_change (mconf_change_id),
     CONSTRAINT fk_mconf_machine_id FOREIGN KEY (machine_id) REFERENCES machine (machine_id)
 ) TYPE=InnoDB COMMENT='Machine configuratio. Tag:Machine.';
 </source>
 
 Consistency:
-* Only one active for each machine_id.
+* Only one active for each machine_id. Relevant mconf_change should be the last one.
 
 ==== Table mconf_sec ====
 <source lang=sql>
@@ -137,21 +173,6 @@ CREATE TABLE sc_idata (
 
 Consistency:
 * Only 'found' or 'missiong' should have value equal 1.
-
-==== Table user ====
-<source lang=sql>
-CREATE TABLE user (
-    user_id     INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT 'Primary key',
-    login       VARCHAR(20) NOT NULL,
-    passwd      VARCHAR(20) NOT NULL,
-    first_name  VARCHAR(255) NOT NULL DEFAULT '',
-    last_name   VARCHAR(255) NOT NULL DEFAULT '',
-    active      BOOLEAN NOT NULL DEFAULT 1 COMMENT 'Zero means historical data.',
-    created     DATETIME NOT NULL COMMENT 'Account creation time.',
-    INDEX i_login (login)
-) TYPE=InnoDB COMMENT='User info. Tag:User.';
-</source>
-
 
 === Table aud_status_id ===
 <source lang=sql>

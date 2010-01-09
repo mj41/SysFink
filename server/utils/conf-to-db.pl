@@ -49,6 +49,7 @@ sub get_rs_for_my_attrs {
     my $search_attrs = { alias => $table_name.'_id' };
     $search_attrs->{prefetch} = $joins if defined $joins;
     my $rs = $schema->resultset($table_name)->search( $search_cond, $search_attrs );
+    return $rs;
 }
 
 
@@ -101,15 +102,32 @@ my $mconf = $mconf_obj->conf;
 #print Dumper( $mconf );
 
 
+# Change counter.
+my $ch_count = {
+    found => 0,
+    added => 0,
+    changed => 0,
+    removed => 0,
+};
+
+my $mconf_change_values = {
+    'date'=> DateTime->now,
+    'user_id' => undef,
+};
+my $mconf_change_row = $schema->resultset('mconf_change')->create( $mconf_change_values );
+my $mconf_change_id = $mconf_change_row->id;
+
+
 print "inserting new values\n" if $ver >= 2;
 foreach my $machine_name ( keys %$mconf ) {
 
     print "machine: $machine_name\n" if $ver >= 3;
-    my $machine_section = $mconf->{$machine_name};
+    my $machine_sections = $mconf->{$machine_name};
 
     # Get machine_id by machine name.
     my $machine_row = $schema->resultset('machine')->find_or_create({
         'name' => $machine_name,
+        'active' => 1,
     });
     my $machine_id = $machine_row->id;
 
@@ -117,6 +135,7 @@ foreach my $machine_name ( keys %$mconf ) {
     my $mconf_to_inactivate_rs = $schema->resultset('mconf')->search({
         'machine_id' => $machine_id,
         'active' => 1,
+        
     });
     $mconf_to_inactivate_rs->update({
         'active' => 0,
@@ -124,19 +143,19 @@ foreach my $machine_name ( keys %$mconf ) {
 
     # print "$machine_name $machine_id\n"; # debug
 
-    my $mconf_row = $schema->resultset('mconf')->find_or_create({
+    my $mconf_row = $schema->resultset('mconf')->create({
         'machine_id' => $machine_id,
+        'mconf_change_id' => $mconf_change_id,
         'active' => 1,
-        'create_time'=> DateTime->now,
     });
 
     my $order_number = {};
-    foreach my $section_name ( keys %$machine_section ) {
+    foreach my $section_name ( keys %$machine_sections ) {
 
         print "  section: $section_name\n" if $ver >= 3;
-        my $section_kv = $machine_section->{$section_name};
+        my $section_kv = $machine_sections->{$section_name};
 
-        my $mconf_sec_row = $schema->resultset('mconf_sec')->find_or_create({
+        my $mconf_sec_row = $schema->resultset('mconf_sec')->create({
             'mconf_id' => $mconf_row->id,
             'name' => $section_name,
         });
