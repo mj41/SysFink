@@ -33,7 +33,7 @@ $schema->resultset('user')->populate([
 $schema->resultset('machine')->delete_all();
 
 $schema->resultset('machine')->populate([
-    [ qw/  machine_id name legend ip disabled / ],
+    [ qw/  machine_id name desc ip disabled / ],
     [ 1, 'tapir1.ro.vutbr.cz', undef, '147.229.191.11', 0, ],
 ]);
 

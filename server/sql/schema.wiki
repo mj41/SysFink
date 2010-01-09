@@ -17,7 +17,7 @@ begin transaction;
 CREATE TABLE machine (
     machine_id      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name            VARCHAR(50) NOT NULL,
-    legend          TEXT DEFAULT NULL COMMENT 'Description.',
+    `desc`          TEXT DEFAULT NULL COMMENT 'Description.',
     ip              VARCHAR(15) DEFAULT NUL,
     disabled        BOOLEAN NOT NULL DEFAULT 0,
     INDEX i_name (name)
@@ -158,11 +158,11 @@ CREATE TABLE user (
 CREATE TABLE aud_status (
     aud_status_id       INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name                VARCHAR(10) DEFAULT NULL,
-    legend              VARCHAR(1500) DEFAULT NULL
+    `desc`              VARCHAR(1500) DEFAULT NULL
 ) TYPE=InnoDB COMMENT='Possibilites for item audit status. Tag:Audit. Type:Table of keys.';
 </source>
 
-* name, legend
+* name, desc
 ** my ok -- Ok. I did it.
 ** ok - Ok. I didn't do it.
 ** unknown - I don't know. 

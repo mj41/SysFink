@@ -18,7 +18,7 @@ $schema->storage->txn_begin;
 $schema->resultset('aud_status')->delete_all();
 
 $schema->resultset('aud_status')->populate([
-    [ qw/ aud_status_id name legend / ],
+    [ qw/ aud_status_id name desc / ],
     [ 1,  'ok (my)',  'Ok. I did it.',                  ],
     [ 2,  'ok',       'Ok. I didn\'t do it.',           ],
     [ 3,  'unknown',  'I don\'t know. ',                ],

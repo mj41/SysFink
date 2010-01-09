@@ -316,12 +316,12 @@ __PACKAGE__->add_columns(
       'is_nullable' => 1,
       'size' => '10'
     },
-    'legend' => {
+    'desc' => {
       'data_type' => 'VARCHAR',
       'is_auto_increment' => 0,
       'default_value' => 'NULL',
       'is_foreign_key' => 0,
-      'name' => 'legend',
+      'name' => 'desc',
       'is_nullable' => 1,
       'size' => '1500'
     },
@@ -668,12 +668,12 @@ __PACKAGE__->add_columns(
       'is_nullable' => 0,
       'size' => '50'
     },
-    'legend' => {
+    'desc' => {
       'data_type' => 'TEXT',
       'is_auto_increment' => 0,
       'default_value' => 'NULL',
       'is_foreign_key' => 0,
-      'name' => 'legend',
+      'name' => 'desc',
       'is_nullable' => 1,
       'size' => '65535'
     },
