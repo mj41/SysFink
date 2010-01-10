@@ -119,6 +119,7 @@ sub run {
 
         'mconf_to_db' => {
             'connect_to_db' => 1,
+            'get_who' => { mandatory => 0, },
             'type' => 'self',
         },
 
@@ -150,6 +151,11 @@ sub run {
     # Check given host name in DB.
     if ( $cmd_conf->{validate_host_name_if_given} && defined $opt->{host} ) {
         return 0 unless $self->validate_host_name( $opt->{host} );
+    }
+    
+    # Get user_id from given login or who (get_login).
+    if ( $cmd_conf->{get_who} ) {
+        return 0 unless $self->get_who( $opt->{who}, $cmd_conf->{get_who}->{mandatory} );
     }
     
     # Load host config for given hostname from connected DB.
@@ -302,6 +308,48 @@ sub init_rpc_obj  {
     $self->{rpc_ssh_connected} = 0;
 
     return $self->rpc_err() unless $self->{rpc}->set_options( $self->{host_conf} );
+    return 1;
+}
+
+
+=head2 get_who
+
+Init user_id from --who or from perl get_login (tty user name).
+
+=cut
+
+sub get_who {
+    my ( $self, $who, $mandatory ) = @_;
+
+    my $schema = $self->{schema};
+    $self->{user_id} = undef;
+
+    if ( $who ) {
+        my $user_row = $schema->resultset('user')->find({ login => $who });
+        return $self->err("User '$who' not found in DB.") unless $user_row;
+        $self->{user_id} = $user_row->user_id;
+    
+    } else {
+        my $tty_who = getlogin();
+
+        my $found = 0;
+        if ( $tty_who ) {
+            my $user_row = $schema->resultset('user')->find({ who => $tty_who });
+            if ( $user_row ) {
+                $found = 1;
+                $self->{user_id} = $user_row->user_id;
+            }
+        }
+
+        if  ( ! $found || ! $tty_who ) {
+            if ( $mandatory ) {
+                return $self->err("Can't determine user_id. Try to use --who parameter.");
+            } else {
+                print "Can't determine user_id (who '$tty_who'). Try to use --who parameter.\n" if $self->{ver} >= 3;
+            }
+        }
+    }
+
     return 1;
 }
 
@@ -975,7 +1023,7 @@ sub mconf_to_db_cmd {
         return $self->err("Machine conf directory '$mconf_path' ('$absolute_mconf_path') not found.");;
     }
 
-    return $self->mconf_err() unless $self->{mconf_obj}->mconf_to_db( $absolute_mconf_path );
+    return $self->mconf_err() unless $self->{mconf_obj}->mconf_to_db( $absolute_mconf_path, $self->{user_id} );
     return 1;
 }
 

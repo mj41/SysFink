@@ -277,7 +277,7 @@ inside machine-conf directory.
 =cut
 
 sub mconf_to_db  {
-    my ( $self, $machine_conf_fp ) = @_;
+    my ( $self, $machine_conf_fp, $user_id ) = @_;
 
     my $schema = $self->{schema};
     $schema->storage->txn_begin;
@@ -302,7 +302,7 @@ sub mconf_to_db  {
 
     my $mconf_change_values = {
         'date'=> DateTime->now,
-        'user_id' => undef,
+        'user_id' => $user_id,
     };
     my $mconf_change_row = $schema->resultset('mconf_change')->create( $mconf_change_values );
 
