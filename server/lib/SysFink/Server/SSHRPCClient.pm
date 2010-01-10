@@ -317,7 +317,20 @@ sub test_hostname {
     my $hostname = $out;
     chomp( $hostname );
 
-    if ( $self->{host} ne $hostname ) {
+    my $ok = 0;
+    if ( $self->{host} eq $hostname ) {
+        $ok = 1;
+    
+    } elsif ( $self->{host} !~ m{\.} ) {
+        if ( my ($base_hostname) = $hostname =~ m{ ^ ([^\.]+) \. }x ) {
+            if ( $base_hostname eq $self->{host} ) {
+                print "Hostname reported from client is '$hostname' and probably match given '$self->{host}'.\n" if $self->{ver} >= 4;
+                $ok = 1;
+            }
+        }
+    }
+    
+    unless ( $ok ) {
         return $self->err("Hostname reported from client is '$hostname', but object attribute host is '$self->{host}'.");
     }
 
