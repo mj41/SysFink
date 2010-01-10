@@ -1,12 +1,22 @@
 #!/bin/bash
 
 function echo_help {
-    echo "Usage:"
-    echo "  utils/test-new.sh dev|current hostname.example.com verbosity_level linux-bin-64b"
-    echo ""
-    echo "Example:"
-    echo "  utils/test-new.sh dev gorilla 3 linux-perl-md5"
-    echo "  utils/test-new.sh current gorilla 3 linux-perl-md5"
+cat <<USAGE_END 
+Usage:
+  utils/test-new.sh dev|current hostname.example.com verbosity_level linux-bin-64b"
+
+Example:
+  utils/test-new.sh dev gorilla 3 linux-perl-md5
+  utils/test-new.sh current gorilla 3 linux-perl-md5
+
+Advanced example: 
+  clear && echo "Running 'dev' and 'current' tests an tee to 'temp/test-new.out.'" \\
+  && echo "Go ..." | tee temp/test-new.out \\
+  && utils/test-new.sh dev gorilla 3 linux-perl-md5 | tee -a temp/test-new.out \\
+  && utils/test-new.sh current gorilla 3 linux-perl-md5 | tee -a temp/test-new.out \\
+  && echo "" && echo "All done. Use 'cat temp/test-new.out | more' to see output again."
+
+USAGE_END
 }
 
 if [ -z "$4" ]; then
@@ -14,7 +24,6 @@ if [ -z "$4" ]; then
     exit
 fi 
 
-clear
 
 TEST_TYPE="$1"
 HOST="$2"
@@ -30,15 +39,19 @@ if [ $TEST_TYPE != "dev" -a $TEST_TYPE != "current" ]; then
     exit
 fi
 
+echo "-------------------------------------------------------------------------------------"
 echo "Starting '$TEST_TYPE' tests:";
 echo ""
 
+if [ -f "sysfink.db" ]; then
+    echo "Copying 'sysfink.db' to '$BACKUP_DB_FILE'."
+    cp sysfink.db $BACKUP_DB_FILE || ( echo "Can't move." && exit )
+    echo ""
+fi
+
 if [ $TEST_TYPE = "dev" ]; then
 
-    if [ -f "sysfink.db" ]; then
-        echo "Moving 'sysfink.db' to '$BACKUP_DB_FILE'."
-        mv sysfink.db $BACKUP_DB_FILE || ( echo "Can't move." && exit )
-    fi
+    export SYSFINK_DEVEL=1
 
     echo "Running utils/all-sql.sh"
     ./utils/all-sql.sh 1
@@ -47,7 +60,7 @@ if [ $TEST_TYPE = "dev" ]; then
     if [ -f "sysfink.db" ]; then
         echo "Removing sysfink.db"
         rm sysfink.db
-    echo ""
+        echo ""
     fi
     
     echo "Executing temp/schema-raw-create-sqlite.sql (perl utils/db-run-sqlscript.pl):"
@@ -62,8 +75,13 @@ if [ $TEST_TYPE = "dev" ]; then
     cp sysfink.db sysfink-empty.db
     echo ""
     
-    echo "perl sysfink.pl --cmd=mconf_to_db --mconf_path=\"t/conf-machines-test\""
+    echo "Running perl sysfink.pl --cmd=mconf_to_db --mconf_path=\"t/conf-machines-test\""
     perl sysfink.pl --cmd=mconf_to_db --mconf_path="t/conf-machines-test"
+    echo ""
+
+else
+    echo "Running perl sysfink.pl --cmd=mconf_to_db"
+    perl sysfink.pl --cmd=mconf_to_db
     echo ""
 fi
 
@@ -98,9 +116,17 @@ echo "Online tests on host '$HOST':" \
 if [ $TEST_TYPE = "dev" ]; then
     echo "Moving 'sysfink.db' to 'temp/sysfink-dev.db'."
     mv sysfink.db temp/sysfink-dev.db || ( echo "Moving failed." && exit )
+    echo ""
 
-    if [ -f "$BACKUP_DB_FILE" ]; then
-        echo "Moving '$BACKUP_DB_FILE' back to 'sysfink.db'."
-        mv $BACKUP_DB_FILE sysfink.db || ( echo "Moving back failed." && exit )
-    fi
+    export SYSFINK_DEVEL=0
+else 
+    echo "Moving 'sysfink.db' to 'temp/sysfink-current.db'."
+    mv sysfink.db temp/sysfink-current.db || ( echo "Moving failed." && exit )
+    echo ""
+fi
+
+if [ -f "$BACKUP_DB_FILE" ]; then
+    echo "Moving '$BACKUP_DB_FILE' back to 'sysfink.db'."
+    mv $BACKUP_DB_FILE sysfink.db || ( echo "Moving back failed." && exit )
+    echo ""
 fi
