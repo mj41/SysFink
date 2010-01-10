@@ -202,18 +202,18 @@ sub rpc_err  {
 }
 
 
-=head2 conf_err
+=head2 mconf_err
 
 Set error message to error from conf object. Return 0 as method err.
 
 =cut
 
-sub conf_err  {
+sub mconf_err  {
     my ( $self ) = @_;
 
-    return undef unless defined $self->{conf_obj};
-    my $conf_err = $self->{conf_obj}->err();
-    return $self->err( $conf_err );
+    return undef unless defined $self->{mconf_obj};
+    my $mconf_err = $self->{mconf_obj}->err();
+    return $self->err( $mconf_err );
 }
 
 
@@ -365,23 +365,23 @@ sub connect_db {
 }
 
 
-=head2 init_conf_obj
+=head2 init_mconf_obj
 
 Initializce Conf::DBIC object for various uses.
 
 =cut
 
-sub init_conf_obj  {
+sub init_mconf_obj  {
     my ( $self ) = @_;
 
-    return 1 if $self->{conf_obj};
+    return 1 if $self->{mconf_obj};
 
-    my $conf_obj = SysFink::Conf::DBIC->new({
+    my $mconf_obj = SysFink::Conf::DBIC->new({
         ver => $self->{ver},
         schema => $self->{schema},
     });
-    return $self->err("Can't load config object.") unless $conf_obj;
-    $self->{conf_obj} = $conf_obj;
+    return $self->err("Can't load config object.") unless $mconf_obj;
+    $self->{mconf_obj} = $mconf_obj;
     return 1;
 }
 
@@ -395,8 +395,8 @@ Load host related configuration from database for given configuratin's section n
 sub prepare_host_conf_from_db {
     my ( $self ) = @_;
 
-    return 0 unless $self->init_conf_obj();
-    my $conf_obj = $self->{conf_obj};
+    return 0 unless $self->init_mconf_obj();
+    my $mconf_obj = $self->{mconf_obj};
 
     my $host = $self->{host_conf}->{host};
     return $self->set_mandatory_param_err('host') unless $host;
@@ -404,30 +404,30 @@ sub prepare_host_conf_from_db {
     my $conf_section_name = 'general'; # default is 'general'
     $conf_section_name = $self->{host_conf}->{conf_section_name} if defined $self->{host_conf}->{conf_section_name};
 
-    my $machine_id = $conf_obj->get_machine_id( { 'name' => $host } );
-    return $self->err("Can't find machine_id for host '$host' in DB.") unless $machine_id;
+    my $machine_id = $mconf_obj->get_machine_id( $host );
+    return $self->mconf_err() unless $machine_id;
     
-    my $mconf_sec_data = $conf_obj->get_machine_active_mconf_sec_info( $machine_id, $conf_section_name );
-    return $self->err("Can't find mconf_sec_id for machine_id '$machine_id' and section name '$conf_section_name' in DB.") unless $mconf_sec_data;
+    my $mconf_sec_data = $mconf_obj->get_machine_active_mconf_sec_info( $machine_id, $conf_section_name );
+    return $self->mconf_err() unless $mconf_sec_data;
     my ( $mconf_sec_id, $mconf_id ) = @$mconf_sec_data;
 
     # Load 'general' configuration's section.
-    my $section_conf = $conf_obj->load_general_conf( $machine_id, $mconf_id );
-    return $self->err("Can't load general configuration for machine_id '$machine_id' and mconf_id '$mconf_id' in DB.") unless $section_conf;
+    my $section_conf = $mconf_obj->load_general_conf( $machine_id, $mconf_id );
+    return $self->mconf_err() unless $section_conf;
 
     # Load configuration's section selected by user. Use keys/values from this section to replace
     # these loaded from 'general' section.
     if ( $conf_section_name ne 'general' ) {
-        my $tmp_section_conf = $conf_obj->load_sec_conf( $machine_id, $mconf_sec_id );
-        return $self->err("Can't load section configuration for machine_id ''$machine_id and mconf_sec_id '$mconf_sec_id' in DB.") unless $tmp_section_conf;
+        my $tmp_section_conf = $mconf_obj->load_sec_conf( $machine_id, $mconf_sec_id );
+        return $self->mconf_err() unless $tmp_section_conf;
         foreach my $key ( keys %$tmp_section_conf ) {
             $section_conf->{ $key } = $tmp_section_conf->{ $key };
         }
     }
 
     if ( exists $section_conf->{paths} ) {
-        $section_conf->{paths} = $conf_obj->prepare_path_regexes( $section_conf->{paths} );
-        $section_conf->{path_filter_conf} = $conf_obj->get_path_filter_conf( $section_conf->{paths} );
+        $section_conf->{paths} = $mconf_obj->prepare_path_regexes( $section_conf->{paths} );
+        $section_conf->{path_filter_conf} = $mconf_obj->get_path_filter_conf( $section_conf->{paths} );
     }
 
     # All options given on command line are rewrited by values loaded from DB.
@@ -501,6 +501,7 @@ sub scan_test_cmd {
     my ( $self ) = @_;
 
     my $scan_conf = $self->get_scan_conf( 1 );
+    #$scan_conf->{debug_recursion_limit} = 1_000; # debug
     return $self->rpc_err() unless $self->{rpc}->do_debug_rpc( 'scan_host', $scan_conf );
     print "Command 'scan_test' succeeded.\n" if $self->{ver} >= 3;
     return 1;
@@ -958,7 +959,7 @@ Prepare params and call mconf_to_db method on L<SysFink::Conf::DBIC>.
 sub mconf_to_db_cmd {
     my ( $self, $opt ) = @_;
 
-    return 0 unless $self->init_conf_obj();
+    return 0 unless $self->init_mconf_obj();
 
     my $mconf_path = 'conf-machines';
     $mconf_path = $opt->{mconf_path} if defined $opt->{mconf_path};
@@ -974,7 +975,7 @@ sub mconf_to_db_cmd {
         return $self->err("Machine conf directory '$mconf_path' ('$absolute_mconf_path') not found.");;
     }
 
-    return $self->conf_err() unless $self->{conf_obj}->mconf_to_db( $absolute_mconf_path );
+    return $self->mconf_err() unless $self->{mconf_obj}->mconf_to_db( $absolute_mconf_path );
     return 1;
 }
 

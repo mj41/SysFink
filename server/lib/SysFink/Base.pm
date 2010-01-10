@@ -61,9 +61,15 @@ sub err {
     if ( $self->{ver} >= 5 ) {
         my $caller_line = (caller 0+$caller_back)[2];
         my $caller_sub = (caller 1+$caller_back)[3];
-        print  "$caller_sub on line $caller_line - Setting error to: '$err'\n";
+        my $msg_op_typ_str = ( $self->{err} ? 'Adding error' : 'Setting error to' );
+        print  "$caller_sub on line $caller_line - $msg_op_typ_str '$err'\n";
     }
-    $self->{err} = $err;
+    
+    if ( $self->{err} ) {
+        $self->{err} .= "\n" . $err;
+    } else {
+        $self->{err} = $err;
+    }
 
     # return 0 is ok here.
     # You can use  e.g.

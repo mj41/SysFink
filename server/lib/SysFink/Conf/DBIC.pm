@@ -43,15 +43,15 @@ sub new {
 
 =head2 get_machine_id
 
-Return machine_id for given search params.
+Return machine_id for given host.
 
 =cut
 
 sub get_machine_id {
-    my ( $self, $search_data ) = @_;
+    my ( $self, $host ) = @_;
 
-    my $machine_row = $self->{schema}->resultset('machine')->find( $search_data );
-    return undef unless defined $machine_row;
+    my $machine_row = $self->{schema}->resultset('machine')->find({ name => $host, });
+    return $self->err("Can't find machine_id for host '$host' in DB.") unless defined $machine_row;
     return $machine_row->machine_id;
 }
 
@@ -63,19 +63,19 @@ Return active mconf_id for machine_id and sec_name.
 =cut
 
 sub get_machine_active_mconf_sec_info {
-    my ( $self, $machine_id, $sec_name ) = @_;
+    my ( $self, $machine_id, $section_name ) = @_;
 
     my $row = $self->{schema}->resultset('mconf_sec')->find({
         'machine_id.machine_id' => $machine_id,
         'mconf_id.active' => 1,
-        'me.name' => $sec_name,
+        'me.name' => $section_name,
     },{
         'join' => { 'mconf_id' => 'machine_id' },
         'select' => [ 'me.mconf_sec_id', 'me.mconf_id', ],
         'as' => [ 'mconf_sec_id', 'mconf_id', ],
     });
 
-    return undef unless defined $row;
+    return $self->err("Can't find mconf_sec_id for machine_id '$machine_id' and section name '$section_name' in DB.") unless $row;
     return [ $row->get_column('mconf_sec_id'), $row->get_column('mconf_id') ];
 }
 
@@ -212,6 +212,7 @@ sub load_general_conf {
         1, # $only_one_section
         1  # $unwrap_paths
     );
+    return $self->err("Can't load general configuration for machine_id '$machine_id' and mconf_id '$mconf_id' in DB.") unless $data;
     return $data;
 }
 
@@ -234,6 +235,7 @@ sub load_sec_conf {
         1, # $only_one_section
         1  # $unwrap_paths
     );
+    return $self->err("Can't load section configuration for machine_id '$machine_id' and mconf_sec_id '$mconf_sec_id' in DB.") unless $data;
     return $data;
 }
 

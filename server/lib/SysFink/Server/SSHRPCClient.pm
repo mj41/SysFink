@@ -275,12 +275,12 @@ sub do_rcc {
     my ( $self, $cmd, $report_err ) = @_;
     $report_err = 1 unless defined $report_err;
 
-    print "Running client command '$cmd':\n" if $self->{ver} >= 5;
+    print "Running client command '$cmd':\n" if $self->{ver} >= 6;
 
     my ( $out, $err ) = $self->{ssh}->capture2( $cmd );
     my $exit_code = $?;
 
-    if ( $self->{ver} >= 4 && ( $out || $err || $exit_code ) ) {
+    if ( $self->{ver} >= 5 && ( $out || $err || $exit_code ) ) {
         my $msg_out = 'undef';
         $msg_out = "'" . $out . "'" if defined $out;
 
@@ -404,6 +404,7 @@ sub check_client_dir {
         return 0;
     }
 
+    print "Command 'check_client_dir' succeeded.\n" if $self->{ver} >= 3;
     return 1;
 }
 
