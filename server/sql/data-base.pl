@@ -26,4 +26,17 @@ $schema->resultset('aud_status')->populate([
     [ 5,  'alert',    'Security alert. Fix it soon.',   ],
 ]);
 
+
+# table: pkg_type
+$schema->resultset('pkg_type')->delete_all();
+
+$schema->resultset('pkg_type')->populate([
+    [ qw/ pkg_type_id name desc / ],
+    [ 1, 'dir', 'Items/idata in directory on server filesystem. Structure starts inside pkgdir (config parameter).', ],
+    [ 2, 'tar', 'Packed directory. Same as dir, but packed to tar file format or to any compressed tar.', ],
+    [ 3, 'rpm', 'Items/idata in RPM (a software package file format).', ],
+    [ 4, 'deb', 'Items/idata in DEB (a software package format used by the Debian project).', ],
+]);
+
+
 $schema->storage->txn_commit;

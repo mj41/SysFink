@@ -216,6 +216,111 @@ CREATE TABLE aud_idata (
 ) TYPE=InnoDB COMMENT='Audit status of one file info (of one scan). Tag:Audit.';
 </source>
 
+=== Table pkg_type ===
+<source lang=sql>
+CREATE TABLE pkg_type (
+    pkg_type_id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name                VARCHAR(10) DEFAULT NULL,
+    `desc`              VARCHAR(1500) DEFAULT NULL
+) TYPE=InnoDB COMMENT='Possibilites for packages types. Tag:Package. Type:Table of keys.';
+</source>
+
+=== Table pkg ===
+<source lang=sql>
+CREATE TABLE pkg (
+    pkg_id      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(10) NOT NULL,
+    info        VARCHAR(500) DEFAULT NULL,
+    `desc`      VARCHAR(500) DEFAULT NULL COMMENT 'Description for newes version of packege.',
+    pkg_type_id INT UNSIGNED NOT NULL,
+    sub_path    VARCHAR(500) DEFAULT NULL,
+    CONSTRAINT fk_pkg_pkg_type_id FOREIGN KEY (pkg_type_id) REFERENCES pkg_type (pkg_type_id)
+) TYPE=InnoDB COMMENT='List of packages names. Tag:Package.';
+</source>
+
+=== Table pkg_load ===
+<source lang=sql>
+CREATE TABLE pkg_load (
+    pkg_load_id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id             INT UNSIGNED DEFAULT NULL,
+    date                DATETIME NOT NULL,
+    found               INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Number of pkgs found during loading.',
+    added               INT UNSIGNED NOT NULL DEFAULT 0,
+    changed             INT UNSIGNED NOT NULL DEFAULT 0,
+    removed             INT UNSIGNED NOT NULL DEFAULT 0,
+    CONSTRAINT fk_aud_user_id FOREIGN KEY (user_id) REFERENCES user (user_id)
+) TYPE=InnoDB COMMENT='Log for packages loading. Tag:Package.';
+</source>
+    
+=== Table pkg_ver ===
+<source lang=sql>
+CREATE TABLE pkg_ver (
+    pkg_ver_id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    pkg_load_id         INT UNSIGNED NOT NULL,
+    pkg_id              INT UNSIGNED NOT NULL,
+    ver                 VARCHAR(30) NOT NULL,
+    CONSTRAINT fk_pkg_ver_pkg_load_id FOREIGN KEY (pkg_load_id) REFERENCES pkg_load (pkg_load_id),
+    CONSTRAINT fk_pkg_ver_pkg_id FOREIGN KEY (pkg_id) REFERENCES pkg (pkg_id)
+) TYPE=InnoDB COMMENT='Available versions for each package. Tag:Package.';
+</source>
+
+=== Table pkg_item ===
+<source lang=sql>
+CREATE TABLE pkg_item (
+    pkg_item_id     INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    pkg_ver_id      INT UNSIGNED NOT NULL,
+    path_id         INT UNSIGNED NOT NULL,
+    mtime           DATETIME DEFAULT NULL,
+    mode            INT UNSIGNED DEFAULT NULL,
+    size            INT UNSIGNED DEFAULT NULL,
+    uid             INT UNSIGNED DEFAULT NULL,
+    user_name       VARCHAR(50) DEFAULT NULL,
+    gid             INT UNSIGNED DEFAULT NULL,
+    group_name      VARCHAR(50) DEFAULT NULL,
+    hash            VARCHAR(32) DEFAULT NULL,
+    CONSTRAINT pkg_item_pkg_ver_id FOREIGN KEY (pkg_ver_id) REFERENCES pkg_ver (pkg_ver_id),
+    CONSTRAINT fk_pkg_item_path_id FOREIGN KEY (path_id) REFERENCES path (path_id)
+) TYPE=InnoDB COMMENT='Items and attributes for each package version. Tag:Package.';
+</source>
+
+=== Table mpkg ===
+<source lang=sql>
+CREATE TABLE mpkg (
+    mpkg_id     INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    mconf_id    INT UNSIGNED NOT NULL,
+    pkg_id      INT UNSIGNED NOT NULL,
+    ver_regex   VARCHAR(50) DEFAULT NULL,
+    pos         INT UNSIGNED NOT NULL,
+    CONSTRAINT fk_mpkg_mconf_id FOREIGN KEY (mconf_id) REFERENCES mconf (mconf_id),
+    CONSTRAINT fk_mpkg_pkg_id FOREIGN KEY (pkg_id) REFERENCES pkg (pkg_id)
+) TYPE=InnoDB COMMENT='Machine packages definition. Tag:Machine_package.';
+</source>
+
+
+=== Table mpkg_ver ===
+<source lang=sql>
+CREATE TABLE mpkg_ver (
+    mpkg_ver_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    mpkg_id     INT UNSIGNED NOT NULL,
+    pkg_load_id INT UNSIGNED NOT NULL,
+    pkg_ver_id  INT UNSIGNED NOT NULL,
+    CONSTRAINT fk_mpkg_ver_mpkg_id FOREIGN KEY (mpkg_id) REFERENCES mpkg (mpkg_id),
+    CONSTRAINT fk_mpkg_ver_pkg_load_id FOREIGN KEY (pkg_load_id) REFERENCES pkg_load (pkg_load_id),
+    CONSTRAINT fk_mpkg_ver_pkg_ver_id FOREIGN KEY (pkg_ver_id) REFERENCES pkg_ver (pkg_ver_id)
+) TYPE=InnoDB COMMENT='Concrete package versions for each machine. Tag:Machine_package.';
+</source>
+
+=== Table mpkg_sitem ===
+<source lang=sql>
+CREATE TABLE mpkg_sitem (
+    mpkg_sitem_id       INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    mpkg_ver_id         INT UNSIGNED NOT NULL,
+    pkg_item_id         INT UNSIGNED NOT NULL,
+    CONSTRAINT fk_mpkg_sitem_mpkg_ver_id FOREIGN KEY (mpkg_ver_id) REFERENCES mpkg_ver (mpkg_ver_id),
+    CONSTRAINT fk_mpkg_sitem_pkg_item_id FOREIGN KEY (pkg_item_id) REFERENCES pkg_item (pkg_item_id)
+) TYPE=InnoDB COMMENT='Items which should be skipped when creating package items list for the machine. Tag:Machine_package.';
+</source>
+
 === Footer ===
 
 <source lang=sql>
