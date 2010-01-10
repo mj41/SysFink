@@ -19,10 +19,14 @@ sub main {
     my $help = 0;
 
     my $options = {
-        ver => 2,
+        ver => 3,
         cmd => undef,
         host => undef,
         section => undef,
+
+        mconf_path => undef,
+
+        who => undef,
 
         no_db => 0,
         ssh_user => undef,
@@ -36,6 +40,10 @@ sub main {
         'cmd=s' => \$options->{'cmd'},
         'host=s' => \$options->{'host'},
         'section=s' => \$options->{'section'},
+
+        'mconf_path=s' => \$options->{'mconf_path'},
+
+        'who=s' => \$options->{'who'},
 
         'no_db' => \$options->{'no_db'},
         'ssh_user=s' => \$options->{'ssh_user'},
@@ -72,7 +80,7 @@ perl sysfink.pl [options]
  Options:
     --help ... Prints this help informations.
     
-    --ver=$NUM ... Verbosity level 0..10 Default 2.
+    --ver=$NUM ... Verbosity level 0..10 Default 3.
 
     --cmd=? ... See availible commands below:
 
@@ -115,30 +123,40 @@ perl sysfink.pl [options]
         Also required --host.
         Also require --ssh_user if --no_db given.
 
+    --cmd=mconf_to_db
+        Load machine config files to DB.
+        Optional --mconf_path=? to specify base path where are machine config files located.
+
     --cmd=scan_test
         Run scan_test command on given host. Load config from database, run scan comand in debug mode (online debug
         output) and do not change anything inside DB.
         Return nothing (on success) or error message.
         Also required --host.
-        Also require --ssh_user if --no_db given.
 
     --cmd=scan
         Run scan on given host. Load config from database and save results there.
         Return nothing (on success) or error message.
         Also required --host.
-        Also require --ssh_user if --no_db given.
 
-    --host ... Full hostname of client for SSH connect.
+    --cmd=diff
+        Show diff for given host. 
+        Also required --host.
 
-    --section ... Configuration section name to use.
+    --host=? ... Full hostname of client for SSH connect.
+
+    --section=? ... Configuration section name to use.
+
+    --who=?
+        User login to find user_id. Default is determined by terminal user/login info compared 
+        with 'who' attribute in DB.
 
     --no_db 
         Do not connect to DB. Parameters like ssh_user or host_dist_type are required
         for some commands.
     
-    --ssh_user ... User name for SSH connect.
+    --ssh_user=? ... User name for SSH connect.
 
-    --host_dist_type ... Distribution type e.g. irix-bin-64b, linux-perl-md5, ...
+    --host_dist_type=? ... Distribution type e.g. irix-bin-64b, linux-perl-md5, ...
 
 =head1 DESCRIPTION
 

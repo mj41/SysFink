@@ -35,7 +35,6 @@ sub new {
 
     $self->{ver} = 3;
     $self->{ver} = $params->{ver} if defined $params->{ver};
-    
     $self->{err} = undef;
 
     bless $self, $class;

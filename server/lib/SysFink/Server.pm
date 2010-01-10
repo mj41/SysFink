@@ -117,6 +117,11 @@ sub run {
             'type' => 'self',
         },
 
+        'mconf_to_db' => {
+            'connect_to_db' => 1,
+            'type' => 'self',
+        },
+
         'diff' => {
             'connect_to_db' => 1,
             'validate_host_name_if_given' => 1,
@@ -178,7 +183,7 @@ sub run {
 
     # Run given comman method.
     my $cmd_method_name = $cmd . '_cmd';
-    return $self->$cmd_method_name();
+    return $self->$cmd_method_name( $opt );
 }
 
 
@@ -194,6 +199,21 @@ sub rpc_err  {
     return undef unless defined $self->{rpc};
     my $rpc_err = $self->{rpc}->err();
     return $self->err( $rpc_err );
+}
+
+
+=head2 conf_err
+
+Set error message to error from conf object. Return 0 as method err.
+
+=cut
+
+sub conf_err  {
+    my ( $self ) = @_;
+
+    return undef unless defined $self->{conf_obj};
+    my $conf_err = $self->{conf_obj}->err();
+    return $self->err( $conf_err );
 }
 
 
@@ -345,6 +365,27 @@ sub connect_db {
 }
 
 
+=head2 init_conf_obj
+
+Initializce Conf::DBIC object for various uses.
+
+=cut
+
+sub init_conf_obj  {
+    my ( $self ) = @_;
+
+    return 1 if $self->{conf_obj};
+
+    my $conf_obj = SysFink::Conf::DBIC->new({
+        ver => $self->{ver},
+        schema => $self->{schema},
+    });
+    return $self->err("Can't load config object.") unless $conf_obj;
+    $self->{conf_obj} = $conf_obj;
+    return 1;
+}
+
+
 =head2 prepare_host_conf_from_db
 
 Load host related configuration from database for given configuratin's section name.
@@ -354,13 +395,11 @@ Load host related configuration from database for given configuratin's section n
 sub prepare_host_conf_from_db {
     my ( $self ) = @_;
 
+    return 0 unless $self->init_conf_obj();
+    my $conf_obj = $self->{conf_obj};
+
     my $host = $self->{host_conf}->{host};
     return $self->set_mandatory_param_err('host') unless $host;
-
-    my $conf_obj = SysFink::Conf::DBIC->new({
-        schema => $self->{schema},
-    });
-    return $self->err("Can't load config object.") unless $conf_obj;
 
     my $conf_section_name = 'general'; # default is 'general'
     $conf_section_name = $self->{host_conf}->{conf_section_name} if defined $self->{host_conf}->{conf_section_name};
@@ -728,7 +767,7 @@ Run scan command.
 =cut
 
 sub scan_cmd {
-    my ( $self ) = @_;
+    my ( $self, $opt ) = @_;
 
     my $ver = $self->{ver};
     my $schema  = $self->{schema};
@@ -905,6 +944,37 @@ sub scan_cmd {
 
     #print "sleeping ...\n"; sleep(10*60); # debug size of used memory
     print "Command 'scan' succeeded.\n" if $self->{ver} >= 3;
+    return 1;
+}
+
+
+
+=head2 mconf_to_db
+
+Prepare params and call mconf_to_db method on L<SysFink::Conf::DBIC>.
+
+=cut
+
+sub mconf_to_db_cmd {
+    my ( $self, $opt ) = @_;
+
+    return 0 unless $self->init_conf_obj();
+
+    my $mconf_path = 'conf-machines';
+    $mconf_path = $opt->{mconf_path} if defined $opt->{mconf_path};
+
+    my $absolute_mconf_path;
+    if ( $mconf_path =~ m{^\/} ) {
+        $absolute_mconf_path = $mconf_path;
+    } else {
+        $absolute_mconf_path = catdir( $self->{RealBin}, $mconf_path );
+    }
+
+    unless ( -d $absolute_mconf_path ) {
+        return $self->err("Machine conf directory '$mconf_path' ('$absolute_mconf_path') not found.");;
+    }
+
+    return $self->conf_err() unless $self->{conf_obj}->mconf_to_db( $absolute_mconf_path );
     return 1;
 }
 

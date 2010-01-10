@@ -42,6 +42,8 @@ install DateTime
 
 install JSON
 
+install Data::Compare
+
 install Config::Multi
 
 install Test::Tester
@@ -92,17 +94,40 @@ exclude     /
 include     /etc
 <Ctrl+D>
 
-# Import server SSH key/certificate for user 'root' to my-first-machine.my-domain.com
-
 # Create empty db file
 cp sysfink-empty.db sysfink.db
-
-# Load config files to database
-perl utils/conf-to-db.pl
 
 # Run SysFink servers' tests
 perl t/harness.pl
 
-# Check if you can run SysFink server
+# Check if you can run SysFink server utility.
 perl sysfink.pl --help
+
+# Load config files to database
+perl sysfink.pl --cmd=mconf_to_db
+
+# Import server SSH key/certificate for user 'root' to my-first-machine.my-domain.com
+
+# Run first test command on client machine.
+perl sysfink.pl --host=my-first-machine --cmd=test_hostname
+
+# Debug or monitor with more verbose output (--ver=4 to --ver=10).
+perl sysfink.pl --host=my-first-machine --cmd=test_hostname --ver=10
+
+# Run rest of test command on you client.
+perl sysfink.pl --host=my-first-machine --cmd=check_client_dir
+perl sysfink.pl --host=my-first-machine --cmd=remove_client_dir
+perl sysfink.pl --host=my-first-machine --cmd=renew_client_dir
+perl sysfink.pl --host=my-first-machine --cmd=test_noop_rpc
+perl sysfink.pl --host=my-first-machine --cmd=test_three_parts_rpc
+
+# Finally run scan testing command. These can take a while.
+# Consider to use --section=fastscan if you have this in machine config.
+perl sysfink.pl --host=my-first-machine --cmd=scan_test --section=fastscan
+perl sysfink.pl --host=my-first-machine --cmd=scan_test
+
+# Renew SysFink source code again (if you are paranoid enought) and run the first
+# normal scan command.
+perl sysfink.pl --host=my-first-machine --cmd=renew_client_dir
+perl sysfink.pl --host=my-first-machine --cmd=scan
 

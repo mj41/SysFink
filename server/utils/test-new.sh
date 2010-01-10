@@ -47,19 +47,24 @@ if [ $TEST_TYPE = "dev" ]; then
     if [ -f "sysfink.db" ]; then
         echo "Removing sysfink.db"
         rm sysfink.db
+    echo ""
     fi
     
     echo "Executing temp/schema-raw-create-sqlite.sql (perl utils/db-run-sqlscript.pl):"
     perl ./utils/db-run-sqlscript.pl temp/schema-raw-create-sqlite.sql 1
+    echo ""
     
-    echo "Copying 'sysfink.db' to 'sysfink-empty.db'."
-    cp sysfink.db sysfink-empty.db
-
     echo "Executing sql/data-base.pl:"
     perl ./sql/data-base.pl
+    echo ""
+
+    echo "Copying 'sysfink.db' to 'sysfink-empty.db'."
+    cp sysfink.db sysfink-empty.db
+    echo ""
     
-    echo "Running perl utils/conf-to-db.pl --machine_conf_path=conf-machines-test"
-    perl utils/conf-to-db.pl --machine_conf_path="t/conf-machines-test"
+    echo "perl sysfink.pl --cmd=mconf_to_db --mconf_path=\"t/conf-machines-test\""
+    perl sysfink.pl --cmd=mconf_to_db --mconf_path="t/conf-machines-test"
+    echo ""
 fi
 
 
@@ -72,30 +77,23 @@ cd ../client && perl t/harness.pl
 cd ../server
 echo ""
 
-echo "Online tests on host '$HOST':"
-echo ""
-
-perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=test_hostname --ver=$VER
-
-perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=check_client_dir --ver=$VER
-echo ""
-
-perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=remove_client_dir --ver=$VER
-echo ""
-
-perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=renew_client_dir --host_dist_type=$DIST_TYPE --ver=$VER
-echo ""
-
-perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=test_noop_rpc --ver=$VER
-echo ""
-
-perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=test_three_parts_rpc --ver=$VER
-echo ""
-
-echo "Running 'perl ... --cmd=scan_test | tail -n 15':"
-perl sysfink.pl --host=$HOST --cmd=scan_test --section=fastscan --ver=$VER | tail -n 15
-
-echo ""
+echo "Online tests on host '$HOST':" \
+&& echo "" \
+&& perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=test_hostname --ver=$VER \
+&& echo "" \
+&& perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=check_client_dir --ver=$VER \
+&& echo "" \
+&& perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=remove_client_dir --ver=$VER \
+&& echo "" \
+&& perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=renew_client_dir --host_dist_type=$DIST_TYPE --ver=$VER \
+&& echo "" \
+&& perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=test_noop_rpc --ver=$VER \
+&& echo "" \
+&& perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=test_three_parts_rpc --ver=$VER \
+&& echo "" \
+&& echo "Running 'perl ... --cmd=scan_test | tail -n 15':" \
+&& perl sysfink.pl --host=$HOST --cmd=scan_test --section=fastscan --ver=$VER | tail -n 15 \
+&& echo ""
 
 if [ $TEST_TYPE = "dev" ]; then
     echo "Moving 'sysfink.db' to 'temp/sysfink-dev.db'."
