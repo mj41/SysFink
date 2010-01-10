@@ -6,14 +6,14 @@ Usage:
   utils/test-new.sh dev|current hostname.example.com verbosity_level host_dist_type
 
 Example:
-  utils/test-new.sh dev gorilla 3 linux-perl-md5
-  utils/test-new.sh current gorilla 3 linux-perl-md5
+  utils/test-new.sh dev tapir1 3 linux-perl-md5
+  utils/test-new.sh current tapir1 3 linux-perl-md5
 
 Advanced example: 
-  clear && echo "Running 'dev' and 'current' tests an tee to 'temp/test-new.out.'" \\
+  clear && echo "Running 'dev' and 'current' tests and tee to 'temp/test-new.out.'" \\
   && echo "Go ..." | tee temp/test-new.out \\
-  && utils/test-new.sh dev gorilla 3 linux-perl-md5 | tee -a temp/test-new.out \\
-  && utils/test-new.sh current gorilla 3 linux-perl-md5 | tee -a temp/test-new.out \\
+  && utils/test-new.sh dev tapir1 3 linux-perl-md5 | tee -a temp/test-new.out \\
+  && utils/test-new.sh current tapir1 3 linux-perl-md5 | tee -a temp/test-new.out \\
   && echo "" && echo "All done. Use 'cat temp/test-new.out | more' to see output again."
 
 USAGE_END
@@ -75,6 +75,10 @@ if [ $TEST_TYPE = "dev" ]; then
     cp sysfink.db sysfink-empty.db
     echo ""
     
+    echo "Executing sql/data-dev.pl:"
+    perl ./sql/data-dev.pl
+    echo ""
+
     echo "Running perl sysfink.pl --cmd=mconf_to_db --mconf_path=\"t/conf-machines-test\""
     perl sysfink.pl --cmd=mconf_to_db --mconf_path="t/conf-machines-test"
     echo ""
@@ -114,6 +118,10 @@ echo "Online tests on host '$HOST':" \
 && echo ""
 
 if [ $TEST_TYPE = "dev" ]; then
+    echo "Running 'perl ... --cmd=scan --section=testscan'."
+    perl sysfink.pl --host=$HOST --cmd=scan --section=testscan --ver=$VER
+    echo "Done."
+
     echo "Moving 'sysfink.db' to 'temp/sysfink-dev.db'."
     mv sysfink.db temp/sysfink-dev.db || ( echo "Moving failed." && exit )
     echo ""

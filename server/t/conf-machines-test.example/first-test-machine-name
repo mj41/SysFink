@@ -6,3 +6,7 @@ exclude     /dev/ /home/ /proc/ /sys/ /var/ /mnt/
 [fastscan]
 exclude     /
 include     /etc
+
+[testscan]
+exclude     /
+include     /root/sysfink-test-dir
