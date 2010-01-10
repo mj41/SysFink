@@ -1,9 +1,9 @@
 #!/bin/bash
 
 function echo_help {
-cat <<USAGE_END 
+cat <<USAGE_END
 Usage:
-  utils/test-new.sh dev|current hostname.example.com verbosity_level linux-bin-64b"
+  utils/test-new.sh dev|current hostname.example.com verbosity_level host_dist_type
 
 Example:
   utils/test-new.sh dev gorilla 3 linux-perl-md5
