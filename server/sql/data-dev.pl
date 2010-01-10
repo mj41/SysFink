@@ -23,9 +23,9 @@ $schema->storage->txn_begin;
 $schema->resultset('user')->delete_all();
 
 $schema->resultset('user')->populate([
-    [ qw/ user_id login passwd first_name last_name active created / ],
-    [ 1, 'poder', 'abc', 'Tomáš',  'Podermański', 1, $now, ],
-    [ 2, 'mj41',  'mno', 'Michal', 'Jurosz',      1, $now, ],
+    [ qw/ user_id login passwd who first_name last_name active created / ],
+    [ 1, 'poder', 'abc', undef,  'Tomáš',  'Podermański', 1, $now, ],
+    [ 2, 'mj41',  'mno', 'r-mj', 'Michal', 'Jurosz',      1, $now, ],
 ]);
 
 
