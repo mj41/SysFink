@@ -84,6 +84,7 @@ sub run {
             'type' => 'rpc',
         },
         'renew_client_dir' => {
+            'load_host_conf_from_db_if_no' => [ qw/ host_dist_type / ],
             'ssh_connect' => 1,
             'type' => 'rpc',
         },
@@ -142,9 +143,24 @@ sub run {
     }
 
     my $cmd_conf = $all_cmd_confs->{ $cmd };
+    
+    # Special params.
+    if ( $cmd_conf->{'load_host_conf_from_db_if_no'} ) {
+        my $all_found = 1;
+        foreach my $conf_param_name ( @{ $cmd_conf->{'load_host_conf_from_db_if_no'} } ) {
+            if ( not defined $opt->{ $conf_param_name } ) {
+                $all_found = 0;
+                last;
+            }
+        }
+        if ( ! $all_found ) {
+            $cmd_conf->{connect_to_db} = 1;
+            $cmd_conf->{load_host_conf_from_db} = 1;
+        }
+    }
 
     # Load db config and connect to DB.
-    if ( $cmd_conf->{connect_to_db} || !$opt->{no_db} ) {
+    if ( $cmd_conf->{connect_to_db} && !$opt->{no_db} ) {
         return 0 unless $self->connect_db();
     }
 
@@ -204,7 +220,7 @@ sub rpc_err  {
 
     return undef unless defined $self->{rpc};
     my $rpc_err = $self->{rpc}->err();
-    return $self->err( $rpc_err );
+    return $self->err( $rpc_err, 1 );
 }
 
 
@@ -219,7 +235,7 @@ sub mconf_err  {
 
     return undef unless defined $self->{mconf_obj};
     my $mconf_err = $self->{mconf_obj}->err();
-    return $self->err( $mconf_err );
+    return $self->err( $mconf_err, 1 );
 }
 
 
@@ -1027,6 +1043,49 @@ sub mconf_to_db_cmd {
     return 1;
 }
 
+use Fcntl ':mode';
+=head2 mode_to_lsmode
+
+Convert numeric node number to ls format. Used for debug output.
+
+=cut
+
+sub mode_to_lsmode() {
+    my ( $self, $mode ) = @_;
+
+    unless ( defined($mode) ) {
+        return "??????????";
+    }
+
+    my @flag;
+
+    $flag[0] = S_ISDIR($mode) ? 'd' : '-';
+    $flag[0] = 'l' if (S_ISLNK($mode));
+    $flag[0] = 'b' if (S_ISBLK($mode));
+    $flag[0] = 'c' if (S_ISCHR($mode)) ;
+    $flag[0] = 'p' if (S_ISFIFO($mode));
+    $flag[0] = 's' if (S_ISSOCK($mode));
+
+    $flag[1] = ($mode & S_IRUSR) >> 6 ? 'r' : '-';
+    $flag[2] = ($mode & S_IWUSR) >> 6 ? 'w' : '-';
+    $flag[3] = ($mode & S_IXUSR) >> 6 ? 'x' : '-';
+    $flag[3] = 's' if (($mode & S_ISUID) >> 6);
+
+    $flag[4] = ($mode & S_IRGRP) >> 3 ? 'r' : '-';
+    $flag[5] = ($mode & S_IWGRP) >> 3 ? 'w' : '-';
+    $flag[6] = ($mode & S_IXGRP) >> 3 ? 'x' : '-';
+    $flag[6] = 's' if (($mode & S_ISGID) >> 6);
+
+    $flag[7] = ($mode & S_IROTH) >> 0 ? 'r' : '-';
+    $flag[8] = ($mode & S_IWOTH) >> 0 ? 'w' : '-';
+    $flag[9] = ($mode & S_IXOTH) >> 0 ? 'x' : '-';
+    $flag[9] = 't' if (($mode & S_ISVTX) >> 0);
+
+#   ($mode & S_IRGRP) >> 3;
+
+    return join('', @flag);
+}
+
 
 =head2 diff_cmd
 
@@ -1040,7 +1099,6 @@ sub diff_cmd {
     my $ver = $self->{ver};
     my $schema  = $self->{schema};
 
-    # ToDo
     # Check params.
     my $host = $opt->{host};
     if ( $opt->{section} ) {
@@ -1048,68 +1106,128 @@ sub diff_cmd {
     }
 
     # Load hosts with not audited diffs or check if given host/section has not audited diffs.
-    my $machine_ids = [];
+    my $machine_id = undef;
+    my $mconf_sec_id = undef;
     if ( $host ) {
         return 0 unless $self->init_mconf_obj();
-        my $machine_id = $self->{mconf_obj}->get_machine_id( $host );
+        $machine_id = $self->{mconf_obj}->get_machine_id( $host );
         return $self->mconf_err() unless $machine_id;
-        push @$machine_ids, $machine_id;
+        
+        if ( $opt->{section} ) {
+            my $mconf_sec_data = $self->{mconf_obj}->get_machine_active_mconf_sec_info( $machine_id, $opt->{section} );
+            return $self->mconf_err() unless $mconf_sec_data;
+            $mconf_sec_id = $mconf_sec_data->[0];
+        }
     }
 
-    my $cols = [];
-    my $idata_items = [ keys %{get_item_attrs()} ];
-    unshift @$idata_items, 'sc_idata_id';
-    foreach my $item ( @$idata_items ) {
-        push @$cols, 'sid.' . $item;
-    }
-    foreach my $item ( @$idata_items ) {
-        push @$cols, 'psid.' . $item;
-    }
+    my $attrs_conf = get_item_attrs();
 
-    push @$cols, ( qw/ 
+    my $cols = [ qw/ 
         mc.machine_id
         path.path
-    / );
+        sd.sc_idata_id
+        psd.sc_idata_id
+        machine.name 
+    / ];
+
+    my $idata_items = [];
+    foreach my $item ( keys %$attrs_conf ) {
+        push @$cols, 'sd.' . $item;
+    }
+    foreach my $item ( keys %$attrs_conf ) {
+        push @$cols, 'psd.' . $item;
+    }
+
     
     my $cols_sql_str = '';
     #$cols_sql_str = join( q{, }, @$cols );
-    foreach my $col ( @$cols ) {
+    my $name_to_pos = {};
+    my $pos_to_name = [];
+    foreach my $col_num ( 0..$#$cols ) {
+        my $col = $cols->[ $col_num ];
         $cols_sql_str .= ",\n" if $cols_sql_str;
         $cols_sql_str .= $col;
         if ( $col =~ /\./ ) {
             my $esc_col = $col;
             $esc_col =~ tr{\.}{\_};
             $cols_sql_str .= ' as ' . $esc_col;
+            $name_to_pos->{ $esc_col } = $col_num;
+            $pos_to_name->[ $col_num ] = $esc_col;
+        } else {
+            $name_to_pos->{ $cols_sql_str } = $col_num;
+            $pos_to_name->[ $col_num ] = $col;
         }
     }
-    $self->dump( 'cols', $cols );
-    $self->dump( 'cols', $cols_sql_str );
+    
+    if ( $self->{ver} >= 10 ) {
+        $self->dump( 'cols', $cols );
+        $self->dump( '$cols_sql_str', $cols_sql_str );
+        $self->dump( '$name_to_pos', $name_to_pos );
+        $self->dump( '$pos_to_name', $pos_to_name );
+    }
 
-    my $stuff = $schema->storage->dbh_do(
+    my $data = $schema->storage->dbh_do(
         sub {
-            return $_[1]->selectall_arrayref("
-                 select $_[2]
-                   from sc_idata sid,
-                        sc_idata psid,
-                        sc_mitem smi,
+            my ( $storage, $dbh, $cols_str, $data ) = @_;
+            return $dbh->selectall_arrayref("
+                 select $cols_str
+                   from sc_idata sd,
+                        sc_idata psd,
+                        sc_mitem si,
                         path,
                         scan,
                         mconf_sec mcs,
-                        mconf mc
-                  where sid.newer_id is null
-                    and smi.sc_mitem_id = sid.sc_mitem_id
-                    and path.path_id = smi.path_id
-                    and scan.scan_id = sid.scan_id
+                        mconf mc,
+                        machine
+                  where sd.newer_id is null
+                    and psd.newer_id = sd.sc_idata_id
+                    and si.sc_mitem_id = sd.sc_mitem_id
+                    and path.path_id = si.path_id
+                    and scan.scan_id = sd.scan_id
+                    and ( ? is null or scan.mconf_sec_id = ? )
                     and mcs.mconf_sec_id = scan.mconf_sec_id
                     and mc.mconf_id = mcs.mconf_id
-                    and psid.newer_id = sid.sc_idata_id
-            ");
+                    and ( ? is null or machine.machine_id = ? )
+                    and machine.active = 1
+                ",
+                {}, @$data
+            );
         },
-        $cols_sql_str
+        $cols_sql_str,
+        [ $mconf_sec_id, $mconf_sec_id, $machine_id, $machine_id ]
     );
-    $self->dump( 'stuff', $stuff );
+    $self->dump( 'data', $data );
+
+    my $prev_machine_name = '';
+    foreach my $row ( @$data ) {
+        # machine
+        my $machine_name = $row->[ $name_to_pos->{machine_name} ];
+        if ( $prev_machine_name ne $machine_name ) {
+            print $machine_name . "\n";
+            $prev_machine_name = $machine_name;
+        }
+
+        # path
+        print "  " . $row->[ $name_to_pos->{path_path} ] . ":\n";
+
+        # attrs changes
+        foreach my $attr ( keys %$attrs_conf ) {
+            my $new = $row->[ $name_to_pos->{'sd_'.$attr} ];
+            my $old = $row->[ $name_to_pos->{'psd_'.$attr} ];
+            
+            my $is_number = $attrs_conf->{ $attr };
+            if ( ($is_number && $new != $old) || (!$is_number && $new ne $old) ) {
+                if ( $attr eq 'mode' ) {
+                    my $old_mode_str = $self->mode_to_lsmode( $old );
+                    my $new_mode_str = $self->mode_to_lsmode( $new );
+                    print "    $attr: $old_mode_str -> $new_mode_str\n";
+                } else {
+                    print "    $attr: $old -> $new\n";
+                }
+            }
+        }
+    }
     
-    print "Command 'diff' succeeded.\n" if $self->{ver} >= 3;
     return 1;
 }
 

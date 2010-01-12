@@ -113,6 +113,10 @@ echo "Online tests on host '$HOST':" \
 && echo "" \
 && perl sysfink.pl --no_db --ssh_user=root --host=$HOST --cmd=test_three_parts_rpc --ver=$VER \
 && echo "" \
+&& perl sysfink.pl --ssh_user=root --host=$HOST --cmd=renew_client_dir --ver=$VER \
+&& echo "" \
+&& perl sysfink.pl --ssh_user=root --host=$HOST --cmd=test_three_parts_rpc --ver=$VER \
+&& echo "" \
 && echo "Running 'perl ... --cmd=scan_test | tail -n 15':" \
 && perl sysfink.pl --host=$HOST --cmd=scan_test --section=fastscan --ver=$VER | tail -n 15 \
 && echo ""
