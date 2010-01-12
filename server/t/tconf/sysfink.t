@@ -13,7 +13,7 @@ use SysFink::Conf::SysFink;
 
 
 my $conf_obj = SysFink::Conf::SysFink->new({
-    conf_dir_path => catdir( $RealBin, '..', 'conf-data', 'tconf-1-sysfink' )
+    conf_dir_path => catdir( $RealBin, '..', 'tconf-data', 'tconf-1-sysfink' )
 });
 
 isa_ok( $conf_obj, 'SysFink::Conf::SysFink' );
