@@ -29,12 +29,4 @@ $schema->resultset('user')->populate([
 ]);
 
 
-# table: machine
-$schema->resultset('machine')->delete_all();
-
-$schema->resultset('machine')->populate([
-    [ qw/  machine_id name desc ip active / ],
-    [ 1, 'tapir1.ro.vutbr.cz', undef, '147.229.191.11', 1, ],
-]);
-
 $schema->storage->txn_commit;
