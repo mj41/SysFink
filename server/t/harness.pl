@@ -7,7 +7,7 @@ use TAP::Harness;
 my @default_tests = (
     't/*.t',
     't/base/*',
-    't/conf/*',
+    't/tconf/*',
     't/scan/*',
     't/utils/*',
 );
