@@ -398,7 +398,7 @@ __PACKAGE__->add_columns(
       'size' => '11'
     },
     'found' => {
-      'data_type' => 'BOOL',
+      'data_type' => 'BOOLEAN',
       'is_auto_increment' => 0,
       'default_value' => undef,
       'is_foreign_key' => 0,
@@ -543,19 +543,19 @@ __PACKAGE__->add_columns(
       'is_nullable' => 0,
       'size' => '50'
     },
-    'desc' => {
+    'descr' => {
       'data_type' => 'TEXT',
       'is_auto_increment' => 0,
       'default_value' => 'NULL',
       'is_foreign_key' => 0,
-      'name' => 'desc',
+      'name' => 'descr',
       'is_nullable' => 1,
       'size' => '65535'
     },
     'ip' => {
       'data_type' => 'VARCHAR',
       'is_auto_increment' => 0,
-      'default_value' => 'NUL',
+      'default_value' => 'NULL',
       'is_foreign_key' => 0,
       'name' => 'ip',
       'is_nullable' => 1,
@@ -738,12 +738,12 @@ __PACKAGE__->add_columns(
       'is_nullable' => 1,
       'size' => '10'
     },
-    'desc' => {
+    'descr' => {
       'data_type' => 'VARCHAR',
       'is_auto_increment' => 0,
       'default_value' => 'NULL',
       'is_foreign_key' => 0,
-      'name' => 'desc',
+      'name' => 'descr',
       'is_nullable' => 1,
       'size' => '1500'
     },
@@ -832,12 +832,12 @@ __PACKAGE__->add_columns(
       'is_nullable' => 1,
       'size' => '11'
     },
-    'key' => {
+    'name' => {
       'data_type' => 'VARCHAR',
       'is_auto_increment' => 0,
       'default_value' => undef,
       'is_foreign_key' => 0,
-      'name' => 'key',
+      'name' => 'name',
       'is_nullable' => 0,
       'size' => '50'
     },
@@ -1121,12 +1121,12 @@ __PACKAGE__->add_columns(
       'is_nullable' => 1,
       'size' => '500'
     },
-    'desc' => {
+    'descr' => {
       'data_type' => 'VARCHAR',
       'is_auto_increment' => 0,
       'default_value' => 'NULL',
       'is_foreign_key' => 0,
-      'name' => 'desc',
+      'name' => 'descr',
       'is_nullable' => 1,
       'size' => '500'
     },
@@ -1215,12 +1215,12 @@ __PACKAGE__->add_columns(
       'is_nullable' => 1,
       'size' => '10'
     },
-    'desc' => {
+    'descr' => {
       'data_type' => 'VARCHAR',
       'is_auto_increment' => 0,
       'default_value' => 'NULL',
       'is_foreign_key' => 0,
-      'name' => 'desc',
+      'name' => 'descr',
       'is_nullable' => 1,
       'size' => '1500'
     },

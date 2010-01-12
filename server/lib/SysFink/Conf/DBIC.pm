@@ -110,19 +110,19 @@ sub load_conf_data_from_rs {
             $last_section_name = $row{section_name};
         }
 
-        my $key = $row{key};
+        my $name = $row{name};
         my $new_value = $row{value};
         
-        if ( exists $mdata->{$key} ) {
-            if ( ref $mdata->{$key} eq 'ARRAY' ) {
-                my $prev_val = $mdata->{$key};
-                push @{$mdata->{$key}}, $new_value;
+        if ( exists $mdata->{$name} ) {
+            if ( ref $mdata->{$name} eq 'ARRAY' ) {
+                my $prev_val = $mdata->{$name};
+                push @{$mdata->{$name}}, $new_value;
             } else {
-                my $prev_val = $mdata->{$key};
-                $mdata->{$key} = [ $prev_val, $new_value ];
+                my $prev_val = $mdata->{$name};
+                $mdata->{$name} = [ $prev_val, $new_value ];
             }
         } else {
-            $mdata->{$key} = $new_value;
+            $mdata->{$name} = $new_value;
         }
     }
 
@@ -182,9 +182,9 @@ sub get_mconf_sec_kv_rs {
         $search_conf,
         {
             'join' => { 'mconf_sec_id' => { 'mconf_id' => 'machine_id' } },
-            'select' => [ 'machine_id.name', 'mconf_sec_id.name', 'key', 'value', 'num' ],
-            'as' => [ 'machine_name', 'section_name', 'key', 'value', 'num' ],
-            'order_by' => [ 'machine_id.machine_id', 'mconf_sec_id.mconf_sec_id', 'key', 'num' ],
+            'select' => [ 'machine_id.name', 'mconf_sec_id.name', 'me.name', 'me.value', 'me.num' ],
+            'as' => [ 'machine_name', 'section_name', 'name', 'value', 'num' ],
+            'order_by' => [ 'machine_id.machine_id', 'mconf_sec_id.mconf_sec_id', 'me.name', 'me.num' ],
         }
     );
 
@@ -364,36 +364,36 @@ sub mconf_to_db  {
                 'name' => $section_name,
             });
 
-            foreach my $key ( keys %$section_kv ) {
+            foreach my $name ( keys %$section_kv ) {
 
-                $order_number->{$section_name}->{$key} = 0 unless exists $order_number->{$section_name}->{$key};
+                $order_number->{$section_name}->{$name} = 0 unless exists $order_number->{$section_name}->{$name};
 
-                my $value = $section_kv->{$key};
-                print "    key-value: $key\n" if $self->{ver} >= 4;
+                my $value = $section_kv->{$name};
+                print "    key-value: $name\n" if $self->{ver} >= 4;
 
                 if ( ref $value eq 'ARRAY' ) {
                     foreach my $value_index ( 0..$#$value ) {
                         my $one_value = $value->[ $value_index ];
-                        $order_number->{$section_name}->{$key}++;
+                        $order_number->{$section_name}->{$name}++;
                         my $mconf_sec_kv_row = $schema->resultset('mconf_sec_kv')->create({
                             'mconf_sec_id' => $mconf_sec_row->id,
-                            'num' => $order_number->{$section_name}->{$key},
-                            'key' => $key,
+                            'num' => $order_number->{$section_name}->{$name},
+                            'name' => $name,
                             'value' => $one_value,
                         });
                     }
 
                 } elsif ( not ref $value ) {
-                    $order_number->{$section_name}->{$key}++;
+                    $order_number->{$section_name}->{$name}++;
                     my $mconf_sec_kv_row = $schema->resultset('mconf_sec_kv')->create({
                         'mconf_sec_id' => $mconf_sec_row->id,
-                        'num' => $order_number->{$section_name}->{$key},
-                        'key' => $key,
+                        'num' => $order_number->{$section_name}->{$name},
+                        'name' => $name,
                         'value' => $value,
                     });
 
                 } else {
-                    return $self->err("Uknown value for key $machine_name:$section_name:$key.");
+                    return $self->err("Uknown value for key $machine_name:$section_name:$name.");
                 }
             }
         }

@@ -18,7 +18,7 @@ $schema->storage->txn_begin;
 $schema->resultset('aud_status')->delete_all();
 
 $schema->resultset('aud_status')->populate([
-    [ qw/ aud_status_id name desc / ],
+    [ qw/ aud_status_id name descr / ],
     [ 1,  'ok (my)',  'Ok. I did it.',                  ],
     [ 2,  'ok',       'Ok. I didn\'t do it.',           ],
     [ 3,  'unknown',  'I don\'t know. ',                ],
@@ -31,7 +31,7 @@ $schema->resultset('aud_status')->populate([
 $schema->resultset('pkg_type')->delete_all();
 
 $schema->resultset('pkg_type')->populate([
-    [ qw/ pkg_type_id name desc / ],
+    [ qw/ pkg_type_id name descr / ],
     [ 1, 'dir', 'Items/idata in directory on server filesystem. Structure starts inside pkgdir (config parameter).', ],
     [ 2, 'tar', 'Packed directory. Same as dir, but packed to tar file format or to any compressed tar.', ],
     [ 3, 'rpm', 'Items/idata in RPM (a software package file format).', ],

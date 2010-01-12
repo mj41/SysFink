@@ -184,49 +184,6 @@ sub flags_hash_to_str {
 }
 
 
-=head2 mode_to_lsmode
-
-Convert numeric node number to ls format. Used for debug output.
-
-=cut
-
-sub mode_to_lsmode() {
-    my ( $self, $mode ) = @_;
-
-    unless ( defined($mode) ) {
-        return "??????????";
-    }
-
-    my @flag;
-
-    $flag[0] = S_ISDIR($mode) ? 'd' : '-';
-    $flag[0] = 'l' if (S_ISLNK($mode));
-    $flag[0] = 'b' if (S_ISBLK($mode));
-    $flag[0] = 'c' if (S_ISCHR($mode)) ;
-    $flag[0] = 'p' if (S_ISFIFO($mode));
-    $flag[0] = 's' if (S_ISSOCK($mode));
-
-    $flag[1] = ($mode & S_IRUSR) >> 6 ? 'r' : '-';
-    $flag[2] = ($mode & S_IWUSR) >> 6 ? 'w' : '-';
-    $flag[3] = ($mode & S_IXUSR) >> 6 ? 'x' : '-';
-    $flag[3] = 's' if (($mode & S_ISUID) >> 6);
-
-    $flag[4] = ($mode & S_IRGRP) >> 3 ? 'r' : '-';
-    $flag[5] = ($mode & S_IWGRP) >> 3 ? 'w' : '-';
-    $flag[6] = ($mode & S_IXGRP) >> 3 ? 'x' : '-';
-    $flag[6] = 's' if (($mode & S_ISGID) >> 6);
-
-    $flag[7] = ($mode & S_IROTH) >> 0 ? 'r' : '-';
-    $flag[8] = ($mode & S_IWOTH) >> 0 ? 'w' : '-';
-    $flag[9] = ($mode & S_IXOTH) >> 0 ? 'x' : '-';
-    $flag[9] = 't' if (($mode & S_ISVTX) >> 0);
-
-#   ($mode & S_IRGRP) >> 3;
-
-    return join('', @flag);
-}
-
-
 =head2 get_dir_items
 
 Load directory items list. Subclassed by L<SysFink::ScanHostTest> for testing.
@@ -315,7 +272,6 @@ sub add_item_and_send_if_needed {
     
     return ( 1, $is_dir ) unless $add_it;
 
-    #my $lsmode_str = $self->mode_to_lsmode( $mode );
     my $tmp_full_path = $full_path;
     $tmp_full_path = '/' unless $full_path;
     my $item_info = {

@@ -484,8 +484,8 @@ sub prepare_host_conf_from_db {
     if ( $conf_section_name ne 'general' ) {
         my $tmp_section_conf = $mconf_obj->load_sec_conf( $machine_id, $mconf_sec_id );
         return $self->mconf_err() unless $tmp_section_conf;
-        foreach my $key ( keys %$tmp_section_conf ) {
-            $section_conf->{ $key } = $tmp_section_conf->{ $key };
+        foreach my $name ( keys %$tmp_section_conf ) {
+            $section_conf->{ $name } = $tmp_section_conf->{ $name };
         }
     }
 
@@ -503,10 +503,10 @@ sub prepare_host_conf_from_db {
     };
 
     # Check mandatory if not definned on command line.
-    foreach my $key ( keys %$mandatory_keys ) {
-        unless ( exists $self->{host_conf}->{ $key } ) {
-            unless ( $section_conf->{ $key } ) {
-                return $self->err("Can't find mandatory configuration key '$key' for host '$host' in DB.");
+    foreach my $name ( keys %$mandatory_keys ) {
+        unless ( exists $self->{host_conf}->{ $name } ) {
+            unless ( $section_conf->{ $name } ) {
+                return $self->err("Can't find mandatory configuration key '$name' for host '$host' in DB.");
             }
         }
     }
@@ -516,10 +516,10 @@ sub prepare_host_conf_from_db {
     $self->{host_conf}->{mconf_sec_id} = $mconf_sec_id;
 
     # Set mandatory.
-    foreach my $key ( keys %$mandatory_keys ) {
-        unless ( exists $self->{host_conf}->{ $key } ) {
-            my $host_conf_key = $mandatory_keys->{ $key };
-            $self->{host_conf}->{ $host_conf_key } = $section_conf->{ $key };
+    foreach my $name ( keys %$mandatory_keys ) {
+        unless ( exists $self->{host_conf}->{ $name } ) {
+            my $host_conf_key = $mandatory_keys->{ $name };
+            $self->{host_conf}->{ $host_conf_key } = $section_conf->{ $name };
         }
     }
 
@@ -1181,7 +1181,9 @@ sub diff_cmd {
                         machine
                   where sd.newer_id is null
                     and psd.newer_id = sd.sc_idata_id
-                    and si.sc_mitem_id = sd.sc_mitem_id
+                    and psd.sc_mitem_id = sd.sc_mitem_id
+                    and psd.scan_id < sd.scan_id
+                    and psd.sc_mitem_id = sd.sc_mitem_id
                     and path.path_id = si.path_id
                     and scan.scan_id = sd.scan_id
                     and ( ? is null or scan.mconf_sec_id = ? )
@@ -1189,6 +1191,7 @@ sub diff_cmd {
                     and mc.mconf_id = mcs.mconf_id
                     and ( ? is null or machine.machine_id = ? )
                     and machine.active = 1
+                  order by machine.machine_id, path.path
                 ",
                 {}, @$data
             );
@@ -1196,7 +1199,7 @@ sub diff_cmd {
         $cols_sql_str,
         [ $mconf_sec_id, $mconf_sec_id, $machine_id, $machine_id ]
     );
-    $self->dump( 'data', $data );
+    #$self->dump( 'data', $data );
 
     my $prev_machine_name = '';
     foreach my $row ( @$data ) {

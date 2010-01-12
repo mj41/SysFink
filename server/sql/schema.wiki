@@ -3,11 +3,11 @@
 <!-- perl utils\wiki_schema.pl sql\schema.wiki 1 > sql\schema.sql -->
 <!-- PARSE PART DBCREATE BEGIN -->
 <source lang=sql>
--- schema revision: $LastChangedRevision: 358 $
+-- schema revision: $LastChangedRevision$
 SET FOREIGN_KEY_CHECKS=0;
-begin transaction;
+start transaction;
 
--- Tags_order: Config, Machine, User.
+-- Tags_order: User.
 </source>
 
 === Tables ===
@@ -24,7 +24,7 @@ CREATE TABLE user (
     active      BOOLEAN NOT NULL DEFAULT 1 COMMENT 'Zero means historical data.',
     created     DATETIME NOT NULL COMMENT 'Account creation time.',
     INDEX i_login (login),
-    UNIQUE KEY unique_login_active (login, active),
+    UNIQUE KEY unique_login_active (login, active)
 ) TYPE=InnoDB COMMENT='User info. Tag:User.';
 </source>
 
@@ -38,8 +38,8 @@ Consistency and constraints:
 CREATE TABLE machine (
     machine_id      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name            VARCHAR(50) NOT NULL,
-    `desc`          TEXT DEFAULT NULL COMMENT 'Description.',
-    ip              VARCHAR(15) DEFAULT NUL,
+    descr           TEXT DEFAULT NULL COMMENT 'Description.',
+    ip              VARCHAR(15) DEFAULT NULL,
     active          BOOLEAN NOT NULL DEFAULT 1,
     INDEX i_name (name)
 ) TYPE=InnoDB COMMENT='Machine (computer or virtual machine) info. Tag:Machine.';
@@ -97,7 +97,7 @@ CREATE TABLE mconf_sec_kv (
     mconf_sec_kv_id     INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     mconf_sec_id        INT UNSIGNED NOT NULL,
     num                 INT UNSIGNED DEFAULT NULL,
-    `key`               VARCHAR(50) NOT NULL,
+    name                VARCHAR(50) NOT NULL,
     value               VARCHAR(255) NOT NULL,
     INDEX i_mconf_sec_id (mconf_sec_id),
     INDEX i_mconf_sec_id_num (mconf_sec_id, num),
@@ -150,7 +150,7 @@ CREATE TABLE sc_idata (
     sc_mitem_id     INT UNSIGNED NOT NULL,
     scan_id         INT UNSIGNED NOT NULL,
     newer_id        INT UNSIGNED DEFAULT NULL,
-    found           BOOL UNSIGNED NOT NULL,
+    found           BOOLEAN NOT NULL,
     mtime           DATETIME DEFAULT NULL,
     mode            INT UNSIGNED DEFAULT NULL,
     size            INT UNSIGNED DEFAULT NULL,
@@ -163,6 +163,7 @@ CREATE TABLE sc_idata (
     dev_num         INT UNSIGNED DEFAULT NULL,
     ino_num         INT UNSIGNED DEFAULT NULL,
     symlink_path_id INT UNSIGNED DEFAULT NULL,
+    INDEX i_newer_id (newer_id),
     INDEX i_sc_mitem_id (sc_mitem_id),
     INDEX i_sc_mitem_id_found (sc_mitem_id, found),
     INDEX i_sc_mitem_id_found_newer_id (sc_mitem_id, found, newer_id),
@@ -176,16 +177,16 @@ CREATE TABLE sc_idata (
 Consistency:
 * Only 'found' or 'missiong' should have value equal 1.
 
-=== Table aud_status_id ===
+=== Table aud_status ===
 <source lang=sql>
 CREATE TABLE aud_status (
     aud_status_id       INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name                VARCHAR(10) DEFAULT NULL,
-    `desc`              VARCHAR(1500) DEFAULT NULL
+    descr               VARCHAR(1500) DEFAULT NULL
 ) TYPE=InnoDB COMMENT='Possibilites for item audit status. Tag:Audit. Type:Table of keys.';
 </source>
 
-* name, desc
+* name, descr
 ** my ok -- Ok. I did it.
 ** ok - Ok. I didn't do it.
 ** unknown - I don't know. 
@@ -223,7 +224,7 @@ CREATE TABLE aud_idata (
 CREATE TABLE pkg_type (
     pkg_type_id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name                VARCHAR(10) DEFAULT NULL,
-    `desc`              VARCHAR(1500) DEFAULT NULL
+    descr               VARCHAR(1500) DEFAULT NULL
 ) TYPE=InnoDB COMMENT='Possibilites for packages types. Tag:Package. Type:Table of keys.';
 </source>
 
@@ -233,7 +234,7 @@ CREATE TABLE pkg (
     pkg_id      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(10) NOT NULL,
     info        VARCHAR(500) DEFAULT NULL,
-    `desc`      VARCHAR(500) DEFAULT NULL COMMENT 'Description for newes version of packege.',
+    descr       VARCHAR(500) DEFAULT NULL COMMENT 'Description for newes version of packege.',
     pkg_type_id INT UNSIGNED NOT NULL,
     sub_path    VARCHAR(500) DEFAULT NULL,
     CONSTRAINT fk_pkg_pkg_type_id FOREIGN KEY (pkg_type_id) REFERENCES pkg_type (pkg_type_id)
@@ -250,7 +251,7 @@ CREATE TABLE pkg_load (
     added               INT UNSIGNED NOT NULL DEFAULT 0,
     changed             INT UNSIGNED NOT NULL DEFAULT 0,
     removed             INT UNSIGNED NOT NULL DEFAULT 0,
-    CONSTRAINT fk_aud_user_id FOREIGN KEY (user_id) REFERENCES user (user_id)
+    CONSTRAINT fk_pkg_load_user_id FOREIGN KEY (user_id) REFERENCES user (user_id)
 ) TYPE=InnoDB COMMENT='Log for packages loading. Tag:Package.';
 </source>
     
