@@ -62,7 +62,7 @@ CREATE TABLE mconf_change (
 ==== Table mconf ====
 <source lang=sql>
 CREATE TABLE mconf (
-    mconf_sec_id    INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    mconf_id        INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     machine_id      INT UNSIGNED NOT NULL,
     mconf_change_id INT UNSIGNED NOT NULL,
     active          INT UNSIGNED NOT NULL,
@@ -162,12 +162,14 @@ CREATE TABLE sc_idata (
     nlink           INT UNSIGNED DEFAULT NULL,
     dev_num         INT UNSIGNED DEFAULT NULL,
     ino_num         INT UNSIGNED DEFAULT NULL,
+    symlink_path_id INT UNSIGNED DEFAULT NULL,
     INDEX i_sc_mitem_id (sc_mitem_id),
     INDEX i_sc_mitem_id_found (sc_mitem_id, found),
     INDEX i_sc_mitem_id_found_newer_id (sc_mitem_id, found, newer_id),
     CONSTRAINT fk_sc_idata_sc_mitem_id FOREIGN KEY (sc_mitem_id) REFERENCES sc_mitem (sc_mitem_id),
     CONSTRAINT fk_sc_idata_scan_id FOREIGN KEY (scan_id) REFERENCES scan (scan_id),
-    CONSTRAINT fk_sc_idata_newer_id FOREIGN KEY (newer_id) REFERENCES sc_idata (sc_idata_id)
+    CONSTRAINT fk_sc_idata_newer_id FOREIGN KEY (newer_id) REFERENCES sc_idata (sc_idata_id),
+    CONSTRAINT fk_sc_idata_symlink_path_id FOREIGN KEY (symlink_path_id) REFERENCES path (path_id)
 ) TYPE=InnoDB COMMENT='Machine scan item data. Tag:Scan.';
 </source>
 

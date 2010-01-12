@@ -505,6 +505,15 @@ __PACKAGE__->add_columns(
       'is_nullable' => 1,
       'size' => '11'
     },
+    'symlink_path_id' => {
+      'data_type' => 'int',
+      'is_auto_increment' => 0,
+      'default_value' => 'NULL',
+      'is_foreign_key' => 1,
+      'name' => 'symlink_path_id',
+      'is_nullable' => 1,
+      'size' => '11'
+    },
 );
 __PACKAGE__->set_primary_key('sc_idata_id');
 
@@ -1038,12 +1047,12 @@ __PACKAGE__->table('mconf');
 
 
 __PACKAGE__->add_columns(
-    'mconf_sec_id' => {
+    'mconf_id' => {
       'data_type' => 'int',
       'is_auto_increment' => 1,
       'default_value' => undef,
       'is_foreign_key' => 0,
-      'name' => 'mconf_sec_id',
+      'name' => 'mconf_id',
       'is_nullable' => 0,
       'size' => '11'
     },
@@ -1075,7 +1084,7 @@ __PACKAGE__->add_columns(
       'size' => '11'
     },
 );
-__PACKAGE__->set_primary_key('mconf_sec_id');
+__PACKAGE__->set_primary_key('mconf_id');
 
 
 package SysFink::DB::Schema::pkg;
@@ -1311,6 +1320,8 @@ __PACKAGE__->belongs_to('scan_id','SysFink::DB::Schema::scan','scan_id');
 __PACKAGE__->belongs_to('newer_id','SysFink::DB::Schema::sc_idata','newer_id',{join_type => 'left'});
 
 __PACKAGE__->has_many('get_sc_idata', 'SysFink::DB::Schema::sc_idata', 'newer_id');
+__PACKAGE__->belongs_to('symlink_path_id','SysFink::DB::Schema::path','symlink_path_id',{join_type => 'left'});
+
 __PACKAGE__->has_many('get_aud_idata', 'SysFink::DB::Schema::aud_idata', 'sc_idata_id');
 
 package SysFink::DB::Schema::machine;
@@ -1329,6 +1340,7 @@ __PACKAGE__->has_many('get_mpkg_sitem', 'SysFink::DB::Schema::mpkg_sitem', 'pkg_
 package SysFink::DB::Schema::path;
 
 __PACKAGE__->has_many('get_sc_mitem', 'SysFink::DB::Schema::sc_mitem', 'path_id');
+__PACKAGE__->has_many('get_sc_idata', 'SysFink::DB::Schema::sc_idata', 'symlink_path_id');
 __PACKAGE__->has_many('get_pkg_item', 'SysFink::DB::Schema::pkg_item', 'path_id');
 
 package SysFink::DB::Schema::pkg_type;

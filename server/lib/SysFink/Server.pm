@@ -256,7 +256,7 @@ sub validate_host_name {
         'name' => $hostname,
     });
     return $self->err("Couldn't find hostname '$hostname' inside DB.") unless defined $host_row;
-    return $self->err("Given host '$hostname' is disabled.") if $host_row->disabled;
+    return $self->err("Given host '$hostname' is disabled.") if ! $host_row->active;
     print "Hostname '$hostname' validated ok.\n" if $self->{ver} >= 6;
     return 1;
 }
@@ -1040,17 +1040,74 @@ sub diff_cmd {
     my $ver = $self->{ver};
     my $schema  = $self->{schema};
 
+    # ToDo
     # Check params.
-    my $host = $self->{host};
+    my $host = $opt->{host};
     if ( $opt->{section} ) {
         return $self->set_mandatory_param_err('host', ' when --section given.') unless $host;
     }
 
     # Load hosts with not audited diffs or check if given host/section has not audited diffs.
-    my $host_ids = [];
+    my $machine_ids = [];
+    if ( $host ) {
+        return 0 unless $self->init_mconf_obj();
+        my $machine_id = $self->{mconf_obj}->get_machine_id( $host );
+        return $self->mconf_err() unless $machine_id;
+        push @$machine_ids, $machine_id;
+    }
+
+    my $cols = [];
+    my $idata_items = [ keys %{get_item_attrs()} ];
+    unshift @$idata_items, 'sc_idata_id';
+    foreach my $item ( @$idata_items ) {
+        push @$cols, 'sid.' . $item;
+    }
+    foreach my $item ( @$idata_items ) {
+        push @$cols, 'psid.' . $item;
+    }
+
+    push @$cols, ( qw/ 
+        mc.machine_id
+        path.path
+    / );
     
-    # Show diff for each host found.
-    
+    my $cols_sql_str = '';
+    #$cols_sql_str = join( q{, }, @$cols );
+    foreach my $col ( @$cols ) {
+        $cols_sql_str .= ",\n" if $cols_sql_str;
+        $cols_sql_str .= $col;
+        if ( $col =~ /\./ ) {
+            my $esc_col = $col;
+            $esc_col =~ tr{\.}{\_};
+            $cols_sql_str .= ' as ' . $esc_col;
+        }
+    }
+    $self->dump( 'cols', $cols );
+    $self->dump( 'cols', $cols_sql_str );
+
+    my $stuff = $schema->storage->dbh_do(
+        sub {
+            return $_[1]->selectall_arrayref("
+                 select $_[2]
+                   from sc_idata sid,
+                        sc_idata psid,
+                        sc_mitem smi,
+                        path,
+                        scan,
+                        mconf_sec mcs,
+                        mconf mc
+                  where sid.newer_id is null
+                    and smi.sc_mitem_id = sid.sc_mitem_id
+                    and path.path_id = smi.path_id
+                    and scan.scan_id = sid.scan_id
+                    and mcs.mconf_sec_id = scan.mconf_sec_id
+                    and mc.mconf_id = mcs.mconf_id
+                    and psid.newer_id = sid.sc_idata_id
+            ");
+        },
+        $cols_sql_str
+    );
+    $self->dump( 'stuff', $stuff );
     
     print "Command 'diff' succeeded.\n" if $self->{ver} >= 3;
     return 1;
