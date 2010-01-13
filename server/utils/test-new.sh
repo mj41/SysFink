@@ -17,7 +17,7 @@ Advanced example:
   && utils/test-new.sh dev sqlite tapir1 3 linux-perl-md5 | tee -a temp/test-new.out \\
   && utils/test-new.sh dev mysql tapir1 3 linux-perl-md5 | tee -a temp/test-new.out \\
   && utils/test-new.sh current auto tapir1 3 linux-perl-md5 | tee -a temp/test-new.out \\
-  && echo -n "Failed summary: " && cat temp/test-new.out | grep -i "failed" | wc -l \\
+  && echo -n "Grep 'fail' summary: " && cat temp/test-new.out | grep -i "fail" | wc -l \\
   && echo "" && echo "All done. Use 'cat temp/test-new.out | more' to see output again."
 
 USAGE_END

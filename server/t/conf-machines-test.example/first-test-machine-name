@@ -10,3 +10,7 @@ include     /etc
 [testscan]
 exclude     /
 include     /root/sysfink-test-dir
+
+[tmpscan]
+exclude     /
+path        [#-B5]/tmp
