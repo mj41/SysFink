@@ -3,13 +3,15 @@
 function echo_help {
 cat <<USAGE_END
 Usage:
-  utils/test-new.sh dev mysql|sqlite hostname.example.com verbosity_level host_dist_type
-  utils/test-new.sh current auto hostname.example.com verbosity_level host_dist_type
+  utils/test-new.sh dev mysql|sqlite hostname verbosity_level host_dist_type
+  utils/test-new.sh current auto hostname verbosity_level host_dist_type
+  utils/test-new.sh current_clear auto hostname verbosity_level host_dist_type
 
 Example:
   utils/test-new.sh dev sqlite tapir1 3 linux-perl-md5
   utils/test-new.sh dev mysql tapir1 3 linux-perl-md5
   utils/test-new.sh current auto tapir1 3 linux-perl-md5
+  utils/test-new.sh current_clear auto tapir1 3 linux-perl-md5
 
 Advanced example: 
   clear && echo "Running 'dev' and 'current' tests and tee to 'temp/test-new.out.'" \\
@@ -35,7 +37,9 @@ HOST="$3"
 VER="$4"
 DIST_TYPE="$5"
 
-if [ $TEST_TYPE != "dev" -a $TEST_TYPE != "current" ]; then
+CLEAR=0
+
+if [ $TEST_TYPE != "dev" -a $TEST_TYPE != "current" -a $TEST_TYPE != "current_clear" ]; then
     echo "Error: Unknown test_type '$TEST_TYPE'."
     echo ""
     echo_help
@@ -50,6 +54,11 @@ if [ $TEST_TYPE = "dev" ]; then
         exit
     fi
 else 
+    if [ $TEST_TYPE = "current_clear" ]; then
+        TEST_TYPE="current"
+        CLEAR=2
+    fi
+
     if [ $DB_TYPE != "auto" ]; then
         echo "Error: For test type 'current' only 'auto' db_type allowed."
         echo ""
@@ -102,7 +111,7 @@ if [ $TEST_TYPE = "dev" ]; then
 
     export SYSFINK_DEVEL=1
 
-    echo "Running utils/all-sql.sh"
+    echo "Running utils/all-sql.sh 1"
     ./utils/all-sql.sh 1
     echo ""
 
@@ -153,23 +162,11 @@ else
     if [ "$DB_TYPE" = "sqlite" ]; then
         if [ ! -f "sysfink.db" ]; then
             echo "Current, but sysfink.db not found -> recreating:";
-        
-            echo "Running utils/all-sql.sh"
-            ./utils/all-sql.sh 1
-            echo ""
+            CLEAR=1
+        fi
 
-            echo "Executing temp/schema-raw-create-sqlite.sql (perl utils/db-run-sqlscript.pl):"
-            perl ./utils/db-run-sqlscript.pl temp/schema-raw-create-sqlite.sql 1
-
-            echo "Executing sql/data-base.pl:"
-            perl ./sql/data-base.pl
-            echo ""
-    
-            echo "Executing sql/data-dev.pl:"
-            perl ./sql/data-stable.pl
-            echo ""
-
-        else
+        # backup old sqlite db file
+        if [ "$CLEAR" = "0" ]; then
             IN_FILE="sysfink.db"
             OUT_FILE="temp/$IN_FILE-test.backup"
             if [ -f "$IN_FILE" ]; then
@@ -178,6 +175,28 @@ else
                 echo ""
             fi
         fi
+    fi
+
+    if [ "$CLEAR" != "0" ]; then
+        echo "Running utils/all-sql.sh $CLEAR"
+        ./utils/all-sql.sh $CLEAR
+        echo ""
+
+        if [ "$DB_TYPE" = "sqlite" ]; then
+            echo "Executing temp/schema-raw-create-sqlite.sql (perl utils/db-run-sqlscript.pl):"
+            perl ./utils/db-run-sqlscript.pl temp/schema-raw-create-sqlite.sql 1
+        else 
+            echo "Executing temp/schema.sql (perl utils/db-run-sqlscript.pl):"
+            perl ./utils/db-run-sqlscript.pl temp/schema.sql 1
+        fi
+
+        echo "Executing sql/data-base.pl:"
+        perl ./sql/data-base.pl
+        echo ""
+
+        echo "Executing sql/data-dev.pl:"
+        perl ./sql/data-stable.pl
+        echo ""
     fi
 
     echo "Running perl sysfink.pl --cmd=mconf_to_db"
@@ -240,6 +259,4 @@ if [ $TEST_TYPE = "dev" ]; then
         mv "$IN_FILE" "$OUT_FILE" || ( echo "Can't move." && exit )
         echo ""
     fi
-   
 fi
-
