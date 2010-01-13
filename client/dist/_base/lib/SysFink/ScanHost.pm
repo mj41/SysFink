@@ -451,7 +451,8 @@ sub scan_recurse {
             $plus_found, # $add_it
             $debug_prefix
         );
-        next PATH_CONF unless $ret_code;
+        # Check if stat not failed.
+        next ITEM unless $ret_code;
 
         if ( $is_dir && $add_dir ) {
             # ToDo - why not '$flags' only instead of '{ %$flags }' ?
