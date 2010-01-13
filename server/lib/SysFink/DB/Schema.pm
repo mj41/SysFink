@@ -407,13 +407,13 @@ __PACKAGE__->add_columns(
       'size' => 0
     },
     'mtime' => {
-      'data_type' => 'DATETIME',
+      'data_type' => 'int',
       'is_auto_increment' => 0,
       'default_value' => 'NULL',
       'is_foreign_key' => 0,
       'name' => 'mtime',
       'is_nullable' => 1,
-      'size' => 0
+      'size' => '11'
     },
     'mode' => {
       'data_type' => 'int',
@@ -609,13 +609,13 @@ __PACKAGE__->add_columns(
       'size' => '11'
     },
     'mtime' => {
-      'data_type' => 'DATETIME',
+      'data_type' => 'int',
       'is_auto_increment' => 0,
       'default_value' => 'NULL',
       'is_foreign_key' => 0,
       'name' => 'mtime',
       'is_nullable' => 1,
-      'size' => 0
+      'size' => '11'
     },
     'mode' => {
       'data_type' => 'int',

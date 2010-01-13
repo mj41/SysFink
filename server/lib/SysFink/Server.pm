@@ -656,6 +656,7 @@ sub has_same_data {
             return 0 if defined $ra->{$attr_name} && ( (not defined $rb->{$attr_name}) || $rb->{$attr_name} ne $ra->{$attr_name} );
             return 0 if defined $rb->{$attr_name} && ( (not defined $ra->{$attr_name}) || $ra->{$attr_name} ne $rb->{$attr_name} );
         }
+        #print "  -> are same\n";
     }
 
     return 1;
@@ -1128,6 +1129,7 @@ sub diff_cmd {
         sd.sc_idata_id
         psd.sc_idata_id
         sd.found
+        si.sc_mitem_id
         psd.found
         machine.name 
     / ];
@@ -1206,7 +1208,11 @@ sub diff_cmd {
         }
 
         # path
-        my $path_str = "  " . $row->[ $name_to_pos->{path_path} ] . ":";
+        my $path_str = "  " . $row->[ $name_to_pos->{path_path} ];
+        $path_str .= " (sc_mitem=" . $row->[ $name_to_pos->{si_sc_mitem_id} ] . ")" if $self->{ver} >= 4;
+        $path_str .=":";
+
+        # diff init
         my $diff_str = '';
 
         if ( ! $row->[ $name_to_pos->{'psd_found'} ] ) {
