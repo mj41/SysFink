@@ -582,7 +582,7 @@ sub get_item_attrs {
     my ( $self ) = @_;
 
     return {
-        mtime => 1,
+        mtime => 0,
         mode => 1,
         size => 1,
         uid => 1,
@@ -1127,6 +1127,8 @@ sub diff_cmd {
         path.path
         sd.sc_idata_id
         psd.sc_idata_id
+        sd.found
+        psd.found
         machine.name 
     / ];
 
@@ -1181,17 +1183,19 @@ sub diff_cmd {
                         machine
                   where sd.newer_id is null
                     and psd.newer_id = sd.sc_idata_id
-                    and psd.sc_mitem_id = sd.sc_mitem_id
-                    and psd.scan_id < sd.scan_id
-                    and psd.sc_mitem_id = sd.sc_mitem_id
+                    -- and psd.sc_mitem_id = sd.sc_mitem_id
+                    -- and psd.scan_id < sd.scan_id
+                    and sd.sc_mitem_id = si.sc_mitem_id
                     and path.path_id = si.path_id
                     and scan.scan_id = sd.scan_id
                     and ( ? is null or scan.mconf_sec_id = ? )
                     and mcs.mconf_sec_id = scan.mconf_sec_id
                     and mc.mconf_id = mcs.mconf_id
+                    and machine.machine_id = mc.machine_id
                     and ( ? is null or machine.machine_id = ? )
                     and machine.active = 1
-                  order by machine.machine_id, path.path
+                   order by machine.machine_id, path.path
+                   -- limit 10000
                 ",
                 {}, @$data
             );
@@ -1202,33 +1206,64 @@ sub diff_cmd {
     #$self->dump( 'data', $data );
 
     my $prev_machine_name = '';
+    my $machine_str = undef;
     foreach my $row ( @$data ) {
         # machine
         my $machine_name = $row->[ $name_to_pos->{machine_name} ];
         if ( $prev_machine_name ne $machine_name ) {
-            print $machine_name . "\n";
+            my $machine_str = $machine_name;
             $prev_machine_name = $machine_name;
         }
 
         # path
-        print "  " . $row->[ $name_to_pos->{path_path} ] . ":\n";
+        my $path_str = "  " . $row->[ $name_to_pos->{path_path} ] . ":";
+        my $diff_str = '';
 
-        # attrs changes
-        foreach my $attr ( keys %$attrs_conf ) {
-            my $new = $row->[ $name_to_pos->{'sd_'.$attr} ];
-            my $old = $row->[ $name_to_pos->{'psd_'.$attr} ];
+        if ( ! $row->[ $name_to_pos->{'sd_found'} ] ) {
+           $diff_str .= "    deleted\n"; 
             
-            my $is_number = $attrs_conf->{ $attr };
-            if ( ($is_number && $new != $old) || (!$is_number && $new ne $old) ) {
-                if ( $attr eq 'mode' ) {
-                    my $old_mode_str = $self->mode_to_lsmode( $old );
-                    my $new_mode_str = $self->mode_to_lsmode( $new );
-                    print "    $attr: $old_mode_str -> $new_mode_str\n";
-                } else {
-                    print "    $attr: $old -> $new\n";
+        } else {
+
+            # attrs changes
+            foreach my $attr ( keys %$attrs_conf ) {
+                my $new = $row->[ $name_to_pos->{'sd_'.$attr} ];
+                my $old = $row->[ $name_to_pos->{'psd_'.$attr} ];
+                
+                my $is_number = $attrs_conf->{ $attr };
+                if ( (not defined $new) || (not defined $old) ) {
+                    if ( (not defined $new) && (not defined $old) ) {
+                        # ok
+                    } elsif ( not defined $new ) {
+                        $diff_str .= "    $attr: $old -> undef\n";
+                    } else {
+                        $diff_str .=  "    $attr: undef -> $new\n";
+                    }
+
+                } elsif ( ($is_number && $new != $old) || (!$is_number && $new ne $old) ) {
+                    if ( $attr eq 'mode' ) {
+                        my $old_mode_str = $self->mode_to_lsmode( $old );
+                        my $new_mode_str = $self->mode_to_lsmode( $new );
+                        $diff_str .=  "    $attr: $old_mode_str -> $new_mode_str\n";
+                    } else {
+                        $diff_str .=  "    $attr: $old -> $new\n";
+                    }
                 }
-            }
+            } # foreach
         }
+
+        if ( $diff_str ) {
+            if ( defined $machine_str ) {
+                print $machine_str . "\n";
+                $machine_str = undef;
+            }
+            if ( defined $path_str ) {
+                print $path_str . "\n"; 
+                $path_str = undef;
+            }
+            print $diff_str;
+            $diff_str = undef;
+        }
+
     }
     
     return 1;
