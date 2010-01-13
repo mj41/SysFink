@@ -1173,29 +1173,19 @@ sub diff_cmd {
             my ( $storage, $dbh, $cols_str, $data ) = @_;
             return $dbh->selectall_arrayref("
                  select $cols_str
-                   from sc_idata sd,
-                        sc_idata psd,
-                        sc_mitem si,
-                        path,
-                        scan,
-                        mconf_sec mcs,
-                        mconf mc,
-                        machine
+                   from sc_idata sd
+                   left join sc_idata psd on psd.newer_id = sd.sc_idata_id
+                  inner join sc_mitem si on si.sc_mitem_id = sd.sc_mitem_id
+                  inner join path on path.path_id = si.path_id
+                  inner join scan on scan.scan_id = sd.scan_id
+                  inner join mconf_sec mcs on mcs.mconf_sec_id = scan.mconf_sec_id
+                  inner join mconf mc on mc.mconf_id = mcs.mconf_id
+                  inner join machine on machine.machine_id = mc.machine_id
                   where sd.newer_id is null
-                    and psd.newer_id = sd.sc_idata_id
-                    -- and psd.sc_mitem_id = sd.sc_mitem_id
-                    -- and psd.scan_id < sd.scan_id
-                    and sd.sc_mitem_id = si.sc_mitem_id
-                    and path.path_id = si.path_id
-                    and scan.scan_id = sd.scan_id
                     and ( ? is null or scan.mconf_sec_id = ? )
-                    and mcs.mconf_sec_id = scan.mconf_sec_id
-                    and mc.mconf_id = mcs.mconf_id
-                    and machine.machine_id = mc.machine_id
                     and ( ? is null or machine.machine_id = ? )
                     and machine.active = 1
-                   order by machine.machine_id, path.path
-                   -- limit 10000
+                  order by machine.machine_id, path.path
                 ",
                 {}, @$data
             );
@@ -1219,7 +1209,10 @@ sub diff_cmd {
         my $path_str = "  " . $row->[ $name_to_pos->{path_path} ] . ":";
         my $diff_str = '';
 
-        if ( ! $row->[ $name_to_pos->{'sd_found'} ] ) {
+        if ( ! $row->[ $name_to_pos->{'psd_found'} ] ) {
+           $diff_str .= "    added\n"; 
+
+        } elsif ( ! $row->[ $name_to_pos->{'sd_found'} ] ) {
            $diff_str .= "    deleted\n"; 
             
         } else {
