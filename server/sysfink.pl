@@ -87,77 +87,83 @@ perl sysfink.pl [options]
     --cmd=test_hostname
         For testing purpose. Run 'hostname' command on client and compare it to --host.
         Return nothing (on success) or error message.
-        Also required --host.
-        Also require --ssh_user if --no_db given.
-
-    --cmd=check_client_dir
-        Run 'ls -l' command on client and validate output.
-        Return nothing (on success) or error message.
-        Also required --host.
-        Also require --ssh_user if --no_db given.
-
-    --cmd=remove_client_dir
-        Remove SysFink directory on client. Call 'check_client_dir' to ensure that anything else will be removed.
-        Return nothing (on success) or error message.
-        Also required --host.
-        Also require --ssh_user if --no_db given.
-
-    --cmd=renew_client_dir
-        Remove old and put new client source code (scripts and libraries) on client machine. Call 'remove_client_dir'
-        (and 'check_client_dir') and then put new code.
-        Return nothing (on success) or error message.
-        Also required --host.
-        Also require --ssh_user and --host_dist_type if --no_db given.
-
-    --cmd=test_noop_rpc
-        Try to run 'noop' test command on client shell over RPC. You should run 'renew_client_dir' cmd to transfer
-        RPC source code to client first.
-        Return nothing (on success) or error message.
-        Also required --host.
-        Also require --ssh_user if --no_db given.
-
-    --cmd=test_three_parts_rpc
-        Try to run 'tree_parts' test command on client shell over RPC. You should run 'renew_client_dir' cmd to transfer
-        RPC source code to client first.
-        Return nothing (on success) or error message.
-        Also required --host.
-        Also require --ssh_user if --no_db given.
-
-    --cmd=mconf_to_db
-        Load machine config files to DB.
-        Optional --mconf_path=? to specify base path where are machine config files located.
-
-    --cmd=scan_test
-        Run scan_test command on given host. Load config from database, run scan comand in debug mode (online debug
-        output) and do not change anything inside DB.
-        Return nothing (on success) or error message.
-        Also required --host.
-
-    --cmd=scan
-        Run scan on given host. Load config from database and save results there.
-        Return nothing (on success) or error message.
-        Also required --host.
-
-    --cmd=diff
-        Show diff for given host. 
-        Also required --host.
+        Also required --host=?.
+        Also require --ssh_user=? if --no_db given.
 
     --host=? ... Full hostname of client for SSH connect.
 
     --section=? ... Configuration section name to use.
 
+    --no_db 
+        Do not connect to DB. Parameters like ssh_user or host_dist_type are required
+        for some commands.
+
+    --ssh_user=? ... User name for SSH connect.
+
+    --cmd=check_client_dir
+        Run 'ls -l' command on client and validate output.
+        Return nothing (on success) or error message.
+        Also required --host=?.
+        Also require --ssh_user=? if --no_db given.
+
+    --cmd=remove_client_dir
+        Remove SysFink directory on client. Call 'check_client_dir' to ensure that anything else will be removed.
+        Return nothing (on success) or error message.
+        Also required --host=?.
+        Also require --ssh_user=? if --no_db given.
+
+    --cmd=renew_client_dir
+        Remove old and put new client source code (scripts and libraries) on client machine. Call 'remove_client_dir'
+        (and 'check_client_dir') and then put new code.
+        Return nothing (on success) or error message.
+        Also required --host=?.
+        Also require --ssh_user=? and --host_dist_type=? if --no_db given.
+
+    --host_dist_type=? ... Distribution type e.g. irix-bin-64b, linux-perl-md5, ...
+
+    --cmd=test_noop_rpc
+        Try to run 'noop' test command on client shell over RPC. You should run 'renew_client_dir' cmd to transfer
+        RPC source code to client first.
+        Return nothing (on success) or error message.
+        Also required --host=?.
+        Also require --ssh_user=? if --no_db given.
+
+    --cmd=test_three_parts_rpc
+        Try to run 'tree_parts' test command on client shell over RPC. You should run 'renew_client_dir' cmd to transfer
+        RPC source code to client first.
+        Return nothing (on success) or error message.
+        Also required --host=?.
+        Also require --ssh_user=? if --no_db given.
+
+    --cmd=mconf_to_db
+        Load machine config files to DB.
+        Optional --mconf_path=? to specify base path where are machine config files located.
+        Optional --who=?.
+
     --who=?
         User login to find user_id. Default is determined by terminal user/login info compared 
         with 'who' attribute in DB.
 
-    --no_db 
-        Do not connect to DB. Parameters like ssh_user or host_dist_type are required
-        for some commands.
+    --cmd=scan_test
+        Run scan_test command on given host. Load config from database, run scan comand in debug mode (online debug
+        output) and do not change anything inside DB.
+        Return nothing (on success) or error message.
+        Also required --host=?.
+
+    --cmd=scan
+        Run scan on given host. Load config from database and save results there.
+        Return nothing (on success) or error message.
+        Also required --host=?.
+
+    --cmd=diff
+        Show diff for given host or given host and section. 
+        Optional --host=?, --section=?.
+
+    --cmd=audit
+        Set audit for all hosts, given host, given host and section or given list of sc_idata_id.
+        Mandatory --who=? if not found automaticaly from tty login.
+        Optional --host=?, --section=?.
     
-    --ssh_user=? ... User name for SSH connect.
-
-    --host_dist_type=? ... Distribution type e.g. irix-bin-64b, linux-perl-md5, ...
-
 =head1 DESCRIPTION
 
 B<This program> run SysFink server command.

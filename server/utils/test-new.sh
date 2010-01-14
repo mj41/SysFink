@@ -181,6 +181,12 @@ else
         echo "Running utils/all-sql.sh $CLEAR"
         ./utils/all-sql.sh $CLEAR
         echo ""
+        
+        # create sysfink.pl doc
+        if [ "$CLEAR" = "2" ]; then
+            echo "Generating new help to temp/doc/help.txt"
+            perl sysfink.pl --help > temp/doc/help.txt
+        fi
 
         if [ "$DB_TYPE" = "sqlite" ]; then
             echo "Executing temp/schema-raw-create-sqlite.sql (perl utils/db-run-sqlscript.pl):"
@@ -238,9 +244,15 @@ echo "Online tests on host '$HOST':" \
 
 # test type: dev
 if [ $TEST_TYPE = "dev" ]; then
-    echo "Running 'perl ... --cmd=scan --section=testscan'."
-    perl sysfink.pl --host=$HOST --cmd=scan --section=testscan --ver=$VER
-    echo "Done."
+    echo "Running 'perl ... --cmd=scan --section=testscan'." \
+    && perl sysfink.pl --host=$HOST --cmd=scan --section=testscan --ver=$VER \
+    && echo "Running 'perl ... --cmd=diff --section=testscan | tail -n 15'." \
+    && perl sysfink.pl --host=$HOST --cmd=diff --section=testscan --ver=$VER | tail -n 15 \
+    && echo "Running 'perl ... --cmd=audit --section=testscan'." \
+    && perl sysfink.pl --host=$HOST --cmd=audit --section=testscan --ver=$VER \
+    && echo "Running 'perl ... --cmd=diff --section=testscan' after audit." \
+    && perl sysfink.pl --host=$HOST --cmd=diff --section=testscan --ver=$VER \
+    && echo "Done."
 
     export SYSFINK_DEVEL=0
 

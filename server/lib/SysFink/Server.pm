@@ -130,6 +130,13 @@ sub run {
             'type' => 'self',
         },
 
+        'audit' => {
+            'connect_to_db' => 1,
+            'validate_host_name_if_given' => 1,
+            'get_who' => { mandatory => 1, },
+            'type' => 'self',
+        },
+
     }; # $all_cmd_confs end
 
     # Options used somewhere below:
@@ -843,7 +850,7 @@ sub scan_cmd {
     my $machine_id = $self->{host_conf}->{machine_id};
     my $mconf_sec_id = $self->{host_conf}->{mconf_sec_id};
 
-    # Insert scan row.
+    # Insert scan row. Before transaction start.
     my $scan_row = $schema->resultset('scan')->create({
         mconf_sec_id => $mconf_sec_id,
         start_time => DateTime->now,
@@ -1088,17 +1095,37 @@ sub mode_to_lsmode() {
 }
 
 
-=head2 diff_cmd
+=head2 get_attr_str
 
-Run diff command.
+Run string representation for given value of given attribute type.
 
 =cut
 
-sub diff_cmd {
-    my ( $self, $opt ) = @_;
+sub get_attr_str {
+    my ( $self, $attr, $value ) = @_;
 
-    my $ver = $self->{ver};
-    my $schema  = $self->{schema};
+    return 'undef' unless defined $value;
+
+    if ( $attr eq 'mode' ) {
+        return $self->mode_to_lsmode( $value );
+    }
+
+    if ( $attr eq 'mtime' ) {
+        return DateTime->from_epoch( epoch => $value )->datetime;;
+    }
+    
+    return $value;
+}
+
+
+=head2 check_and_load_host_and_section
+
+Check and load machine_id and mconf_sec_id from given --host and --section.
+
+=cut
+
+sub check_and_load_host_and_section {
+    my ( $self, $opt ) = @_;
 
     # Check params.
     my $host = $opt->{host};
@@ -1120,6 +1147,25 @@ sub diff_cmd {
             $mconf_sec_id = $mconf_sec_data->[0];
         }
     }
+    
+    return ( 1, $machine_id, $mconf_sec_id );
+}
+
+
+=head2 diff_cmd
+
+Run diff command.
+
+=cut
+
+sub diff_cmd {
+    my ( $self, $opt ) = @_;
+
+    my ( $ret_code, $machine_id, $mconf_sec_id ) = $self->check_and_load_host_and_section( $opt );
+    return 0 unless $ret_code;
+
+    my $ver = $self->{ver};
+    my $schema  = $self->{schema};
 
     my $attrs_conf = get_item_attrs();
 
@@ -1131,7 +1177,8 @@ sub diff_cmd {
         sd.found
         si.sc_mitem_id
         psd.found
-        machine.name 
+        machine.name
+        aid.aud_status_id
     / ];
 
     my $idata_items = [];
@@ -1172,11 +1219,15 @@ sub diff_cmd {
 
     my $data = $schema->storage->dbh_do(
         sub {
-            my ( $storage, $dbh, $cols_str, $data ) = @_;
+            my ( $storage, $dbh, $cols_str, $in_params ) = @_;
             return $dbh->selectall_arrayref("
                  select $cols_str
                    from sc_idata sd
                    left join sc_idata psd on psd.newer_id = sd.sc_idata_id
+                   left join aud_idata aid on (
+                             aid.sc_idata_id = sd.sc_idata_id
+                         and aid.newer_id is null
+                    )
                   inner join sc_mitem si on si.sc_mitem_id = sd.sc_mitem_id
                   inner join path on path.path_id = si.path_id
                   inner join scan on scan.scan_id = sd.scan_id
@@ -1187,9 +1238,12 @@ sub diff_cmd {
                     and ( ? is null or scan.mconf_sec_id = ? )
                     and ( ? is null or machine.machine_id = ? )
                     and machine.active = 1
+                    and ( aid.aud_idata_id is null 
+                          or ( aid.aud_status_id != 1 and aid.aud_status_id != 2 )
+                    )
                   order by machine.machine_id, path.path
                 ",
-                {}, @$data
+                {}, @$in_params
             );
         },
         $cols_sql_str,
@@ -1210,18 +1264,26 @@ sub diff_cmd {
         # path
         my $path_str = "  " . $row->[ $name_to_pos->{path_path} ];
         $path_str .= " (sc_mitem=" . $row->[ $name_to_pos->{si_sc_mitem_id} ] . ")" if $self->{ver} >= 4;
-        $path_str .=":";
 
-        # diff init
+        # diff_str init
         my $diff_str = '';
 
         if ( ! $row->[ $name_to_pos->{'psd_found'} ] ) {
-           $diff_str .= "    added\n"; 
+            $path_str .= " - added";
+            foreach my $attr ( keys %$attrs_conf ) {
+                my $new = $row->[ $name_to_pos->{'sd_'.$attr} ];
+                $diff_str .= "    $attr: " . $self->get_attr_str($attr, $new) . "\n";
+            }
 
         } elsif ( ! $row->[ $name_to_pos->{'sd_found'} ] ) {
-           $diff_str .= "    deleted\n"; 
+            $path_str .= " - deleted"; 
+            foreach my $attr ( keys %$attrs_conf ) {
+                my $old = $row->[ $name_to_pos->{'psd_'.$attr} ];
+                $diff_str .= "    $attr: " . $self->get_attr_str($attr, $old) . "\n";
+            }
             
         } else {
+            $path_str .= " - changed"; 
 
             # attrs changes
             foreach my $attr ( keys %$attrs_conf ) {
@@ -1233,23 +1295,26 @@ sub diff_cmd {
                     if ( (not defined $new) && (not defined $old) ) {
                         # ok
                     } elsif ( not defined $new ) {
-                        $diff_str .= "    $attr: $old -> undef\n";
+                        $diff_str .= "    $attr: ";
+                        $diff_str .= $self->get_attr_str($attr, $old);
+                        $diff_str .= " -> undef\n";
                     } else {
-                        $diff_str .=  "    $attr: undef -> $new\n";
+                        $diff_str .= "    $attr: undef -> ";
+                        $diff_str .= $self->get_attr_str($attr, $new);
+                        $diff_str .=  "\n";
                     }
 
                 } elsif ( ($is_number && $new != $old) || (!$is_number && $new ne $old) ) {
-                    if ( $attr eq 'mode' ) {
-                        my $old_mode_str = $self->mode_to_lsmode( $old );
-                        my $new_mode_str = $self->mode_to_lsmode( $new );
-                        $diff_str .=  "    $attr: $old_mode_str -> $new_mode_str\n";
-                    } else {
-                        $diff_str .=  "    $attr: $old -> $new\n";
-                    }
+                    $diff_str .=  "    $attr: ";
+                    $diff_str .= $self->get_attr_str($attr, $old);
+                    $diff_str .=  " -> ";
+                    $diff_str .= $self->get_attr_str($attr, $new);
+                    $diff_str .=  "\n";
                 }
             } # foreach
         }
 
+        $path_str .= " (id:" . $row->[ $name_to_pos->{sd_sc_idata_id} ] . ")";
         if ( $diff_str ) {
             if ( defined $machine_str ) {
                 print $machine_str . "\n";
@@ -1261,9 +1326,92 @@ sub diff_cmd {
             }
             print $diff_str;
             $diff_str = undef;
+            
+            if ( defined $row->[ $name_to_pos->{aid_aud_status_id} ] ) {
+                print "    last audit status: " . $row->[ $name_to_pos->{aid_aud_status_id} ] . "\n";
+            }
+            print "\n";
         }
-
     }
+    
+    return 1;
+}
+
+
+=head2 audit_cmd
+
+Run audit command.
+
+=cut
+
+sub audit_cmd {
+    my ( $self, $opt ) = @_;
+
+    my ( $ret_code, $machine_id, $mconf_sec_id ) = $self->check_and_load_host_and_section( $opt );
+    return 0 unless $ret_code;
+
+    my $aud_status_id = 1;
+    
+    my $ver = $self->{ver};
+    my $schema  = $self->{schema};
+
+    $schema->storage->txn_begin;
+
+    my $msg = undef;
+
+    # Insert aud info.
+    my $aud_row = $schema->resultset('aud')->create({
+        date => DateTime->now,
+        user_id => $self->{user_id},
+        msg => $msg,
+    });
+    my $aud_id = $aud_row->aud_id;
+
+    my $cols_sql_str = "sd.sc_idata_id";
+    my $data = $schema->storage->dbh_do(
+        sub {
+            my ( $storage, $dbh, $cols_str, $in_params ) = @_;
+            return $dbh->selectall_arrayref("
+                 select $cols_str
+                   from sc_idata sd
+                  inner join sc_mitem si on si.sc_mitem_id = sd.sc_mitem_id
+                  inner join path on path.path_id = si.path_id
+                  inner join scan on scan.scan_id = sd.scan_id
+                  inner join mconf_sec mcs on mcs.mconf_sec_id = scan.mconf_sec_id
+                  inner join mconf mc on mc.mconf_id = mcs.mconf_id
+                  inner join machine on machine.machine_id = mc.machine_id
+                  where sd.newer_id is null
+                    and ( ? is null or scan.mconf_sec_id = ? )
+                    and ( ? is null or machine.machine_id = ? )
+                    and machine.active = 1
+                    and not exists (
+                      select 1
+                        from aud_idata aid
+                       where aid.sc_idata_id = sd.sc_idata_id
+                         and aid.newer_id is null
+                    )
+                  order by machine.machine_id, path.path
+                ",
+                {}, @$in_params
+            );
+        },
+        $cols_sql_str,
+        [ $mconf_sec_id, $mconf_sec_id, $machine_id, $machine_id ],
+        
+    );
+
+    foreach my $row ( @$data ) {
+        my $sc_idata_id = $row->[0];
+        my $aud_idata_row = $schema->resultset('aud_idata')->create({
+            aud_id => $aud_id,
+            sc_idata_id => $sc_idata_id,
+            aud_status_id => $aud_status_id,
+            newer_id => undef,
+        });
+        print "sc_idata_id $sc_idata_id audit status sets to $aud_status_id\n" if $ver >= 4;
+    }
+    
+    $schema->storage->txn_commit;
     
     return 1;
 }
