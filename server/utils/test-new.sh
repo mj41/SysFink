@@ -200,7 +200,7 @@ else
         perl ./sql/data-base.pl
         echo ""
 
-        echo "Executing sql/data-dev.pl:"
+        echo "Executing sql/data-stable.pl:"
         perl ./sql/data-stable.pl
         echo ""
     fi

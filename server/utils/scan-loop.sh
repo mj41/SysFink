@@ -41,6 +41,23 @@ for ((inum=1;1;inum++)); do
     perl sysfink.pl --host=$HOST --cmd=renew_client_dir --ver=$VER
     echo ""
 
+
+    if [ "$DO_FULL_SCAN" = "1" ]; then
+        echo "Running full scan on $HOST:"
+        time perl sysfink.pl --host=$HOST --cmd=scan --ver=$VER
+        echo ""
+
+        echo "Running full 'diff' for host $HOST:"
+        time perl sysfink.pl --cmd=diff --host=$HOST --ver=$VER
+        echo ""
+
+        echo "Running full 'audit' for host $HOST:"
+        time perl sysfink.pl --cmd=audit --host=$HOST --section=fastscan --ver=$VER
+        echo ""
+        echo ""
+    fi
+
+
     for ((jnum=1;jnum<=24;jnum++)); do
         echo -n "Fast run number $jnum - "
         date
@@ -77,22 +94,6 @@ for ((inum=1;1;inum++)); do
         echo ""
         echo ""
     done
-
-
-    if [ "$DO_FULL_SCAN" = "1" ]; then
-        echo "Running full scan on $HOST:"
-        perl sysfink.pl --host=$HOST --cmd=scan --ver=$VER
-        echo ""
-
-        echo "Running full 'diff' for host $HOST:"
-        perl sysfink.pl --cmd=diff --host=$HOST --ver=$VER
-        echo ""
-
-        echo "Running full 'audit' for host $HOST:"
-        perl sysfink.pl --cmd=audit --host=$HOST --section=fastscan --ver=$VER
-        echo ""
-        echo ""
-    fi
 
 done 
 
