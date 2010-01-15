@@ -244,14 +244,33 @@ echo "Online tests on host '$HOST':" \
 
 # test type: dev
 if [ $TEST_TYPE = "dev" ]; then
-    echo "Running 'perl ... --cmd=scan --section=testscan'." \
-    && perl sysfink.pl --host=$HOST --cmd=scan --section=testscan --ver=$VER \
-    && echo "Running 'perl ... --cmd=diff --section=testscan | tail -n 15'." \
-    && perl sysfink.pl --host=$HOST --cmd=diff --section=testscan --ver=$VER | tail -n 15 \
-    && echo "Running 'perl ... --cmd=audit --section=testscan'." \
-    && perl sysfink.pl --host=$HOST --cmd=audit --section=testscan --ver=$VER \
-    && echo "Running 'perl ... --cmd=diff --section=testscan' after audit." \
-    && perl sysfink.pl --host=$HOST --cmd=diff --section=testscan --ver=$VER \
+    echo "Running 'perl ... --cmd=scan --section=testscanA'." \
+    && perl sysfink.pl --host=$HOST --cmd=scan --section=testscanA --ver=$VER \
+    && echo "Running 'perl ... --cmd=diff --section=testscanA | tail -n 15'." \
+    && perl sysfink.pl --host=$HOST --cmd=diff --section=testscanA --ver=$VER | tail -n 15 \
+    && echo "Running 'perl ... --cmd=audit --section=testscanA'." \
+    && perl sysfink.pl --host=$HOST --cmd=audit --section=testscanA --ver=$VER \
+    && echo "Running 'perl ... --cmd=diff --section=testscanA' after audit." \
+    && perl sysfink.pl --host=$HOST --cmd=diff --section=testscanA --ver=$VER \
+    && echo "" \
+    && echo "Running 'perl ... --cmd=scan --section=testscanB'." \
+    && perl sysfink.pl --host=$HOST --cmd=scan --section=testscanB --ver=$VER \
+    && echo "Running 'perl ... --cmd=diff --section=testscanB'." \
+    && perl sysfink.pl --host=$HOST --cmd=diff --section=testscanB --ver=$VER \
+    && echo "" \
+    && echo "Running 'perl ... --cmd=scan --section=sysfinkclient'." \
+    && perl sysfink.pl --host=$HOST --cmd=scan --section=sysfinkclient --ver=$VER \
+    && echo "Running 'perl ... --cmd=diff --section=sysfinkclient'." \
+    && perl sysfink.pl --host=$HOST --cmd=diff --section=sysfinkclient --ver=$VER | tail -n 15 \
+    && echo "Running 'perl ... --cmd=audit --section=sysfinkclient | tail -n 15'." \
+    && perl sysfink.pl --host=$HOST --cmd=audit --section=sysfinkclient --ver=$VER \
+    && echo "Running 'perl ... --cmd=renew_client_dir ...'." \
+    && perl sysfink.pl --ssh_user=root --host=$HOST --cmd=renew_client_dir --ver=$VER \
+    && echo "Running 'perl ... --cmd=scan --section=sysfinkclient'." \
+    && perl sysfink.pl --host=$HOST --cmd=scan --section=sysfinkclient --ver=$VER \
+    && echo "Running 'perl ... --cmd=diff --section=sysfinkclient | tail -n 15'." \
+    && perl sysfink.pl --host=$HOST --cmd=diff --section=sysfinkclient --ver=$VER | tail -n 15 \
+    && echo "" \
     && echo "Done."
 
     export SYSFINK_DEVEL=0

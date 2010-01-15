@@ -7,9 +7,13 @@ exclude     /dev/ /home/ /proc/ /sys/ /var/ /mnt/
 exclude     /
 include     /etc
 
-[testscan]
+[testscanA]
 exclude     /
 include     /root/sysfink-test-dir
+
+[testscanB]
+exclude     /
+path        [#-B5]/root/sysfink-test-dir
 
 [tmpscan]
 exclude     /

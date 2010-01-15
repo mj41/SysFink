@@ -15,6 +15,7 @@ use SysFink::Utils::Conf;
 use SysFink::Utils::DB;
 
 use DateTime; # scan_cmd
+use Fcntl ':mode'; # get_mode_str
 
 
 =head1 NAME
@@ -304,7 +305,7 @@ sub prepare_base_host_conf {
     $host_conf->{rpc_ver} = $opt->{rpc_ver} if defined $opt->{rpc_ver};
     $host_conf->{client_src_dir} = $opt->{client_src_dir} if defined $opt->{client_src_dir};
     $host_conf->{host_dist_type} = $opt->{host_dist_type} if defined $opt->{host_dist_type};
-    $host_conf->{conf_section_name} = $opt->{section} if defined $opt->{section};
+    $host_conf->{conf_section_name} = lc( $opt->{section} ) if defined $opt->{section};
 
     $self->{host_conf} = $host_conf;
     $self->dump( 'Host conf:', $self->{host_conf} ) if $self->{ver} >= 6;
@@ -613,8 +614,8 @@ Return ResultSet to actual idata for given machine_id.
 sub get_sc_idata_rs {
     my ( $self, $machine_id ) = @_;
 
-    my $select_items = [ 'me.sc_idata_id', 'me.sc_mitem_id', 'path_id.path', ];
-    my $select_as_items = [ 'sc_idata_id', 'sc_mitem_id', 'path', ];
+    my $select_items = [ 'me.sc_idata_id', 'me.sc_mitem_id', 'path_id.path', 'scan_id.mconf_sec_id' ];
+    my $select_as_items = [ 'sc_idata_id', 'sc_mitem_id', 'path', 'mconf_sec_id' ];
 
     my $attrs = $self->get_item_attrs();
     foreach my $attr_name ( keys %$attrs ) {
@@ -629,10 +630,14 @@ sub get_sc_idata_rs {
             'sc_mitem_id.machine_id' => $machine_id,
         },
         {
-            'join' => { 'sc_mitem_id' => 'path_id' },
+            'join' => [
+                { 'sc_mitem_id' => 'path_id' },
+                'scan_id'
+            ],
             'select' => $select_items,
             'as' => $select_as_items,
             'order_by' => [ 'path_id.path', ],
+            'result_class' => 'DBIx::Class::ResultClass::HashRefInflator',
         },
     );
 
@@ -647,21 +652,25 @@ Return 1 if given hashs has same attributes' values.
 =cut
 
 sub has_same_data {
-    my ( $self, $ra, $rb ) = @_;
+    my ( $self, $new, $old, $ignore_not_found ) = @_;
 
     my $attrs = $self->get_item_attrs();
     # Add additional attribute 'found'.
     $attrs->{found} = 1;
 
     foreach my $attr_name ( keys %$attrs ) {
+        if ( $ignore_not_found && (not defined $new->{ $attr_name }) ) {
+            next;
+        }
+        
         my $is_numeric = $attrs->{$attr_name};
         #print "$attr_name is_numeric=$is_numeric\n";
         if ( $is_numeric ) {
-            return 0 if defined $ra->{$attr_name} && ( (not defined $rb->{$attr_name}) || $rb->{$attr_name} != $ra->{$attr_name} );
-            return 0 if defined $rb->{$attr_name} && ( (not defined $ra->{$attr_name}) || $ra->{$attr_name} != $rb->{$attr_name} );
+            return 0 if defined $new->{$attr_name} && ( (not defined $old->{$attr_name}) || $old->{$attr_name} != $new->{$attr_name} );
+            return 0 if defined $old->{$attr_name} && ( (not defined $new->{$attr_name}) || $new->{$attr_name} != $old->{$attr_name} );
         } else {
-            return 0 if defined $ra->{$attr_name} && ( (not defined $rb->{$attr_name}) || $rb->{$attr_name} ne $ra->{$attr_name} );
-            return 0 if defined $rb->{$attr_name} && ( (not defined $ra->{$attr_name}) || $ra->{$attr_name} ne $rb->{$attr_name} );
+            return 0 if defined $new->{$attr_name} && ( (not defined $old->{$attr_name}) || $old->{$attr_name} ne $new->{$attr_name} );
+            return 0 if defined $old->{$attr_name} && ( (not defined $new->{$attr_name}) || $new->{$attr_name} ne $old->{$attr_name} );
         }
         #print "  -> are same\n";
     }
@@ -677,14 +686,21 @@ Return hash ref for database. Hash is created from base_data completed with valu
 =cut
 
 sub get_base_idata {
-    my ( $self, $base_data, $raw_data ) = @_;
+    my ( $self, $base_data, $raw_data, $old_data ) = @_;
 
     my $data = { %$base_data };
 
     my $attrs = get_item_attrs();
     foreach my $attr_name ( keys %$attrs ) {
+        # Use new value.
         if ( exists $raw_data->{ $attr_name } ) {
             $data->{ $attr_name } = $raw_data->{ $attr_name };
+
+        # Use old value.
+        } elsif ( defined $old_data->{ $attr_name } ) {
+            $data->{ $attr_name } = $old_data->{ $attr_name };
+
+        # Use undef.
         } else {
             $data->{ $attr_name } = undef;
         }
@@ -907,14 +923,15 @@ sub scan_cmd {
     my $sc_mitem_rs = $schema->resultset('sc_mitem');
     my $sc_idata_rs = $schema->resultset('sc_idata');
 
-    NEXT_DB_ITEM: while ( my $row_obj = $prev_sc_idata_rs->next ) {
-        my %row = ( $row_obj->get_columns() );
-        my $path = $row{path};
+    NEXT_DB_ITEM: while ( my $row = $prev_sc_idata_rs->next ) {
+        my $path = $row->{path};
         
-        #$self->dump( 'Prev idata row', \%row ) if $ver >= 6;
-        unless ( $self->flags_or_regex_succeed( $path ) ) {
-            print "Skipping '$path' (from DB) - no valid for this configuration.\n" if $self->{ver} >= 5;
-            next NEXT_DB_ITEM;
+        #$self->dump( 'Prev idata row', $row ) if $ver >= 6;
+        if ( $mconf_sec_id != $row->{'mconf_sec_id'} ) {
+            unless ( $self->flags_or_regex_succeed( $path ) ) {
+                print "Skipping '$path' (from DB) - no valid for this configuration.\n" if $self->{ver} >= 6;
+                next NEXT_DB_ITEM;
+            }
         }
 
         my $insert_idata = undef;
@@ -922,7 +939,7 @@ sub scan_cmd {
         # Found.
         if ( exists $path_to_num{ $path } ) {
             my $new_item_data = $loaded_items->[ $path_to_num{ $path }->[1] ];
-            if ( $self->has_same_data($new_item_data,\%row) ) {
+            if ( $self->has_same_data( $new_item_data, $row, 1 ) ) {
                 # Same data -> do nothing.
                 $path_to_num{ $path }->[0] = 0; # 0 .. found in db and not changed
                 print "Item '$path' not changed.\n" if $ver >= 6;
@@ -933,10 +950,10 @@ sub scan_cmd {
                 if ( $ver >= 5 ) {
                     print "Item data changed:\n";
                     $self->dump( 'new item data', $new_item_data );
-                    $self->dump( 'prev item data', \%row );
+                    $self->dump( 'prev item data', $row );
                 }
 
-                my $sc_mitem_id = $row{'sc_mitem_id'};
+                my $sc_mitem_id = $row->{'sc_mitem_id'};
                 print "Updating status to new values sc_mitem_id $sc_mitem_id.\n" if $ver >= 4;
                 my $insert_idata_base = {
                     sc_mitem_id => $sc_mitem_id,
@@ -945,12 +962,12 @@ sub scan_cmd {
                     found => 1,
                 };
                 #$new_item_data->{size} = int rand(500); # debug
-                $insert_idata = $self->get_base_idata( $insert_idata_base, $new_item_data );
+                $insert_idata = $self->get_base_idata( $insert_idata_base, $new_item_data, $row );
             }
 
         # Not found during scan on client machine -> delete.
         } else {
-            my $sc_mitem_id = $row{'sc_mitem_id'};
+            my $sc_mitem_id = $row->{'sc_mitem_id'};
             print "Updating status to delete sc_mitem_id $sc_mitem_id.\n" if $ver >= 4;
             my $insert_idata_base = {
                 sc_mitem_id => $sc_mitem_id,
@@ -965,7 +982,7 @@ sub scan_cmd {
             my $sc_idata_row = $sc_idata_rs->create( $insert_idata );
             my $new_sc_idata_id = $sc_idata_row->sc_idata_id;
 
-            my $old_sc_idata_rs = $schema->resultset('sc_idata')->find( $row{'sc_idata_id'} );
+            my $old_sc_idata_rs = $schema->resultset('sc_idata')->find( $row->{'sc_idata_id'} );
             $old_sc_idata_rs->update({ newer_id => $new_sc_idata_id });
         }
     }
@@ -1051,14 +1068,14 @@ sub mconf_to_db_cmd {
     return 1;
 }
 
-use Fcntl ':mode';
-=head2 mode_to_lsmode
+
+=head2 get_mode_str
 
 Convert numeric node number to ls format. Used for debug output.
 
 =cut
 
-sub mode_to_lsmode() {
+sub get_mode_str() {
     my ( $self, $mode ) = @_;
 
     unless ( defined($mode) ) {
@@ -1107,7 +1124,7 @@ sub get_attr_str {
     return 'undef' unless defined $value;
 
     if ( $attr eq 'mode' ) {
-        return $self->mode_to_lsmode( $value );
+        return $self->get_mode_str( $value );
     }
 
     if ( $attr eq 'mtime' ) {
@@ -1142,7 +1159,8 @@ sub check_and_load_host_and_section {
         return $self->mconf_err() unless $machine_id;
         
         if ( $opt->{section} ) {
-            my $mconf_sec_data = $self->{mconf_obj}->get_machine_active_mconf_sec_info( $machine_id, $opt->{section} );
+            my $section_name = lc( $opt->{section} );
+            my $mconf_sec_data = $self->{mconf_obj}->get_machine_active_mconf_sec_info( $machine_id, $section_name );
             return $self->mconf_err() unless $mconf_sec_data;
             $mconf_sec_id = $mconf_sec_data->[0];
         }

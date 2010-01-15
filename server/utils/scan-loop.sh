@@ -22,12 +22,14 @@ if [ -z "$SLEEP_TIME" ]; then
     SLEEP_TIME=1800
 fi
 
+DO_TEST_SCAN=1
+
 echo "Parameters:"
 echo "  host: $HOST"
 echo "  verbosity: $VER"
 echo "  do full scan: $DO_FULL_SCAN"
 echo "  sleep time: $SLEEP_TIME"
-echo ""
+echo "  test scan: $TEST_SCAN"
 echo ""
 
 for ((inum=1;1;inum++)); do
@@ -52,7 +54,7 @@ for ((inum=1;1;inum++)); do
         echo ""
 
         echo "Running full 'audit' for host $HOST:"
-        time perl sysfink.pl --cmd=audit --host=$HOST --section=fastscan --ver=$VER
+        time perl sysfink.pl --cmd=audit --host=$HOST --ver=$VER
         echo ""
         echo ""
     fi
@@ -63,30 +65,61 @@ for ((inum=1;1;inum++)); do
         date
         echo ""
 
-        echo "Running 'tmpscan' on $HOST:"
-        perl sysfink.pl --host=$HOST --cmd=scan --section=tmpscan --ver=$VER
-        echo ""
+        if [ "$DO_TEST_SCAN" = "1" ]; then
 
-        echo "Running 'diff' for section 'tmpscan' and host $HOST:"
-        perl sysfink.pl --cmd=diff --host=$HOST --section=tmpscan --ver=$VER
-        echo ""
-        
-        echo "Running 'audit' for section 'tmpscan' and host $HOST:"
-        perl sysfink.pl --cmd=audit --host=$HOST --section=tmpscan --ver=$VER
-        echo ""
+            echo "Running 'testscanA' on $HOST:"
+            perl sysfink.pl --host=$HOST --cmd=scan --section=testscanA --ver=$VER
+            echo ""
+
+            echo "Running 'diff' for section 'testscanA' and host $HOST:"
+            perl sysfink.pl --cmd=diff --host=$HOST --section=testscanA --ver=$VER
+            echo ""
+
+            echo "Running 'audit' for section 'testscanA' and host $HOST:"
+            perl sysfink.pl --cmd=audit --host=$HOST --section=testscanA --ver=$VER
+            echo ""
 
 
-        echo "Running 'fastscan' on $HOST:"
-        perl sysfink.pl --host=$HOST --cmd=scan --section=fastscan --ver=$VER
-        echo ""
+            echo "Running 'testscanB' on $HOST:"
+            perl sysfink.pl --host=$HOST --cmd=scan --section=testscanB --ver=$VER
+            echo ""
 
-        echo "Running 'diff' for section 'fastscan' and host $HOST:"
-        perl sysfink.pl --cmd=diff --host=$HOST --section=fastscan --ver=$VER
-        echo ""
+            echo "Running 'diff' for section 'testscanB' and host $HOST:"
+            perl sysfink.pl --cmd=diff --host=$HOST --section=testscanB --ver=$VER
+            echo ""
 
-        echo "Running 'audit' for section 'fastscan' and host $HOST:"
-        perl sysfink.pl --cmd=audit --host=$HOST --section=fastscan --ver=$VER
-        echo ""
+            echo "Running 'audit' for section 'testscanB' and host $HOST:"
+            perl sysfink.pl --cmd=audit --host=$HOST --section=testscanB --ver=$VER
+            echo ""
+
+        else 
+
+            echo "Running 'tmpscan' on $HOST:"
+            perl sysfink.pl --host=$HOST --cmd=scan --section=tmpscan --ver=$VER
+            echo ""
+
+            echo "Running 'diff' for section 'tmpscan' and host $HOST:"
+            perl sysfink.pl --cmd=diff --host=$HOST --section=tmpscan --ver=$VER
+            echo ""
+            
+            echo "Running 'audit' for section 'tmpscan' and host $HOST:"
+            perl sysfink.pl --cmd=audit --host=$HOST --section=tmpscan --ver=$VER
+            echo ""
+
+
+            echo "Running 'fastscan' on $HOST:"
+            perl sysfink.pl --host=$HOST --cmd=scan --section=fastscan --ver=$VER
+            echo ""
+
+            echo "Running 'diff' for section 'fastscan' and host $HOST:"
+            perl sysfink.pl --cmd=diff --host=$HOST --section=fastscan --ver=$VER
+            echo ""
+
+            echo "Running 'audit' for section 'fastscan' and host $HOST:"
+            perl sysfink.pl --cmd=audit --host=$HOST --section=fastscan --ver=$VER
+            echo ""
+
+        fi
 
         echo "Sleeping $SLEEP_TIME s ..."
         sleep $SLEEP_TIME
