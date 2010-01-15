@@ -22,7 +22,7 @@ if [ -z "$SLEEP_TIME" ]; then
     SLEEP_TIME=1800
 fi
 
-DO_TEST_SCAN=1
+DO_TEST_SCAN=0
 
 echo "Parameters:"
 echo "  host: $HOST"
@@ -45,7 +45,7 @@ for ((inum=1;1;inum++)); do
 
 
     if [ "$DO_FULL_SCAN" = "1" ]; then
-        echo "Running full scan on $HOST:"
+        echo "Running full scan on $HOST."
         time perl sysfink.pl --host=$HOST --cmd=scan --ver=$VER
         echo ""
 
@@ -67,7 +67,7 @@ for ((inum=1;1;inum++)); do
 
         if [ "$DO_TEST_SCAN" = "1" ]; then
 
-            echo "Running 'testscanA' on $HOST:"
+            echo "Running 'testscanA' on $HOST."
             perl sysfink.pl --host=$HOST --cmd=scan --section=testscanA --ver=$VER
             echo ""
 
@@ -80,7 +80,7 @@ for ((inum=1;1;inum++)); do
             echo ""
 
 
-            echo "Running 'testscanB' on $HOST:"
+            echo "Running 'testscanB' on $HOST."
             perl sysfink.pl --host=$HOST --cmd=scan --section=testscanB --ver=$VER
             echo ""
 
@@ -92,9 +92,7 @@ for ((inum=1;1;inum++)); do
             perl sysfink.pl --cmd=audit --host=$HOST --section=testscanB --ver=$VER
             echo ""
 
-        else 
-
-            echo "Running 'tmpscan' on $HOST:"
+            echo "Running 'tmpscan' on $HOST."
             perl sysfink.pl --host=$HOST --cmd=scan --section=tmpscan --ver=$VER
             echo ""
 
@@ -106,8 +104,9 @@ for ((inum=1;1;inum++)); do
             perl sysfink.pl --cmd=audit --host=$HOST --section=tmpscan --ver=$VER
             echo ""
 
+        else 
 
-            echo "Running 'fastscan' on $HOST:"
+            echo "Running 'fastscan' on $HOST."
             perl sysfink.pl --host=$HOST --cmd=scan --section=fastscan --ver=$VER
             echo ""
 

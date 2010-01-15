@@ -614,8 +614,22 @@ Return ResultSet to actual idata for given machine_id.
 sub get_sc_idata_rs {
     my ( $self, $machine_id ) = @_;
 
-    my $select_items = [ 'me.sc_idata_id', 'me.sc_mitem_id', 'path_id.path', 'scan_id.mconf_sec_id' ];
-    my $select_as_items = [ 'sc_idata_id', 'sc_mitem_id', 'path', 'mconf_sec_id' ];
+    my $select_items = [ 
+        'me.sc_idata_id',
+        'me.sc_mitem_id',
+        'path_id.path',
+        'scan_id.mconf_sec_id',
+        'me.symlink_path_id',
+        'symlink_path_id.path',
+    ];
+    my $select_as_items = [
+        'sc_idata_id',
+        'sc_mitem_id',
+        'path',
+        'mconf_sec_id',
+        'symlink_path_id',
+        'symlink',
+    ];
 
     my $attrs = $self->get_item_attrs();
     foreach my $attr_name ( keys %$attrs ) {
@@ -632,7 +646,8 @@ sub get_sc_idata_rs {
         {
             'join' => [
                 { 'sc_mitem_id' => 'path_id' },
-                'scan_id'
+                'scan_id',
+                'symlink_path_id',
             ],
             'select' => $select_items,
             'as' => $select_as_items,
@@ -654,9 +669,17 @@ Return 1 if given hashs has same attributes' values.
 sub has_same_data {
     my ( $self, $new, $old, $ignore_not_found ) = @_;
 
-    my $attrs = $self->get_item_attrs();
-    # Add additional attribute 'found'.
-    $attrs->{found} = 1;
+    # Get list of attributes to compare.
+    my $attrs = undef;
+    if ( exists $self->{cache_attrs_to_compare} ) {
+        $attrs = $self->{cache_attrs_to_compare};
+    } else {
+        $attrs = $self->get_item_attrs();
+        # Add additional attributes.
+        $attrs->{found} = 1;
+        $attrs->{symlink} = 0;
+        $self->{cache_attrs_to_compare} = $attrs;
+    }
 
     foreach my $attr_name ( keys %$attrs ) {
         if ( $ignore_not_found && (not defined $new->{ $attr_name }) ) {
@@ -664,7 +687,7 @@ sub has_same_data {
         }
         
         my $is_numeric = $attrs->{$attr_name};
-        #print "$attr_name is_numeric=$is_numeric\n";
+        #print "$attr_name (is_numeric=$is_numeric)\n"; # debug
         if ( $is_numeric ) {
             return 0 if defined $new->{$attr_name} && ( (not defined $old->{$attr_name}) || $old->{$attr_name} != $new->{$attr_name} );
             return 0 if defined $old->{$attr_name} && ( (not defined $new->{$attr_name}) || $new->{$attr_name} != $old->{$attr_name} );
@@ -672,7 +695,7 @@ sub has_same_data {
             return 0 if defined $new->{$attr_name} && ( (not defined $old->{$attr_name}) || $old->{$attr_name} ne $new->{$attr_name} );
             return 0 if defined $old->{$attr_name} && ( (not defined $new->{$attr_name}) || $new->{$attr_name} ne $old->{$attr_name} );
         }
-        #print "  -> are same\n";
+        #print "  -> are same\n"; # debug
     }
 
     return 1;
@@ -681,7 +704,8 @@ sub has_same_data {
 
 =head2 get_base_idata
 
-Return hash ref for database. Hash is created from base_data completed with values from raw_data.
+Return hash ref for database. Hash is created from base_data completed with keys/values 
+from raw_data if found. If not found in raw_data then old_data hash is used.
 
 =cut
 
@@ -923,11 +947,11 @@ sub scan_cmd {
     my $sc_mitem_rs = $schema->resultset('sc_mitem');
     my $sc_idata_rs = $schema->resultset('sc_idata');
 
-    NEXT_DB_ITEM: while ( my $row = $prev_sc_idata_rs->next ) {
-        my $path = $row->{path};
+    NEXT_DB_ITEM: while ( my $db_row = $prev_sc_idata_rs->next ) {
+        my $path = $db_row->{path};
         
-        #$self->dump( 'Prev idata row', $row ) if $ver >= 6;
-        if ( $mconf_sec_id != $row->{'mconf_sec_id'} ) {
+        #$self->dump( 'Prev idata row', $db_row ) if $ver >= 6;
+        if ( $mconf_sec_id != $db_row->{'mconf_sec_id'} ) {
             unless ( $self->flags_or_regex_succeed( $path ) ) {
                 print "Skipping '$path' (from DB) - no valid for this configuration.\n" if $self->{ver} >= 6;
                 next NEXT_DB_ITEM;
@@ -939,7 +963,7 @@ sub scan_cmd {
         # Found.
         if ( exists $path_to_num{ $path } ) {
             my $new_item_data = $loaded_items->[ $path_to_num{ $path }->[1] ];
-            if ( $self->has_same_data( $new_item_data, $row, 1 ) ) {
+            if ( $self->has_same_data( $new_item_data, $db_row, 1 ) ) {
                 # Same data -> do nothing.
                 $path_to_num{ $path }->[0] = 0; # 0 .. found in db and not changed
                 print "Item '$path' not changed.\n" if $ver >= 6;
@@ -950,24 +974,48 @@ sub scan_cmd {
                 if ( $ver >= 5 ) {
                     print "Item data changed:\n";
                     $self->dump( 'new item data', $new_item_data );
-                    $self->dump( 'prev item data', $row );
+                    $self->dump( 'prev item data', $db_row );
                 }
 
-                my $sc_mitem_id = $row->{'sc_mitem_id'};
+                my $sc_mitem_id = $db_row->{'sc_mitem_id'};
                 print "Updating status to new values sc_mitem_id $sc_mitem_id.\n" if $ver >= 4;
                 my $insert_idata_base = {
                     sc_mitem_id => $sc_mitem_id,
                     scan_id => $scan_id,
                     newer_id => undef,
                     found => 1,
+                    
                 };
-                #$new_item_data->{size} = int rand(500); # debug
-                $insert_idata = $self->get_base_idata( $insert_idata_base, $new_item_data, $row );
+
+                # idata changed 
+                # prepare scan_path_id if it is or it was a symlink
+                if ( (defined $new_item_data->{'symlink'}) || (defined $db_row->{'symlink'}) ) {
+                    # was symlink, but now it's not
+                    if ( (defined $db_row->{'symlink'}) && (not defined $new_item_data->{'symlink'}) ) {
+                        $insert_idata_base->{symlink_path_id} = undef;
+                        print "Symlink to '" . $db_row->{'symlink'} . "' removed and item is not symlink now.\n" if $ver >= 4;
+
+                    # wasn't symlink, but now it is
+                    # or both are defined and not same
+                    } elsif (
+                        ( (not defined $db_row->{'symlink'}) && (defined $new_item_data->{'symlink'}) )
+                        or ( $db_row->{'symlink'} ne $new_item_data->{'symlink'} )
+                    ) {
+                        my $symlink_path_row = $path_rs->find_or_create({
+                            path => $new_item_data->{'symlink'},
+                        });
+                        $insert_idata_base->{symlink_path_id} = $symlink_path_row->path_id;
+                        print "Symlink changed to '" . $new_item_data->{'symlink'} . "'.\n" if $ver >= 4;
+                    }
+                }
+
+                # add base idata
+                $insert_idata = $self->get_base_idata( $insert_idata_base, $new_item_data, $db_row );
             }
 
         # Not found during scan on client machine -> delete.
         } else {
-            my $sc_mitem_id = $row->{'sc_mitem_id'};
+            my $sc_mitem_id = $db_row->{'sc_mitem_id'};
             print "Updating status to delete sc_mitem_id $sc_mitem_id.\n" if $ver >= 4;
             my $insert_idata_base = {
                 sc_mitem_id => $sc_mitem_id,
@@ -982,12 +1030,12 @@ sub scan_cmd {
             my $sc_idata_row = $sc_idata_rs->create( $insert_idata );
             my $new_sc_idata_id = $sc_idata_row->sc_idata_id;
 
-            my $old_sc_idata_rs = $schema->resultset('sc_idata')->find( $row->{'sc_idata_id'} );
+            my $old_sc_idata_rs = $schema->resultset('sc_idata')->find( $db_row->{'sc_idata_id'} );
             $old_sc_idata_rs->update({ newer_id => $new_sc_idata_id });
         }
     }
 
-
+    # insert new paths
     foreach my $num ( 0..$#$loaded_items ) {
         my $item = $loaded_items->[ $num ];
         my $path = $item->{path};
@@ -1014,6 +1062,16 @@ sub scan_cmd {
                 newer_id => undef,
                 found => 1,
             };
+
+            # get symlink_path_id
+            if ( defined $item->{'symlink'} ) {
+                my $symlink_path_row = $path_rs->find_or_create({
+                    path => $item->{'symlink'},
+                });
+                $insert_idata_base->{symlink_path_id} = $symlink_path_row->path_id;
+                print ", symlink_path_id=" . $symlink_path_row->path_id if $ver >= 4;
+            }
+
             my $insert_idata = $self->get_base_idata( $insert_idata_base, $item );
             my $sc_idata_row = $sc_idata_rs->create( $insert_idata );
             my $new_sc_idata_id = $sc_idata_row->sc_idata_id;
@@ -1185,8 +1243,8 @@ sub diff_cmd {
     my $ver = $self->{ver};
     my $schema  = $self->{schema};
 
-    my $attrs_conf = get_item_attrs();
-
+    my $base_attrs_conf = get_item_attrs();
+ 
     my $cols = [ qw/ 
         mc.machine_id
         path.path
@@ -1200,12 +1258,14 @@ sub diff_cmd {
     / ];
 
     my $idata_items = [];
-    foreach my $item ( keys %$attrs_conf ) {
+    foreach my $item ( keys %$base_attrs_conf ) {
         push @$cols, 'sd.' . $item;
     }
-    foreach my $item ( keys %$attrs_conf ) {
+    foreach my $item ( keys %$base_attrs_conf ) {
         push @$cols, 'psd.' . $item;
     }
+    push @$cols, [ 'slp.path',  'sd_symlink' ];
+    push @$cols, [ 'pslp.path', 'psd_symlink' ];
 
     
     my $cols_sql_str = '';
@@ -1213,27 +1273,40 @@ sub diff_cmd {
     my $name_to_pos = {};
     my $pos_to_name = [];
     foreach my $col_num ( 0..$#$cols ) {
-        my $col = $cols->[ $col_num ];
         $cols_sql_str .= ",\n" if $cols_sql_str;
-        $cols_sql_str .= $col;
-        if ( $col =~ /\./ ) {
-            my $esc_col = $col;
-            $esc_col =~ tr{\.}{\_};
-            $cols_sql_str .= ' as ' . $esc_col;
-            $name_to_pos->{ $esc_col } = $col_num;
-            $pos_to_name->[ $col_num ] = $esc_col;
-        } else {
-            $name_to_pos->{ $cols_sql_str } = $col_num;
+
+        my $col_def = $cols->[ $col_num ];
+        if ( ref $col_def eq 'ARRAY' ) {
+            my $col = $col_def->[1];
+            $cols_sql_str .= $col_def->[0] . ' as ' . $col;
+            $name_to_pos->{ $col } = $col_num;
             $pos_to_name->[ $col_num ] = $col;
+
+        } else {
+            my $col = $col_def;
+            $cols_sql_str .= $col;
+            if ( $col =~ /\./ ) {
+                my $esc_col = $col;
+                $esc_col =~ tr{\.}{\_};
+                $cols_sql_str .= ' as ' . $esc_col;
+                $name_to_pos->{ $esc_col } = $col_num;
+                $pos_to_name->[ $col_num ] = $esc_col;
+            } else {
+                $name_to_pos->{ $cols_sql_str } = $col_num;
+                $pos_to_name->[ $col_num ] = $col;
+            }
         }
     }
-    
+
     if ( $self->{ver} >= 10 ) {
         $self->dump( 'cols', $cols );
         $self->dump( '$cols_sql_str', $cols_sql_str );
         $self->dump( '$name_to_pos', $name_to_pos );
         $self->dump( '$pos_to_name', $pos_to_name );
     }
+
+    my $attrs_conf = { %$base_attrs_conf };
+    $attrs_conf->{symlink} = 0;
 
     my $data = $schema->storage->dbh_do(
         sub {
@@ -1252,6 +1325,8 @@ sub diff_cmd {
                   inner join mconf_sec mcs on mcs.mconf_sec_id = scan.mconf_sec_id
                   inner join mconf mc on mc.mconf_id = mcs.mconf_id
                   inner join machine on machine.machine_id = mc.machine_id
+                   left join path slp on slp.path_id = sd.symlink_path_id
+                   left join path pslp on pslp.path_id = psd.symlink_path_id
                   where sd.newer_id is null
                     and ( ? is null or scan.mconf_sec_id = ? )
                     and ( ? is null or machine.machine_id = ? )
