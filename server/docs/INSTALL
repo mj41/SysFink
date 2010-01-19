@@ -7,15 +7,7 @@ yum install perl-JSON
 
 # -- Install CPAN Modules from DAG -----------------
 
-yum install perl-DBD-SQLite
-
-yum install perl-DateTime
-
-yum install perl-Devel-StackTrace
-yum install perl-Data-Dumper
-yum install perl-SQL-Translator
-yum install perl-DBIx-Class
-
+yum install perl-DBD-SQLite perl-DateTime perl-Devel-StackTrace perl-Data-Dumper perl-SQL-Translator perl-DBIx-Class
 
 # -- CPAN Module install to ~/sysfink-cpan -----------------
 #
@@ -38,6 +30,7 @@ install Class::Singleton
 install Spiffy
 install DateTime::Locale
 install DateTime::TimeZone
+install Test::Exception
 install DateTime
 
 install JSON
