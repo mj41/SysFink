@@ -1,0 +1,19 @@
+hostname    tapir-sysfink-tconf-2.test.sysfink.org
+sendmail    tapir-admin@test.sysfink.org
+
+inkey2      in-value-gen-1
+use includes/base.pkgs
+inkey2      in-value-gen-2
+
+key3        value3
+key4-gen    value4
+
+[sec_a]
+key1-sec    value1-sec
+
+inkey2      in-value-sec_a-1
+use includes/base.pkgs
+inkey2      in-value-sec_a-2
+
+key3        value3
+key4-sec    value4

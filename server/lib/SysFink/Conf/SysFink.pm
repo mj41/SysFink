@@ -321,7 +321,7 @@ Process text/config. Load included files by use keyword.
 =cut
 
 sub process_config_file_content {
-    my ( $self, $host_name, $file_content, $recursion_deep ) = @_;
+    my ( $self, $host_name, $file_content, $recursion_deep, $section ) = @_;
 
 
     if ( $recursion_deep > 10 ) {
@@ -334,7 +334,7 @@ sub process_config_file_content {
 
     my @lines = split( /\n/, $file_content );
 
-    my $section = 'general';
+    $section = 'general' unless defined $section;
     foreach my $line_num ( 0..$#lines ) {
         my $line = $lines[ $line_num ];
         chomp $line;
@@ -374,7 +374,7 @@ sub process_config_file_content {
 
                 my $inc_file_content = $self->get_file_content( $inc_fpath );
                 return 0 unless defined $inc_file_content;
-                my $ret_code = $self->process_config_file_content( $host_name, $inc_file_content, $recursion_deep + 1 );
+                my $ret_code = $self->process_config_file_content( $host_name, $inc_file_content, $recursion_deep + 1, $section );
                 return $ret_code unless $ret_code;
             }
             next;
@@ -438,7 +438,8 @@ sub process_config_file {
     return $self->process_config_file_content(
         $host_name,
         $file_content,
-        0 # $recursion_deep
+        0,      # $recursion_deep
+        undef   # $section
     );
 }
 
