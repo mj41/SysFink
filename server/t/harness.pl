@@ -10,6 +10,7 @@ my @default_tests = (
     't/tconf/*',
     't/scan/*',
     't/utils/*',
+    't/web/*',
 );
 my @tests = map { glob($_) } (@ARGV ? @ARGV : @default_tests);
 

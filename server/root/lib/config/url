@@ -1,0 +1,11 @@
+[% base = c.req.base;
+
+   site.url = {
+     base    = base
+     home    = "${base}"
+   }
+   
+   site.r_url = {
+     base = '/'
+   }
+-%]

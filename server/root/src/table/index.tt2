@@ -1,0 +1,15 @@
+[% DEFAULT title = 'Table browser' -%]
+
+<div class=nav><a href="javascript:history.back();">Back</a> or <a href="[% c.uri_for('/') %]">homepage</a>.</div>
+
+<table class=data>
+<tr>
+<th>&nbsp;</th><th>Table</th>
+</tr>
+[% FOREACH table IN tables -%]
+  <tr class="[% IF loop.count() % 2 %]even[% ELSE %]odd[% END %]">
+    <td align=right>[% loop.count() %]</td>
+    <td><a href="[% table.uri %]">[% table.name | html %]</a></td>
+  </tr>
+[% END -%]
+</table>

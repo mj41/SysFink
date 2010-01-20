@@ -1,0 +1,4 @@
+[% DEFAULT title = 'Test' -%]
+
+<div class=nav><a href="javascript:history.back();">Back</a> or <a href="[% c.uri_for('/') %]">homepage</a>.</div>
+

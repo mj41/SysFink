@@ -1,0 +1,14 @@
+[% META title = 'TapTinder Catalyst/TT Error' %]
+<p>
+  An error has occurred.  We're terribly sorry about that, but it's
+  one of those things that happens from time to time.  Let's just
+  hope the developers test everything properly before release...
+</p>
+<p>
+  Here's the error message, on the off-chance that it means something
+  to you: <span class="error">[% error %]</span>
+</p>
+<p>
+  Try to send useful report to <a href="mailto:sysfink@mj41.cz">sysfink@mj41.cz</a>
+  or patch to <a href="http://code.google.com/p/sysfink/">code.google.com/p/sysfink/</a> . Thank you.
+</p>

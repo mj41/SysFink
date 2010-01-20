@@ -110,6 +110,8 @@ if [ $TEST_TYPE = "dev" ]; then
     fi
 
     export SYSFINK_DEVEL=1
+    # ToDo
+    #export TEST_POD=1
 
     echo "Running utils/all-sql.sh 1"
     ./utils/all-sql.sh 1
@@ -274,6 +276,7 @@ if [ $TEST_TYPE = "dev" ]; then
     && echo "Done."
 
     export SYSFINK_DEVEL=0
+    export TEST_POD=0
 
     IN_FILE="sysfink-dev.db"
     OUT_FILE="temp/$IN_FILE"
