@@ -43,8 +43,7 @@ install Test::Tester
 install DBIx::Class
 
 install Net::OpenSSH
-install YAML::Any
-install YAML::XS
+install Config::General
 
 # For some devel utils.
 # install SQL::Translator
@@ -72,8 +71,7 @@ perl t/harness.pl
 cd ~/sysfink/server
 
 # Create/edit server config files.
-cp conf/web.yml.example conf/web.yml
-cp conf/web_db.yml.example conf/web_db.yml
+cp conf/sysfink.conf.example conf/sysfink.conf
 
 # Create client's machine config files
 cat > conf-machines/my-first-machine
@@ -123,4 +121,3 @@ perl sysfink.pl --host=my-first-machine --cmd=scan_test
 # normal scan command.
 perl sysfink.pl --host=my-first-machine --cmd=renew_client_dir
 perl sysfink.pl --host=my-first-machine --cmd=scan
-

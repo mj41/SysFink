@@ -1,6 +1,0 @@
----
-db:
-    name : 'sysfink-dev'
-    dbi_dsn: 'dbi:SQLite:sysfink-dev.db'
-    user: ''
-    pass: ''

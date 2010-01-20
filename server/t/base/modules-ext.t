@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 11;
+use Test::More tests => 10;
 
 use lib 'lib';
 use lib 'libext';
@@ -10,8 +10,7 @@ BEGIN {
     use_ok 'File::Spec::Functions';
 
     # config
-    use_ok 'YAML::Any';
-    use_ok 'Config::Multi';
+    use_ok 'Config::General';
 
     # Server
     use_ok 'Net::OpenSSH';

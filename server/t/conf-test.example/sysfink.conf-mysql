@@ -1,0 +1,9 @@
+name  SysFink Web interface 
+
+<db>
+  name     sysfink-dev
+  dbi_dsn  "dbi:mysql:database=sysfink-dev;host=localhost"
+  user     sysfink-dev
+  pass     "Your password for sysfink-dev mysql user."
+</db>
+

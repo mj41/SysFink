@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use Test::More tests => 2;
 
-use YAML::Any qw/LoadFile/;
+use Config::General;
 
 use lib 'lib';
 use lib 'libext';
@@ -10,8 +10,9 @@ use lib 'libext';
 use SysFink::DB::SchemaAdd;
 
 
-my $fpath = './conf/web_db.yml';
-my $conf = LoadFile($fpath);
+my $conf_fpath = './conf/sysfink.conf';
+my $cg_obj = Config::General->new( -ConfigFile => $conf_fpath, );
+my $conf = { $cg_obj->getall() };
 
 my %dbi_params = ();
 my $schema = SysFink::DB::Schema->connect(

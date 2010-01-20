@@ -13,7 +13,7 @@ use SysFink::Utils::Conf qw(load_conf_multi);
 use SysFink::Utils::DB qw(get_connected_schema);
 
 
-my $conf_fp = 'conf';
+my $conf_fp = 'conf/sysfink.conf';
 my $conf = load_conf_multi( $conf_fp, 'db' );
 ok( $conf->{db}, 'some configuration for database loaded');
 

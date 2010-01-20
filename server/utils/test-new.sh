@@ -68,12 +68,12 @@ else
 fi
 
 
-TEST_CONF_FILE="t/conf-test/web_db.yml-$DB_TYPE"
+TEST_CONF_FILE="t/conf-test/sysfink.conf-$DB_TYPE"
 
 echo "-------------------------------------------------------------------------------------"
 
 if [ $TEST_TYPE = "current" ]; then
-    GREP=`cat conf/web_db.yml | grep SQLite`
+    GREP=`cat conf/sysfink.conf | grep SQLite`
     if [ -z "$GREP" ]; then
         DB_TYPE="mysql"
     else
@@ -93,8 +93,8 @@ if [ $TEST_TYPE = "dev" ]; then
         exit
     fi
 
-    IN_FILE="conf/web_db.yml"
-    OUT_FILE="conf/web_db.yml-test.backup"
+    IN_FILE="conf/sysfink.conf"
+    OUT_FILE="conf/sysfink.conf-test.backup"
     if [ -f "$IN_FILE" ]; then
         echo "Moving '$IN_FILE' to '$OUT_FILE'."
         mv "$IN_FILE" "$OUT_FILE" || ( echo "Can't move." && exit )
@@ -102,7 +102,7 @@ if [ $TEST_TYPE = "dev" ]; then
     fi
 
     IN_FILE="$TEST_CONF_FILE"
-    OUT_FILE="conf/web_db.yml"
+    OUT_FILE="conf/sysfink.conf"
     if [ -f "$IN_FILE" ]; then
         echo "Copying '$IN_FILE' to '$OUT_FILE'."
         cp "$IN_FILE" "$OUT_FILE" || ( echo "Can't move." && exit )
@@ -283,8 +283,8 @@ if [ $TEST_TYPE = "dev" ]; then
         echo ""
     fi
 
-    IN_FILE="conf/web_db.yml-test.backup"
-    OUT_FILE="conf/web_db.yml"
+    IN_FILE="conf/sysfink.conf-test.backup"
+    OUT_FILE="conf/sysfink.conf"
     if [ -f "$IN_FILE" ]; then
         echo "Moving '$IN_FILE' to '$OUT_FILE'."
         mv "$IN_FILE" "$OUT_FILE" || ( echo "Can't move." && exit )

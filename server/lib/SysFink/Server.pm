@@ -48,7 +48,7 @@ sub new {
     $self->{rpc} = undef;
     $self->{rpc_ssh_connected} = 0;
 
-    $self->{conf_path} = catdir( $self->{RealBin}, 'conf' );
+    $self->{conf_path} = catfile( $self->{RealBin}, 'conf', 'sysfink.conf' );
 
     return $self;
 }
@@ -86,6 +86,7 @@ sub run {
         },
         'renew_client_dir' => {
             'load_host_conf_from_db_if_no' => [ qw/ host_dist_type / ],
+            'host_conf_mandatory_keys' => [ 'ssh_user', 'dist_type', ],
             'ssh_connect' => 1,
             'type' => 'rpc',
         },
@@ -151,7 +152,7 @@ sub run {
     }
 
     my $cmd_conf = $all_cmd_confs->{ $cmd };
-    
+
     # Special params.
     if ( $cmd_conf->{'load_host_conf_from_db_if_no'} ) {
         my $all_found = 1;
@@ -176,19 +177,19 @@ sub run {
     if ( $cmd_conf->{validate_host_name_if_given} && defined $opt->{host} ) {
         return 0 unless $self->validate_host_name( $opt->{host} );
     }
-    
+
     # Get user_id from given login or who (get_login).
     if ( $cmd_conf->{get_who} ) {
         return 0 unless $self->get_who( $opt->{who}, $cmd_conf->{get_who}->{mandatory} );
     }
-    
+
     # Load host config for given hostname from connected DB.
     if ( $cmd_conf->{ssh_connect} ) {
         return 0 unless $self->prepare_base_host_conf( $opt );
     }
 
     if ( $cmd_conf->{load_host_conf_from_db} && !$opt->{no_db} ) {
-        return 0 unless $self->prepare_host_conf_from_db();
+        return 0 unless $self->prepare_host_conf_from_db( $cmd_conf->{'host_conf_mandatory_keys'} );
     }
 
     # Next commands needs prepared SSH part of object.
@@ -257,7 +258,7 @@ sub set_mandatory_param_err {
     my ( $self, $param_name, $err_msg_end ) = @_;
     my $err_msg = "Parameter --${param_name} is mandatory";
     if ( $err_msg_end ) {
-        $err_msg .= $err_msg_end 
+        $err_msg .= $err_msg_end
     } else {
         $err_msg .= '.';
     }
@@ -276,7 +277,7 @@ sub validate_host_name {
 
     return 1 unless defined $hostname;
 
-    my $host_row = $self->{schema}->resultset('machine')->find({ 
+    my $host_row = $self->{schema}->resultset('machine')->find({
         'name' => $hostname,
     });
     return $self->err("Couldn't find hostname '$hostname' inside DB.") unless defined $host_row;
@@ -352,7 +353,7 @@ sub get_who {
         my $user_row = $schema->resultset('user')->find({ login => $who });
         return $self->err("User '$who' not found in DB.") unless $user_row;
         $self->{user_id} = $user_row->user_id;
-    
+
     } else {
         my $tty_who = getlogin();
 
@@ -465,7 +466,7 @@ Load host related configuration from database for given configuratin's section n
 =cut
 
 sub prepare_host_conf_from_db {
-    my ( $self ) = @_;
+    my ( $self, $mandatory_keys_list ) = @_;
 
     return 0 unless $self->init_mconf_obj();
     my $mconf_obj = $self->{mconf_obj};
@@ -478,7 +479,7 @@ sub prepare_host_conf_from_db {
 
     my $machine_id = $mconf_obj->get_machine_id( $host );
     return $self->mconf_err() unless $machine_id;
-    
+
     my $mconf_sec_data = $mconf_obj->get_machine_active_mconf_sec_info( $machine_id, $conf_section_name );
     return $self->mconf_err() unless $mconf_sec_data;
     my ( $mconf_sec_id, $mconf_id ) = @$mconf_sec_data;
@@ -509,9 +510,12 @@ sub prepare_host_conf_from_db {
         dist_type => 'host_dist_type',
         ssh_user => 'user',
     };
+    unless ( defined $mandatory_keys_list ) {
+        $mandatory_keys_list = [ sort keys %$mandatory_keys ];
+    }
 
     # Check mandatory if not definned on command line.
-    foreach my $name ( keys %$mandatory_keys ) {
+    foreach my $name ( @$mandatory_keys_list ) {
         unless ( exists $self->{host_conf}->{ $name } ) {
             unless ( $section_conf->{ $name } ) {
                 return $self->err("Can't find mandatory configuration key '$name' for host '$host' in DB.");
@@ -527,7 +531,7 @@ sub prepare_host_conf_from_db {
     foreach my $name ( keys %$mandatory_keys ) {
         unless ( exists $self->{host_conf}->{ $name } ) {
             my $host_conf_key = $mandatory_keys->{ $name };
-            $self->{host_conf}->{ $host_conf_key } = $section_conf->{ $name };
+            $self->{host_conf}->{ $host_conf_key } = $section_conf->{ $name } if exists $section_conf->{ $name };
         }
     }
 
@@ -614,7 +618,7 @@ Return ResultSet to actual idata for given machine_id.
 sub get_sc_idata_rs {
     my ( $self, $machine_id ) = @_;
 
-    my $select_items = [ 
+    my $select_items = [
         'me.sc_idata_id',
         'me.sc_mitem_id',
         'path_id.path',
@@ -685,7 +689,7 @@ sub has_same_data {
         if ( $ignore_not_found && (not defined $new->{ $attr_name }) ) {
             next;
         }
-        
+
         my $is_numeric = $attrs->{$attr_name};
         #print "$attr_name (is_numeric=$is_numeric)\n"; # debug
         if ( $is_numeric ) {
@@ -704,7 +708,7 @@ sub has_same_data {
 
 =head2 get_base_idata
 
-Return hash ref for database. Hash is created from base_data completed with keys/values 
+Return hash ref for database. Hash is created from base_data completed with keys/values
 from raw_data if found. If not found in raw_data then old_data hash is used.
 
 =cut
@@ -791,12 +795,12 @@ Try each regex on given path and join flags for those which match.
 # Based on ScanHost::processs_path_regexes method.
 sub process_path_regexes {
     my ( $self, $regexes_conf, $full_path, $base_flags, $base_plus_found ) = @_;
-    
+
     my $debug_prefix = '  ';
 
     my $flags = { %$base_flags };
     my $plus_found = $base_plus_found;
-    
+
     foreach my $regex_conf ( @$regexes_conf ) {
         my ( $regex, $regex_flags, $is_recursive ) = @$regex_conf;
         print $debug_prefix."  trying '$regex' $is_recursive\n" if $self->{ver} >= 10;
@@ -812,7 +816,7 @@ sub process_path_regexes {
 
 =head2 flags_or_regex_succeed
 
-Try to 
+Try to
 
 =cut
 
@@ -862,13 +866,13 @@ sub flags_or_regex_succeed {
     return $plus_found unless exists $self->{host_conf}->{path_filter_conf}->{$path}->{regexes};
 
     my $regexes_conf = $self->{host_conf}->{path_filter_conf}->{$path}->{regexes};
-    $plus_found = $self->process_path_regexes( 
+    $plus_found = $self->process_path_regexes(
         $regexes_conf,
         $full_path,
         $path_conf->{flags},
         $plus_found
     );
-  
+
     return $plus_found;
 }
 
@@ -949,7 +953,7 @@ sub scan_cmd {
 
     NEXT_DB_ITEM: while ( my $db_row = $prev_sc_idata_rs->next ) {
         my $path = $db_row->{path};
-        
+
         #$self->dump( 'Prev idata row', $db_row ) if $ver >= 6;
         if ( $mconf_sec_id != $db_row->{'mconf_sec_id'} ) {
             unless ( $self->flags_or_regex_succeed( $path ) ) {
@@ -984,10 +988,10 @@ sub scan_cmd {
                     scan_id => $scan_id,
                     newer_id => undef,
                     found => 1,
-                    
+
                 };
 
-                # idata changed 
+                # idata changed
                 # prepare scan_path_id if it is or it was a symlink
                 if ( (defined $new_item_data->{'symlink'}) || (defined $db_row->{'symlink'}) ) {
                     # was symlink, but now it's not
@@ -1188,7 +1192,7 @@ sub get_attr_str {
     if ( $attr eq 'mtime' ) {
         return DateTime->from_epoch( epoch => $value )->datetime;;
     }
-    
+
     return $value;
 }
 
@@ -1215,7 +1219,7 @@ sub check_and_load_host_and_section {
         return 0 unless $self->init_mconf_obj();
         $machine_id = $self->{mconf_obj}->get_machine_id( $host );
         return $self->mconf_err() unless $machine_id;
-        
+
         if ( $opt->{section} ) {
             my $section_name = lc( $opt->{section} );
             my $mconf_sec_data = $self->{mconf_obj}->get_machine_active_mconf_sec_info( $machine_id, $section_name );
@@ -1223,7 +1227,7 @@ sub check_and_load_host_and_section {
             $mconf_sec_id = $mconf_sec_data->[0];
         }
     }
-    
+
     return ( 1, $machine_id, $mconf_sec_id );
 }
 
@@ -1244,8 +1248,8 @@ sub diff_cmd {
     my $schema  = $self->{schema};
 
     my $base_attrs_conf = get_item_attrs();
- 
-    my $cols = [ qw/ 
+
+    my $cols = [ qw/
         mc.machine_id
         path.path
         sd.sc_idata_id
@@ -1267,7 +1271,7 @@ sub diff_cmd {
     push @$cols, [ 'slp.path',  'sd_symlink' ];
     push @$cols, [ 'pslp.path', 'psd_symlink' ];
 
-    
+
     my $cols_sql_str = '';
     #$cols_sql_str = join( q{, }, @$cols );
     my $name_to_pos = {};
@@ -1308,41 +1312,42 @@ sub diff_cmd {
     my $attrs_conf = { %$base_attrs_conf };
     $attrs_conf->{symlink} = 0;
 
+    my $sql = "
+         select $cols_sql_str
+           from sc_idata sd
+           left join sc_idata psd on psd.newer_id = sd.sc_idata_id
+           left join aud_idata aid on (
+                     aid.sc_idata_id = sd.sc_idata_id
+                 and aid.newer_id is null
+            )
+          inner join sc_mitem si on si.sc_mitem_id = sd.sc_mitem_id
+          inner join path on path.path_id = si.path_id
+          inner join scan on scan.scan_id = sd.scan_id
+          inner join mconf_sec mcs on mcs.mconf_sec_id = scan.mconf_sec_id
+          inner join mconf mc on mc.mconf_id = mcs.mconf_id
+          inner join machine on machine.machine_id = mc.machine_id
+           left join path slp on slp.path_id = sd.symlink_path_id
+           left join path pslp on pslp.path_id = psd.symlink_path_id
+          where sd.newer_id is null
+            and ( ? is null or scan.mconf_sec_id = ? )
+            and ( ? is null or machine.machine_id = ? )
+            and machine.active = 1
+            and ( aid.aud_idata_id is null
+                  or ( aid.aud_status_id != 1 and aid.aud_status_id != 2 )
+            )
+          order by machine.machine_id, path.path
+    ";
+
+    my $ba = [ $mconf_sec_id, $mconf_sec_id, $machine_id, $machine_id ];
+    if ( $self->{ver} >= 10 ) {
+        $self->dump( 'sql', $sql );
+        $self->dump( 'ba', $ba );
+    }
+
+    #my $data = $schema->storage->dbh->selectall_arrayref( $sql, {}, @$ba );
     my $data = $schema->storage->dbh_do(
-        sub {
-            my ( $storage, $dbh, $cols_str, $in_params ) = @_;
-            return $dbh->selectall_arrayref("
-                 select $cols_str
-                   from sc_idata sd
-                   left join sc_idata psd on psd.newer_id = sd.sc_idata_id
-                   left join aud_idata aid on (
-                             aid.sc_idata_id = sd.sc_idata_id
-                         and aid.newer_id is null
-                    )
-                  inner join sc_mitem si on si.sc_mitem_id = sd.sc_mitem_id
-                  inner join path on path.path_id = si.path_id
-                  inner join scan on scan.scan_id = sd.scan_id
-                  inner join mconf_sec mcs on mcs.mconf_sec_id = scan.mconf_sec_id
-                  inner join mconf mc on mc.mconf_id = mcs.mconf_id
-                  inner join machine on machine.machine_id = mc.machine_id
-                   left join path slp on slp.path_id = sd.symlink_path_id
-                   left join path pslp on pslp.path_id = psd.symlink_path_id
-                  where sd.newer_id is null
-                    and ( ? is null or scan.mconf_sec_id = ? )
-                    and ( ? is null or machine.machine_id = ? )
-                    and machine.active = 1
-                    and ( aid.aud_idata_id is null 
-                          or ( aid.aud_status_id != 1 and aid.aud_status_id != 2 )
-                    )
-                  order by machine.machine_id, path.path
-                ",
-                {}, @$in_params
-            );
-        },
-        $cols_sql_str,
-        [ $mconf_sec_id, $mconf_sec_id, $machine_id, $machine_id ]
+        sub { return $_[1]->selectall_arrayref( $_[2], {}, @{$_[3]} ); }, $sql, $ba
     );
-    #$self->dump( 'data', $data );
 
     my $prev_machine_name = '';
     my $machine_str = undef;
@@ -1369,20 +1374,20 @@ sub diff_cmd {
             }
 
         } elsif ( ! $row->[ $name_to_pos->{'sd_found'} ] ) {
-            $path_str .= " - deleted"; 
+            $path_str .= " - deleted";
             foreach my $attr ( keys %$attrs_conf ) {
                 my $old = $row->[ $name_to_pos->{'psd_'.$attr} ];
                 $diff_str .= "    $attr: " . $self->get_attr_str($attr, $old) . "\n";
             }
-            
+
         } else {
-            $path_str .= " - changed"; 
+            $path_str .= " - changed";
 
             # attrs changes
             foreach my $attr ( keys %$attrs_conf ) {
                 my $new = $row->[ $name_to_pos->{'sd_'.$attr} ];
                 my $old = $row->[ $name_to_pos->{'psd_'.$attr} ];
-                
+
                 my $is_number = $attrs_conf->{ $attr };
                 if ( (not defined $new) || (not defined $old) ) {
                     if ( (not defined $new) && (not defined $old) ) {
@@ -1414,19 +1419,19 @@ sub diff_cmd {
                 $machine_str = undef;
             }
             if ( defined $path_str ) {
-                print $path_str . "\n"; 
+                print $path_str . "\n";
                 $path_str = undef;
             }
             print $diff_str;
             $diff_str = undef;
-            
+
             if ( defined $row->[ $name_to_pos->{aid_aud_status_id} ] ) {
                 print "    last audit status: " . $row->[ $name_to_pos->{aid_aud_status_id} ] . "\n";
             }
             print "\n";
         }
     }
-    
+
     return 1;
 }
 
@@ -1444,7 +1449,7 @@ sub audit_cmd {
     return 0 unless $ret_code;
 
     my $aud_status_id = 1;
-    
+
     my $ver = $self->{ver};
     my $schema  = $self->{schema};
 
@@ -1490,7 +1495,7 @@ sub audit_cmd {
         },
         $cols_sql_str,
         [ $mconf_sec_id, $mconf_sec_id, $machine_id, $machine_id ],
-        
+
     );
 
     foreach my $row ( @$data ) {
@@ -1503,9 +1508,9 @@ sub audit_cmd {
         });
         print "sc_idata_id $sc_idata_id audit status sets to $aud_status_id\n" if $ver >= 4;
     }
-    
+
     $schema->storage->txn_commit;
-    
+
     return 1;
 }
 

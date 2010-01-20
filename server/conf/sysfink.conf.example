@@ -1,0 +1,16 @@
+name  SysFink Web interface 
+
+<db>
+  name     "sysfink"
+  dbi_dsn  "dbi:SQLite:sysfink.db"
+  user     ""
+  pass     ""
+</db>
+
+#<db>
+#  name     sysfink
+#  dbi_dsn  "dbi:mysql:database=sysfink;host=localhost"
+#  user     sysfink
+#  pass     "Your password for sysfink mysql user."
+#</db>
+

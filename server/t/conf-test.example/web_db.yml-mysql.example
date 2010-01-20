@@ -1,6 +1,0 @@
----
-db:
-    name : 'sysfink-dev'
-    dbi_dsn: 'dbi:mysql:database=sysfink-dev;host=localhost' 
-    user: 'sysfink-dev'
-    pass: 'someDevPasswd223'

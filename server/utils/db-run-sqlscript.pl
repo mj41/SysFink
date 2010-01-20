@@ -7,7 +7,7 @@ use Carp qw(carp croak verbose);
 use FindBin qw($RealBin);
 
 use DBI;
-use YAML::Any qw(LoadFile);
+use Config::General;
 use File::Spec::Functions;
 
 use lib "$RealBin/../lib";
@@ -69,8 +69,9 @@ END_CMD_FILE
 
 croak "SQL file '$sql_fpath' not found." unless -f $sql_fpath;
 
-my $conf_fpath = catfile( $RealBin, '..', 'conf', 'web_db.yml' );
-my ( $conf ) = LoadFile( $conf_fpath );
+my $conf_fpath = catfile( $RealBin, '..', 'conf', 'sysfink.conf' );
+my $cg_obj = Config::General->new( -ConfigFile => $conf_fpath, );
+my $conf = { $cg_obj->getall() };
 croak "Configuration for database loaded from '$conf_fpath' is empty.\n" unless $conf->{db};
 
 croak "Database 'dbi_dsn' not found.\n" unless $conf->{db}->{dbi_dsn};
