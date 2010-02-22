@@ -25,5 +25,5 @@ BEGIN {
     use_ok 'DBD::SQLite';
 
     # TapTinder imported
-    use_ok 'DBIx::Class::ViewMD';
+    use_ok 'DBIx::Class::CWebMagic';
 }

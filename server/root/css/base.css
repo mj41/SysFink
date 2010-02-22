@@ -87,6 +87,7 @@ table td {
     padding:            0.1em 0.5em 0.1em 0.5em;
     margin:             0.1em;
     vertical-align:     top;
+    white-space: 		nowrap;
 }
 
 .red {

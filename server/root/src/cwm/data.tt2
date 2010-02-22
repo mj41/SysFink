@@ -1,0 +1,40 @@
+[% DEFAULT title = 'Table: ' _ table_name  -%]
+
+<div class=nav><a href="javascript:history.back();">Back</a>, <a href="[% c.uri_for('/') %]">homepage</a> or <a href="[% index_uri %]">list of tables</a>.</div>
+
+<table class=data>
+[% IF table_header_html %]
+    [% table_header_html %]
+[% ELSE %]
+<tr>
+    [% FOREACH col_title IN col_titles -%]
+        <th>[% col_title -%]</th>
+    [% END -%]
+</tr>
+[% END -%]
+[% IF data_error %]
+    <tr class=even><td colspan=[% all_colspan_sum %]>[% data_error %]</td></tr>
+[% ELSE %]
+    [% IF table_content_html %]
+        [% table_content_html %]
+    [% END -%]
+[% END -%]
+</table>
+
+[% pager_html %]
+
+[% IF rels_html -%]
+<div class=rels>
+  [% rels_html %]
+</div>
+[% END -%]
+
+[% IF msgs %]
+<div class=messages>
+<ul>
+[% FOREACH msg IN msgs -%]
+<li>[% msg %]</li>
+[% END -%]
+</ul>
+</div>
+[% END -%]

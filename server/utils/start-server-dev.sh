@@ -6,6 +6,7 @@ fi
 
 export DBIC_TRACE=1
 export CATALYST_PORT=5000
+export CATALYST_DEBUG=1
 
 if [ "$1" = "2" ]; then
   export CATALYST_ENGINE='HTTP::Prefork'
