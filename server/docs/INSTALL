@@ -1,28 +1,62 @@
-# Base SysFink server install documentation.
+# ----------------------------------------------------------------------------
+# --- Section 1) Base SysFink server install documentation -------------------
+# ----------------------------------------------------------------------------
+
+# --- A) Use sysfink-cpan-*.tar.gz -------------------------------------------
 
 # Upgade perl
 yum upgrade perl
 
+cat /etc/redhat-release
+uname -m
+
+# Choose proper module package on http://code.google.com/p/sysfink/downloads/list
+# E.g. for RHEL 5.3 64bit get:
+cd ~/
+wget http://sysfink.googlecode.com/files/sysfink-cpan-rhel53-x86_64.tar.gz
+tar -xzf sysfink-cpan-rhel53-x86_64.tar.gz
+
+# or for RHEL 5.4 32bit get:
+cd ~/
+wget http://sysfink.googlecode.com/files/sysfink-cpan-rhel54-i386.tar.gz
+tar -xzf sysfink-cpan-rhel54-i386.tar.gz
+
+# Configure your variables. Run
+perl -Mlocal::lib=$HOME/sysfink-cpan
+# or perl -I$HOME/sysfink-cpan/lib/perl5 -Mlocal::lib=$HOME/sysfink-cpan
+# and run command whitch local::lib printed on screen to export local paths.
+
+# Now skip to Section 2.
+
+
+# --- B) Install required modules form rpms and CPAN -------------------------
+
+# Upgade perl
+yum upgrade perl
 yum install perl-JSON
 
-# -- Install CPAN Modules from DAG -----------------
+# --- Install CPAN Modules from DAG ------------------------------------------
 
 yum install perl-DBD-SQLite perl-DateTime perl-Devel-StackTrace perl-Data-Dumper perl-SQL-Translator perl-DBIx-Class
 
-# -- CPAN Module install to ~/sysfink-cpan -----------------
+
+# --- CPAN Module install to ~/sysfink-cpan ----------------------------------
 #
 # See http://search.cpan.org/~andk/CPAN/lib/CPAN.pm#FAQ or 'man CPAN'.
 
-# Choose A) or B).
 
-# -- A) Use local::lib -------------------------------------
+
+# ----------------------------------------------------------------------------
+# Choose B1) or B2).
+
+# --- B1) Use local::lib -----------------------------------------------------
 
 cpan local::lib
 # Or bootstrap http://search.cpan.org/~apeiron/local-lib/lib/local/lib.pm#The_bootstrapping_technique
 
 mkdir ~/sysfink-cpan
 cd ~/sysfink-cpan
-perl -Mlocal::lib=./
+perl -Mlocal::lib=~/sysfink-cpan
 
 # Run 'cpan' and inside it:
 
@@ -31,8 +65,10 @@ o conf prerequisites_policy follow
 o conf halt_on_failure on
 o conf commit
 
+# Now skip to C) part.
 
-# -- B) Use cpan and paths -------------------------------------
+
+# --- B2) Use cpan and paths -------------------------------------------------
 
 # Run 'cpan' and inside it:
 
@@ -40,11 +76,11 @@ o conf build_requires_install_policy yes
 o conf prerequisites_policy follow
 o conf halt_on_failure on
 o conf commit
-o conf makepl_arg "LIB=~/sysfink-cpan/lib INSTALLMAN1DIR=~/sysfink-cpan/man/man1 INSTALLMAN3DIR=~/sysfink-cpan/man/man3 INSTALLSCRIPT=~/sysfink-cpan/bin INSTALLBIN=~/sysfink-cpan/bin"
-o conf mbuildpl_arg "--lib=~/sysfink-cpan/lib --installman1dir=~/sysfink-cpan/man/man1 --installman3dir=~/sysfink-cpan/man/man3 --installscript=~/sysfink-cpan/bin --installbin=~/sysfink-cpan/bin"
+o conf makepl_arg "LIB=~/sysfink-cpan/lib/perl5 INSTALLMAN1DIR=~/sysfink-cpan/man/man1 INSTALLMAN3DIR=~/sysfink-cpan/man/man3 INSTALLSCRIPT=~/sysfink-cpan/bin INSTALLBIN=~/sysfink-cpan/bin"
+o conf mbuildpl_arg "--lib=~/sysfink-cpan/lib/perl5 --installman1dir=~/sysfink-cpan/man/man1 --installman3dir=~/sysfink-cpan/man/man3 --installscript=~/sysfink-cpan/bin --installbin=~/sysfink-cpan/bin"
 
 
-# -- Install cpan modules --------------------------------------
+# --- C) Install cpan modules ------------------------------------------------
 
 # Run 'cpan' and inside it:
 
@@ -76,34 +112,39 @@ install Config::General
 exit
 
 
-# -- Set your environment variables -------------------------
+# --- Set your environment variables -----------------------------------------
 
 # You should call commands printed by
 perl -Mlocal::lib=$HOME/sysfink-cpan
 # for A) or
-export PERL5LIB=$HOME/sysfink-cpan/lib
+export PERL5LIB=$HOME/sysfink-cpan/lib/perl5
 # for B) before running any SysFink command.
 
 
-# -- SysFink  ----------------------------------------------
+
+# ----------------------------------------------------------------------------
+# --- Section 2) SysFink  ----------------------------------------------------
+# ----------------------------------------------------------------------------
 
 # Login as root to server machine.
-# Check out ~/sysfink if not exists: svn co http://sysfink.googlecode.com/svn/trunk ~/sysfink
+# Check out ~/sysfink if not already checked.
+svn co http://sysfink.googlecode.com/svn/trunk ~/sysfink
 
 
-# -- Client ------------------------------------------------
+# --- Client -----------------------------------------------------------------
 
 cd ~/sysfink/client
-
 perl t/harness.pl
 
 
-# -- Server ------------------------------------------------
+# --- Server -----------------------------------------------------------------
 
 cd ~/sysfink/server
 
 # Create/edit server config files.
 cp conf/sysfink.conf.example conf/sysfink.conf
+# If you would like to use MySQL then
+# vi conf/sysfink.conf
 
 # Create client's machine config files
 cat > conf-machines/my-first-machine
@@ -117,7 +158,7 @@ exclude     /
 include     /etc
 <Ctrl+D>
 
-# Create empty db file
+# If you use SQLite. Create empty db file
 cp sysfink-empty.db sysfink.db
 
 # Run SysFink servers' tests

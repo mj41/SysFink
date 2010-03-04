@@ -1,0 +1,52 @@
+# ----------------------------------------------------------------------------
+# Prepare machine
+
+yum install gcc
+
+cpan
+o conf build_requires_install_policy yes
+o conf prerequisites_policy follow
+o conf halt_on_failure on
+o conf commit
+
+clear \
+&& cpan CPAN \
+&& cpan DBI \
+&& cpan YAML \
+&& cpan ExtUtils::Install \
+&& cpan ExtUtils::Installed \
+&& cpan local::lib \
+&& echo "all initial cpan modules installed ok"
+
+
+# ----------------------------------------------------------------------------
+# Install non core modules and dependencies to ~/sysfink-cpan.
+
+clear \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(YAML::XS)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(local::lib)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(DBD::SQLite)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(DateTime)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(Devel::StackTrace)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(Data::Dumper)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(DBIx::Class)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(TAP::Harness)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(Class::Singleton)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(Spiffy)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(DateTime::Locale)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(DateTime::TimeZone)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(Test::Exception)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(DateTime)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(JSON)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(Data::Compare)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(Config::Multi)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(Test::Tester)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(DBIx::Class)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(Net::OpenSSH)' \
+&& perl -MCPAN -Mlocal::lib=--self-contained,sysfink-cpan -e 'CPAN::install(Config::General)' \
+&& echo "all cpan modules installed ok"
+
+# If all ok, then pack it.
+tar -czf sysfink-cpan.tar.gz sysfink-cpan/
+
+
